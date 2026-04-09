@@ -69,6 +69,8 @@ let meterRafId = null;
 let subtitleDC = null;          // RTCDataChannel for subtitle messages
 let recognition = null;         // SpeechRecognition instance
 let sttActive = false;          // 是否正在跑 STT
+let sttRestartCount = 0;        // 連續快速重啟次數（防 onend 無限迴圈）
+let sttLastRestartAt = 0;       // 上次 restart 時間戳
 let sttLang = detectInitialLang(); // 我講的語言（影響 STT + 對方知道我在講什麼）
 let peerLang = null;            // 對方講的語言（從對方第一筆字幕學到）
 let subtitlesEnabled = localStorage.getItem('kaitalk.subtitles') !== 'false'; // 用戶開關，預設開
@@ -625,16 +627,17 @@ function startSTT() {
   recognition.maxAlternatives = 1;
 
   recognition.onstart = () => {
-    log(`✅ STT onstart 觸發 (${sttLang})`);
+    // 不要每次都 log，因為 STT 在 continuous 模式下會自然重複 onstart
     setSTTStatus('active', '辨識中');
     if (subtitleBuffer.length === 0) {
       subtitlesListEl.innerHTML = '<div class="subtitles-empty">講話試試看...（已在辨識）</div>';
     }
   };
 
-  recognition.onaudiostart = () => log('🎤 STT 開始接收音訊');
-  recognition.onspeechstart = () => log('🗣️ STT 偵測到人聲');
-  recognition.onnomatch = () => log('STT 沒辨識出內容');
+  // 這幾個事件每講一句話就會觸發一次，會洗滿 log，所以拿掉
+  // recognition.onaudiostart = ...
+  // recognition.onspeechstart = ...
+  // recognition.onnomatch = ...
 
   recognition.onresult = (event) => {
     for (let i = event.resultIndex; i < event.results.length; i++) {
@@ -688,24 +691,52 @@ function startSTT() {
   };
 
   recognition.onend = () => {
-    log(`STT onend (sttActive=${sttActive})`);
-    // Safari/Chrome 會在停頓後自動結束 → 沒掛斷的話自動重啟
-    if (sttActive) {
+    // 不要 log 這個事件——某些瀏覽器（特別是 iOS Safari）會在 0.1 秒內
+    // 連續觸發 onstart→onend，如果每次都 log 會把畫面洗滿、CPU 燒爆
+    if (!sttActive) {
+      setSTTStatus('idle', '已停止');
+      return;
+    }
+
+    // 防止 onend → start() → 立刻 onend 的無限迴圈
+    // 規則：兩次 restart 之間最少間隔 500ms，連續 5 次失敗就放棄
+    const now = Date.now();
+    const sinceLast = now - sttLastRestartAt;
+    if (sinceLast < 500) {
+      sttRestartCount++;
+    } else {
+      sttRestartCount = 0; // 隔了夠久，重置
+    }
+
+    if (sttRestartCount >= 5) {
+      // 已經連續 5 次快速重啟失敗 → 不是用戶停頓問題，是 STT 服務有狀況
+      sttActive = false;
+      log(`🛑 STT 連續快速重啟 5 次，放棄`);
+      setSTTStatus('error', '無法持續');
+      return;
+    }
+
+    sttLastRestartAt = now;
+    // 加 delay 給 STT 喘息一下
+    setTimeout(() => {
+      if (!sttActive || !recognition) return;
       try {
         recognition.start();
       } catch (err) {
-        log(`STT restart 失敗: ${err.message}`);
-        setSTTStatus('error', '重啟失敗');
+        // start() 偶爾會丟 InvalidStateError（已經 running），這個無害
+        if (err.name !== 'InvalidStateError') {
+          log(`STT restart 失敗: ${err.message}`);
+        }
       }
-    } else {
-      setSTTStatus('idle', '已停止');
-    }
+    }, 600);
   };
 
   setSTTStatus('starting', '啟動中...');
   try {
     recognition.start();
     sttActive = true;
+    sttRestartCount = 0;
+    sttLastRestartAt = 0;
     log(`▶️ STT.start() 已呼叫 (${sttLang})`);
   } catch (err) {
     log(`❌ STT.start() 失敗: ${err.message}`);
