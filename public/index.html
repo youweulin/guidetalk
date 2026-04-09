@@ -238,41 +238,58 @@
       line-height: 1.5;
     }
 
-    /* ─── Subtitles ─── */
+    /* ─── Lang bar (固定在字幕上方，不跟著訊息滑) ─── */
+    .lang-bar {
+      display: none;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      padding: 8px 12px;
+      background: rgba(255,255,255,0.04);
+      border-radius: 12px 12px 0 0;
+      border-bottom: 1px solid rgba(255,255,255,0.06);
+      font-size: 11px;
+      color: var(--muted);
+    }
+    .lang-bar.active { display: flex; }
+    .lang-bar .label {
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+    .lang-bar .right {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .lang-bar .lang-btn {
+      background: rgba(96,205,255,0.12);
+      border: 1px solid rgba(96,205,255,0.25);
+      color: #60cdff;
+      padding: 5px 12px;
+      border-radius: 8px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      width: auto;
+      margin: 0;
+      transition: background 0.15s;
+    }
+    .lang-bar .lang-btn:hover { background: rgba(96,205,255,0.2); }
+    .lang-bar .lang-btn:active { transform: scale(0.95); }
+
+    /* ─── Subtitles (純訊息區，可滑動) ─── */
     .subtitles {
       display: none;
       background: rgba(0,0,0,0.35);
-      border-radius: 14px;
+      border-radius: 0 0 14px 14px;
       padding: 12px;
       margin-bottom: 14px;
-      max-height: 200px;
+      max-height: 220px;
       overflow-y: auto;
       text-align: left;
       scroll-behavior: smooth;
     }
     .subtitles.active { display: block; }
-    .subtitles-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      font-size: 11px;
-      color: var(--muted);
-      margin-bottom: 8px;
-      text-transform: uppercase;
-      letter-spacing: 0.08em;
-    }
-    .subtitles-header .lang-btn {
-      background: rgba(255,255,255,0.08);
-      border: none;
-      color: var(--muted);
-      padding: 3px 8px;
-      border-radius: 8px;
-      font-size: 10px;
-      cursor: pointer;
-      width: auto;
-      margin: 0;
-    }
-    .subtitles-header .lang-btn:hover { color: var(--text); }
     .stt-status {
       display: inline-flex;
       align-items: center;
@@ -391,15 +408,17 @@
       </div>
     </div>
 
-    <!-- 字幕（通話中才顯示）-->
+    <!-- 語言 + STT 狀態（固定，不跟著字幕滑）-->
+    <div id="lang-bar" class="lang-bar">
+      <span class="label">💬 我講的語言</span>
+      <span class="right">
+        <span id="stt-status" class="stt-status idle"><span class="dot"></span>未啟動</span>
+        <button id="lang-btn" class="lang-btn">中文</button>
+      </span>
+    </div>
+
+    <!-- 字幕（通話中才顯示，純訊息流可滑動）-->
     <div id="subtitles" class="subtitles">
-      <div class="subtitles-header">
-        <span>💬 即時字幕</span>
-        <span style="display:flex;align-items:center;gap:6px;">
-          <span id="stt-status" class="stt-status idle"><span class="dot"></span>未啟動</span>
-          <button id="lang-btn" class="lang-btn">中文</button>
-        </span>
-      </div>
       <div id="subtitles-list">
         <div class="subtitles-empty">等待字幕辨識啟動...</div>
       </div>
