@@ -1008,9 +1008,17 @@ async function setupPeerConnection() {
   };
 
   // ICE candidate → 透過 server 轉給對方
+  let iceCandidateCount = 0;
   pc.onicecandidate = (event) => {
     if (event.candidate && peerId) {
+      iceCandidateCount++;
+      // 只 log 前 3 個跟最後 1 個 (gathering 結束)，避免洗滿
+      if (iceCandidateCount <= 3) {
+        log(`🧊 ICE candidate #${iceCandidateCount}: ${event.candidate.type || '?'}`);
+      }
       socket.emit('webrtc_signal', { target: peerId, signal: event.candidate });
+    } else if (!event.candidate) {
+      log(`🧊 ICE gathering 結束（共送 ${iceCandidateCount} 個）`);
     }
   };
 
@@ -1021,6 +1029,10 @@ async function setupPeerConnection() {
     } else if (pc.iceConnectionState === 'failed') {
       setStatus('連線失敗（可能需要 TURN）');
     }
+  };
+
+  pc.onconnectionstatechange = () => {
+    log(`PC state: ${pc.connectionState}`);
   };
 
   // host 主動發 offer
@@ -1046,6 +1058,13 @@ async function startMatching(opts = {}) {
   const targetRegion = opts.targetRegion || null;
   // 記住，給逾時提示用
   lastMatchOpts = { mode, targetRegion };
+
+  // 防呆：如果上一次的 pc/stream 還沒清乾淨，先 cleanup
+  // 這個發生在「上次配對失敗 / 沒掛斷就再點」的情況
+  if (pc || localStream) {
+    log('🧹 startMatching: 清掉殘留的 pc/stream');
+    cleanup();
+  }
 
   try {
     setStatus('請求麥克風權限...');
