@@ -457,11 +457,19 @@
       color: var(--muted);
       margin-left: auto;
     }
-    .settings-overlay-content .region-grid,
+    .settings-overlay-content .region-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 6px;
+    }
     .settings-overlay-content .lang-grid {
       display: grid;
       grid-template-columns: repeat(2, 1fr);
       gap: 8px;
+    }
+    .settings-overlay-content .region-grid .grid-btn {
+      padding: 10px 4px;
+      font-size: 12px;
     }
     .settings-overlay-content .grid-btn {
       background: rgba(255,255,255,0.04);
@@ -519,9 +527,13 @@
     }
     .specific-picker-content .region-grid {
       display: grid;
-      grid-template-columns: repeat(2, 1fr);
-      gap: 8px;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 6px;
       margin-bottom: 16px;
+    }
+    .specific-picker-content .region-grid .grid-btn {
+      padding: 10px 4px;
+      font-size: 12px;
     }
     .specific-picker-content .grid-btn {
       background: rgba(255,255,255,0.04);
@@ -772,12 +784,21 @@
       font-weight: 700;
       color: #60cdff;
     }
-    .onboarding .lang-grid,
-    .onboarding .region-grid {
+    .onboarding .lang-grid {
       display: grid;
       grid-template-columns: repeat(2, 1fr);
       gap: 8px;
       margin-bottom: 16px;
+    }
+    .onboarding .region-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 6px;
+      margin-bottom: 16px;
+    }
+    .onboarding .region-grid .grid-btn {
+      padding: 10px 4px;
+      font-size: 12px;
     }
     .onboarding .grid-btn {
       background: rgba(255,255,255,0.04);
