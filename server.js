@@ -21,9 +21,16 @@ import { Server } from 'socket.io';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 
+import { verifySupabaseJwt, authConfigured } from './lib/auth.js';
+import { upsertUser, dbConfigured } from './lib/db.js';
+
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const PORT = process.env.PORT || 9001;
 const MAX_PEERS = 2; // Phase 0 寫死兩人；未來改大就能多人
+
+// 啟動時印 Auth/DB 是否設定（lazy connect，這裡只看環境變數）
+console.log(`[init] Supabase Auth: ${authConfigured() ? 'configured' : 'NOT SET — falling back to anonymous'}`);
+console.log(`[init] Turso DB:      ${dbConfigured() ? 'configured' : 'NOT SET — DB writes disabled'}`);
 
 const app = express();
 const server = createServer(app);
@@ -62,9 +69,52 @@ const generateRoomCode = () => {
   return code;
 };
 
+// ─── Socket.IO Auth Middleware ──────────────────────
+//
+// 設計：永遠不擋連線。如果有 token 就驗，驗過記下 socket.data.userId；
+// 沒 token 或驗失敗就 fallback 到 anonymous（用 socket.id 當 user.id）。
+//
+// 這樣 main.js 還沒接 Supabase Auth 之前，server 也能正常運作。
+// 之後 main.js 接好就會自動升級。
+io.use(async (socket, next) => {
+  const token = socket.handshake.auth?.token;
+
+  if (token) {
+    const result = await verifySupabaseJwt(token);
+    if (result?.userId) {
+      socket.data.userId = result.userId;
+      socket.data.isAnonymous = result.isAnonymous;
+      socket.data.authVerified = true;
+    } else {
+      // 有送 token 但驗證失敗 → log 但不擋
+      console.log(`[auth] socket ${socket.id.slice(0, 6)} sent invalid token, falling back`);
+      socket.data.userId = null;
+      socket.data.authVerified = false;
+    }
+  } else {
+    socket.data.userId = null;
+    socket.data.authVerified = false;
+  }
+
+  next(); // 永遠 next()，從不擋
+});
+
 // ─── Socket.IO ───────────────────────────────────────
 io.on('connection', (socket) => {
-  console.log(`[+] ${socket.id.slice(0, 8)} connected`);
+  const tag = socket.data.userId
+    ? `${socket.id.slice(0, 6)}/u:${socket.data.userId.slice(0, 6)}${socket.data.isAnonymous ? '*' : ''}`
+    : socket.id.slice(0, 8);
+  console.log(`[+] ${tag} connected`);
+
+  // 如果驗證過，順手 upsert users 表（不阻塞、失敗也沒差）
+  // nickname 之後 main.js 會在 find_match 帶上來，這裡先用占位
+  if (socket.data.userId) {
+    upsertUser({
+      id: socket.data.userId,
+      nickname: null, // 之後 find_match 時更新
+      isAnonymous: socket.data.isAnonymous,
+    }).catch(() => {});
+  }
 
   // ── 配對：客戶端要求進入佇列 ──
   socket.on('find_match', ({ name, gender, targetGender } = {}) => {
@@ -77,6 +127,16 @@ io.on('connection', (socket) => {
     q.push({ socket, name: name || 'Anonymous', gender, targetGender });
     socket.emit('match_queued', { position: q.length });
     console.log(`[Q] ${name || socket.id.slice(0, 8)} queued (${q.length}/${MAX_PEERS})`);
+
+    // 如果該 socket 有驗證過的 user.id，順手更新 users.nickname
+    // 失敗也不阻塞（lib/db.js 的 helper 永遠 silent fail）
+    if (socket.data.userId && name) {
+      upsertUser({
+        id: socket.data.userId,
+        nickname: name,
+        isAnonymous: socket.data.isAnonymous,
+      }).catch(() => {});
+    }
 
     // 滿 MAX_PEERS 人 → 直接配對（Phase 0 跳過 vote step，加速測試）
     if (q.length >= MAX_PEERS) {
