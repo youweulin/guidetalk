@@ -164,6 +164,37 @@ const generateRoomCode = () => {
   return code;
 };
 
+// ─── 配對相容性檢查 ────────────────────────────────
+//
+// 「a 是否願意跟 b 配對」這個是單方向的判斷
+// 真正配對成功 = a 願意 b 且 b 願意 a
+//
+// 三種模式：
+//   quick    = 任何人都行（無條件）
+//   nearby   = 只接受跟我同 bigRegion 的
+//   specific = 只接受 myBigRegion === my targetRegion 的
+//
+// 配對矩陣（行=我、列=對方）：
+//                對方 quick   對方 nearby   對方 specific
+//   我 quick     ✅           ✅(if 同區)    ✅(if 對方目標=我區)
+//   我 nearby   ✅(if 同區)   ✅(if 同區)    ✅(if 雙方都符合)
+//   我 specific  ✅(if 對方在我目標)  ✅(雙方相符)  ✅(雙方相符)
+function aWillingToB(a, b) {
+  if (a.mode === 'quick') return true;
+  if (a.mode === 'nearby') {
+    return !!a.myBigRegion && a.myBigRegion === b.myBigRegion;
+  }
+  if (a.mode === 'specific') {
+    return !!a.targetRegion && a.targetRegion === b.myBigRegion;
+  }
+  return false;
+}
+
+function isCompatible(a, b) {
+  if (a.socket.id === b.socket.id) return false;
+  return aWillingToB(a, b) && aWillingToB(b, a);
+}
+
 // ─── Socket.IO Auth Middleware ──────────────────────
 //
 // 設計：永遠不擋連線。如果有 token 就驗，驗過記下 socket.data.userId；
@@ -212,36 +243,46 @@ io.on('connection', (socket) => {
   }
 
   // ── 配對：客戶端要求進入佇列 ──
-  socket.on('find_match', ({ name, gender, targetGender, lang } = {}) => {
-    // 簡單版：先用單一佇列，篩選邏輯之後再加
+  //
+  // 接受的參數：
+  //   name           暱稱
+  //   lang           STT 語言
+  //   mode           'quick' | 'nearby' | 'specific'
+  //   myBigRegion    我自己在哪（onboarding 存的）
+  //   targetRegion   我想找哪個區的人 (specific 才用)
+  //
+  // 配對演算法：
+  //   - 不分多個 queue（避免太細導致永遠配不到）
+  //   - 用「**雙向相容**」演算法：A 願意跟 B + B 願意跟 A 才配
+  //   - 走 queue 找第一個 compatible 的對手
+  //   - 找不到就留在 queue 裡等
+  socket.on('find_match', ({ name, gender, targetGender, lang, mode, myBigRegion, targetRegion } = {}) => {
     const game = 'voice';
     const q = getQueue(game);
 
     if (q.some(p => p.socket.id === socket.id)) return; // 防重入
 
-    q.push({ socket, name: name || 'Anonymous', gender, targetGender, lang });
-    socket.emit('match_queued', { position: q.length });
-    console.log(`[Q] ${name || socket.id.slice(0, 8)} queued (${q.length}/${MAX_PEERS})`);
+    const me = {
+      socket,
+      name: name || 'Anonymous',
+      gender,
+      targetGender,
+      lang,
+      mode: mode || 'quick',
+      myBigRegion: myBigRegion || null,
+      targetRegion: targetRegion || null,
+    };
 
-    // 如果該 socket 有驗證過的 user.id，順手更新 users.nickname
-    // 失敗也不阻塞（lib/db.js 的 helper 永遠 silent fail）
-    if (socket.data.userId && name) {
-      upsertUser({
-        id: socket.data.userId,
-        nickname: name,
-        isAnonymous: socket.data.isAnonymous,
-      }).catch(() => {});
-    }
+    // 嘗試在 queue 裡找一個 compatible 的對手
+    const otherIdx = q.findIndex(other => isCompatible(me, other));
 
-    // 滿 MAX_PEERS 人 → 直接配對（Phase 0 跳過 vote step，加速測試）
-    if (q.length >= MAX_PEERS) {
-      const players = q.splice(0, MAX_PEERS);
+    if (otherIdx !== -1) {
+      // 配對成功
+      const other = q.splice(otherIdx, 1)[0];
+      const players = [other, me]; // other 是先進來的 = host
       const roomCode = generateRoomCode();
 
-      // 兩人都加入同一個 socket.io 房間
       players.forEach(p => p.socket.join(roomCode));
-
-      // host = 第一個進佇列的，負責發 WebRTC offer
       const host = players[0];
       players.forEach((p, idx) => {
         p.socket.emit('match_found', {
@@ -251,12 +292,27 @@ io.on('connection', (socket) => {
             id: players[1 - idx].socket.id,
             name: players[1 - idx].name,
           },
+          matchedMode: me.mode === other.mode ? me.mode : 'mixed',
         });
       });
-      console.log(`[★] Matched ${players.map(p => p.name).join(' ↔ ')} in room ${roomCode}`);
+      console.log(`[★] Matched ${players[0].name}(${players[0].mode}) ↔ ${players[1].name}(${players[1].mode}) in room ${roomCode}`);
 
       // 寫 DB（fire and forget），追蹤這通電話
       startActiveCall(roomCode, players);
+    } else {
+      // 沒找到 → 加入 queue 等
+      q.push(me);
+      socket.emit('match_queued', { position: q.length });
+      console.log(`[Q] ${me.name}(${me.mode}${me.targetRegion ? '→' + me.targetRegion : ''}) queued (${q.length})`);
+    }
+
+    // 如果該 socket 有驗證過的 user.id，順手更新 users.nickname
+    if (socket.data.userId && name) {
+      upsertUser({
+        id: socket.data.userId,
+        nickname: name,
+        isAnonymous: socket.data.isAnonymous,
+      }).catch(() => {});
     }
   });
 

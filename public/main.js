@@ -397,7 +397,10 @@ const setStatus = (text, withPulse = false) => {
 };
 
 const showButtons = (state) => {
-  btnStart.style.display = state === 'idle' ? 'block' : 'none';
+  // 3 個配對模式按鈕（包成 #match-modes 容器，整個一起 show/hide）
+  const matchModes = document.getElementById('match-modes');
+  if (matchModes) matchModes.style.display = state === 'idle' ? 'block' : 'none';
+
   btnCancel.style.display = state === 'matching' ? 'block' : 'none';
   btnHangup.style.display = state === 'in-call' ? 'block' : 'none';
   // 通話中拿掉這些（讓字幕區可以更大）：
@@ -1018,7 +1021,17 @@ async function setupPeerConnection() {
 }
 
 // ─── Actions ─────────────────────────────────────────
-async function startMatching() {
+//
+// startMatching 接受一個 options 參數：
+//   { mode: 'quick' | 'nearby' | 'specific', targetRegion?: 'jp-kanto' }
+// 預設 'quick'（隨機，全球）
+//
+// nearby = 自己的大區（從 localStorage 讀）
+// specific = 用戶選的目標大區
+async function startMatching(opts = {}) {
+  const mode = opts.mode || 'quick';
+  const targetRegion = opts.targetRegion || null;
+
   try {
     setStatus('請求麥克風權限...');
     localStream = await navigator.mediaDevices.getUserMedia({
@@ -1041,7 +1054,21 @@ async function startMatching() {
     }
     // 寫進右邊的 user-display + localStorage
     if (userDisplayEl) userDisplayEl.textContent = `👤 ${name}`;
-    socket.emit('find_match', { name });
+
+    // 我自己的大區（onboarding 存的）
+    const myBigRegion = localStorage.getItem(ONB_BIG_REGION_KEY) || null;
+
+    // 三種模式對應的配對訊息
+    const matchPayload = {
+      name,
+      lang: sttLang,
+      mode,                      // 'quick' | 'nearby' | 'specific'
+      myBigRegion,               // 我自己在哪
+      targetRegion,              // 我想去哪 (specific 才用)
+    };
+
+    log(`📡 開始配對 (mode=${mode}${targetRegion ? ', target=' + targetRegion : ''})`);
+    socket.emit('find_match', matchPayload);
     showButtons('matching');
   } catch (err) {
     log(`getUserMedia 失敗: ${err.message}`);
@@ -1289,12 +1316,62 @@ onbStep2Next?.addEventListener('click', () => onbShowStep(3));
 onbStep3Next?.addEventListener('click', onbFinish);
 
 // ─── Wire up ─────────────────────────────────────────
-btnStart.addEventListener('click', startMatching);
+btnStart.addEventListener('click', () => startMatching({ mode: 'quick' }));
 btnCancel.addEventListener('click', cancelMatching);
 btnHangup.addEventListener('click', hangup);
 btnMute.addEventListener('click', toggleMute);
 btnSubtitle.addEventListener('click', toggleSubtitles);
 langBtn.addEventListener('click', toggleLang);
+
+// 「附近配對」按鈕：用 onboarding 存的 myBigRegion 做為「同地區」
+const btnNearby = document.getElementById('btn-nearby');
+btnNearby?.addEventListener('click', () => {
+  const myRegion = localStorage.getItem(ONB_BIG_REGION_KEY);
+  if (!myRegion) {
+    alert('請先完成設定（選擇你的地區）');
+    return;
+  }
+  startMatching({ mode: 'nearby' });
+});
+
+// 「指定地方」按鈕：開 picker
+const btnSpecific = document.getElementById('btn-specific');
+const specificPicker = document.getElementById('specific-picker');
+const specificRegionGrid = document.getElementById('specific-region-grid');
+const btnSpecificConfirm = document.getElementById('btn-specific-confirm');
+const btnSpecificCancel = document.getElementById('btn-specific-cancel');
+let specificSelectedRegion = null;
+
+function buildSpecificPicker() {
+  if (!specificRegionGrid) return;
+  specificRegionGrid.innerHTML = BIG_REGIONS.map(r =>
+    `<button class="grid-btn" data-region="${r.id}">${r.flag} ${r.name}</button>`
+  ).join('');
+  specificRegionGrid.querySelectorAll('.grid-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      specificRegionGrid.querySelectorAll('.grid-btn').forEach(b => b.classList.remove('selected'));
+      btn.classList.add('selected');
+      specificSelectedRegion = btn.dataset.region;
+      btnSpecificConfirm.disabled = false;
+    });
+  });
+}
+buildSpecificPicker();
+
+btnSpecific?.addEventListener('click', () => {
+  specificPicker?.classList.add('active');
+  specificSelectedRegion = null;
+  if (btnSpecificConfirm) btnSpecificConfirm.disabled = true;
+  specificRegionGrid?.querySelectorAll('.grid-btn').forEach(b => b.classList.remove('selected'));
+});
+btnSpecificCancel?.addEventListener('click', () => {
+  specificPicker?.classList.remove('active');
+});
+btnSpecificConfirm?.addEventListener('click', () => {
+  if (!specificSelectedRegion) return;
+  specificPicker?.classList.remove('active');
+  startMatching({ mode: 'specific', targetRegion: specificSelectedRegion });
+});
 
 // 暱稱：強迫輸入 + localStorage 持久化（onboarding 完成後 disable）
 const NICKNAME_KEY = ONB_NICKNAME_KEY; // 同 key
@@ -1310,7 +1387,10 @@ if (onboardingDone && savedNickname) {
 
 function updateStartBtnState() {
   const v = nameInput.value.trim();
-  btnStart.disabled = v.length === 0;
+  const empty = v.length === 0;
+  btnStart.disabled = empty;
+  if (btnNearby) btnNearby.disabled = empty;
+  if (btnSpecific) btnSpecific.disabled = empty;
 }
 nameInput.addEventListener('input', () => {
   const v = nameInput.value.trim();

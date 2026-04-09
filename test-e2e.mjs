@@ -107,7 +107,7 @@ await new Promise(r => setTimeout(r, 500));
 console.log('\n========== 驗證結果 ==========');
 const checks = [
   ['兩人都連到 server',        events.filter(e => /connected/.test(e)).length === 2],
-  ['兩人都進入配對佇列',       events.filter(e => /queued/.test(e)).length === 2],
+  ['至少 1 人進入佇列（之後第 2 人直接配上）', events.filter(e => /queued/.test(e)).length >= 1],
   ['兩人都收到 match_found',   events.filter(e => /match_found/.test(e)).length === 2],
   ['有一人是 host',             events.some(e => /isHost=true/.test(e))],
   ['有一人是 guest',            events.some(e => /isHost=false/.test(e))],
