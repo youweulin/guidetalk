@@ -256,16 +256,94 @@ const PROVIDERS = [
   new MyMemoryTranslator(),
 ];
 
-// 翻譯快取：避免同一句重複翻譯
-const translationCache = new Map();
-const TRANSLATION_CACHE_LIMIT = 200;
+// ─── Persistent Translation Cache ────────────────────
+//
+// 為什麼要持久化：
+//   - Google/MyMemory 都有 IP 每日上限
+//   - 如果快取只活在記憶體，每次 refresh / 新對話都從零翻譯
+//   - 把快取存到 localStorage → 跨對話/跨天累積
+//   - 用戶用越久，自己的「常用語料庫」越完整，API 用量越來越低
+//
+// 隱私：完全只在用戶手機，server 永遠看不到
+const TRANSLATION_CACHE_KEY = 'kaitalk.translationCache.v1';
+const TRANSLATION_CACHE_LIMIT = 500;
+const TRANSLATION_CACHE_TTL = 30 * 24 * 60 * 60 * 1000; // 30 天
+
+function loadTranslationCache() {
+  try {
+    const raw = localStorage.getItem(TRANSLATION_CACHE_KEY);
+    if (!raw) return new Map();
+    const obj = JSON.parse(raw);
+    const now = Date.now();
+    const map = new Map();
+    let expired = 0;
+    for (const [key, entry] of Object.entries(obj)) {
+      if (entry?.ts && now - entry.ts < TRANSLATION_CACHE_TTL) {
+        map.set(key, entry);
+      } else {
+        expired++;
+      }
+    }
+    log(`📚 載入翻譯快取 ${map.size} 筆${expired ? `（過期 ${expired} 筆）` : ''}`);
+    return map;
+  } catch (err) {
+    log(`快取載入失敗: ${err.message}`);
+    return new Map();
+  }
+}
+
+let saveTimer = null;
+function saveTranslationCacheDebounced() {
+  // 每 2 秒最多寫一次，避免頻繁 I/O
+  if (saveTimer) return;
+  saveTimer = setTimeout(() => {
+    saveTimer = null;
+    try {
+      const obj = {};
+      for (const [k, v] of translationCache) obj[k] = v;
+      localStorage.setItem(TRANSLATION_CACHE_KEY, JSON.stringify(obj));
+    } catch (err) {
+      log(`快取存檔失敗: ${err.message}`);
+      // 通常是 quota exceeded → 砍一半重試
+      try {
+        const sorted = [...translationCache.entries()].sort((a, b) => a[1].ts - b[1].ts);
+        for (let i = 0; i < Math.floor(sorted.length / 2); i++) {
+          translationCache.delete(sorted[i][0]);
+        }
+        const obj = {};
+        for (const [k, v] of translationCache) obj[k] = v;
+        localStorage.setItem(TRANSLATION_CACHE_KEY, JSON.stringify(obj));
+        log(`已清掉一半舊快取重新存`);
+      } catch {}
+    }
+  }, 2000);
+}
+
+function evictOldestIfNeeded() {
+  if (translationCache.size <= TRANSLATION_CACHE_LIMIT) return;
+  // LRU：按 ts 排序，刪掉最舊的 50 筆（一次刪多筆減少刪除頻率）
+  const sorted = [...translationCache.entries()].sort((a, b) => a[1].ts - b[1].ts);
+  const toDelete = translationCache.size - TRANSLATION_CACHE_LIMIT + 50;
+  for (let i = 0; i < toDelete; i++) {
+    translationCache.delete(sorted[i][0]);
+  }
+}
+
+const translationCache = loadTranslationCache();
 
 let lastWorkingProvider = null; // 紀錄最後一次成功的 provider，下次優先用
 
 async function translateText(text, fromLang, toLang) {
   if (!text || !text.trim()) return null;
   const key = `${fromLang}|${toLang}|${text}`;
-  if (translationCache.has(key)) return translationCache.get(key);
+
+  // 查快取
+  const cached = translationCache.get(key);
+  if (cached) {
+    // 更新 ts（LRU 用），但不寫檔（避免每次讀都寫）
+    cached.ts = Date.now();
+    return cached.value;
+  }
 
   // 把 lastWorkingProvider 排到最前，避免每次都重試前面的 provider
   const ordered = lastWorkingProvider
@@ -281,10 +359,9 @@ async function translateText(text, fromLang, toLang) {
           log(`✨ 翻譯使用: ${p.name}`);
           lastWorkingProvider = p;
         }
-        translationCache.set(key, translated);
-        if (translationCache.size > TRANSLATION_CACHE_LIMIT) {
-          translationCache.delete(translationCache.keys().next().value);
-        }
+        translationCache.set(key, { value: translated, ts: Date.now() });
+        evictOldestIfNeeded();
+        saveTranslationCacheDebounced();
         return translated;
       }
     } catch (err) {
@@ -295,6 +372,13 @@ async function translateText(text, fromLang, toLang) {
   log(`所有翻譯 provider 都失敗`);
   return null;
 }
+
+// 給 UI/Console 用：清掉所有翻譯快取
+window.kaitalkClearTranslationCache = function() {
+  translationCache.clear();
+  localStorage.removeItem(TRANSLATION_CACHE_KEY);
+  log(`🗑️ 翻譯快取已清空`);
+};
 
 // ─── Helpers ─────────────────────────────────────────
 const log = (msg) => {
