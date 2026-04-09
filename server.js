@@ -109,12 +109,26 @@ io.on('connection', (socket) => {
   });
 
   // ── WebRTC 訊令轉發（server 完全不看 signal 內容）──
+  // 加 log 是為了診斷「配對成功但音訊不通」這類問題
+  // log 不會解析 signal payload 內容，只記 type
   socket.on('webrtc_signal', ({ target, signal }) => {
+    const from = socket.id.slice(0, 6);
+    const to = (target || '').slice(0, 6);
+    let type = 'unknown';
+    if (signal?.type === 'offer') type = 'OFFER';
+    else if (signal?.type === 'answer') type = 'ANSWER';
+    else if (signal?.candidate) {
+      // candidate 字串：candidate:foundation component protocol priority ip port typ TYPE ...
+      const m = String(signal.candidate).match(/typ (\w+)/);
+      type = `cand-${m ? m[1] : '?'}`;
+    }
+    console.log(`[SDP] ${from} → ${to} ${type}`);
     io.to(target).emit('webrtc_signal', { from: socket.id, signal });
   });
 
   // ── 對方掛電話 ──
   socket.on('hangup', ({ target }) => {
+    console.log(`[HANGUP] ${socket.id.slice(0, 6)} → ${(target || '').slice(0, 6)}`);
     io.to(target).emit('peer_hangup');
   });
 
