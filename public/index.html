@@ -132,17 +132,47 @@
       font-weight: 500;
     }
 
-    /* ─── Volume Meters ─── */
+    /* ─── Volume Meters（左半 meter + 右半 widget）─── */
     .meters {
       display: none;
       margin-bottom: 16px;
     }
     .meters.active { display: block; }
     .meter-row {
+      display: flex;
+      align-items: stretch;
+      gap: 12px;
       margin-bottom: 12px;
-      text-align: left;
     }
     .meter-row:last-child { margin-bottom: 0; }
+    .meter-content {
+      flex: 1;
+      min-width: 0;
+      text-align: left;
+    }
+    .meter-side {
+      flex-shrink: 0;
+      width: 130px;
+      display: flex;
+      align-items: flex-end;
+      justify-content: flex-end;
+    }
+    .user-display {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 4px 10px;
+      border-radius: 10px;
+      background: rgba(96,205,255,0.12);
+      color: #60cdff;
+      border: 1px solid rgba(96,205,255,0.25);
+      font-size: 12px;
+      font-weight: 600;
+      max-width: 130px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
     .meter-label {
       display: flex;
       justify-content: space-between;
@@ -430,24 +460,34 @@
       </div>
     </div>
 
-    <!-- 音量 meter（通話中才顯示） -->
+    <!-- 音量 meter（通話中才顯示，左半 meter / 右半 widget） -->
     <div id="meters" class="meters">
       <div class="meter-row">
-        <div class="meter-label">
-          <span>🎤 你的麥克風</span>
-          <span class="level" id="local-level">0%</span>
+        <div class="meter-content">
+          <div class="meter-label">
+            <span>🎤 你的麥克風</span>
+            <span class="level" id="local-level">0%</span>
+          </div>
+          <div class="meter">
+            <div class="meter-fill" id="local-meter"></div>
+          </div>
         </div>
-        <div class="meter">
-          <div class="meter-fill" id="local-meter"></div>
+        <div class="meter-side">
+          <span id="user-display" class="user-display">👤 —</span>
         </div>
       </div>
       <div class="meter-row">
-        <div class="meter-label">
-          <span>🔊 對方的聲音</span>
-          <span class="level" id="remote-level">0%</span>
+        <div class="meter-content">
+          <div class="meter-label">
+            <span>🔊 對方的聲音</span>
+            <span class="level" id="remote-level">0%</span>
+          </div>
+          <div class="meter">
+            <div class="meter-fill" id="remote-meter"></div>
+          </div>
         </div>
-        <div class="meter">
-          <div class="meter-fill" id="remote-meter"></div>
+        <div class="meter-side">
+          <button id="btn-subtitle" class="btn-subtitle">💬 字幕：開</button>
         </div>
       </div>
     </div>
@@ -468,11 +508,10 @@
       </div>
     </div>
 
-    <input id="name" class="input" placeholder="暱稱（選填）" maxlength="12">
+    <input id="name" class="input" placeholder="暱稱（必填）" maxlength="8">
 
-    <button id="btn-start" class="btn-primary">🎤 開始配對</button>
+    <button id="btn-start" class="btn-primary" disabled>🎤 開始配對</button>
     <button id="btn-cancel" class="btn-secondary" style="display:none">取消配對</button>
-    <button id="btn-subtitle" class="btn-subtitle" style="display:none">💬 字幕：開</button>
     <button id="btn-mute" class="btn-mute" style="display:none">🔊 喇叭：開（單機測試請按靜音）</button>
     <button id="btn-hangup" class="btn-danger" style="display:none">📞 掛斷</button>
 

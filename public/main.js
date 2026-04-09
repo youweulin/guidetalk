@@ -31,6 +31,7 @@ const btnHangup = $('btn-hangup');
 const btnMute = $('btn-mute');
 const btnSubtitle = $('btn-subtitle');
 const nameInput = $('name');
+const userDisplayEl = $('user-display');
 const remoteAudio = $('remote-audio');
 
 const peerCard = $('peer-card');
@@ -946,7 +947,15 @@ async function startMatching() {
     showMeters();
     startMeterLoop();
 
-    const name = nameInput.value.trim() || `Anon${Math.floor(Math.random() * 1000)}`;
+    // 強迫暱稱：button disabled 已經擋掉空字串，這裡再保險一次
+    const name = nameInput.value.trim();
+    if (!name) {
+      log('⚠️ 請先輸入暱稱');
+      setStatus('請先輸入暱稱');
+      return;
+    }
+    // 寫進右邊的 user-display + localStorage
+    if (userDisplayEl) userDisplayEl.textContent = `👤 ${name}`;
     socket.emit('find_match', { name });
     showButtons('matching');
   } catch (err) {
@@ -1039,6 +1048,7 @@ function cleanup() {
   peerLang = null;
   isHost = false;
   pendingCandidates = [];
+  if (userDisplayEl) userDisplayEl.textContent = '👤 —';
 }
 
 // ─── Wire up ─────────────────────────────────────────
@@ -1048,6 +1058,22 @@ btnHangup.addEventListener('click', hangup);
 btnMute.addEventListener('click', toggleMute);
 btnSubtitle.addEventListener('click', toggleSubtitles);
 langBtn.addEventListener('click', toggleLang);
+
+// 暱稱：強迫輸入 + localStorage 持久化
+const NICKNAME_KEY = 'kaitalk.nickname';
+const savedNickname = localStorage.getItem(NICKNAME_KEY) || '';
+if (savedNickname) nameInput.value = savedNickname;
+
+function updateStartBtnState() {
+  const v = nameInput.value.trim();
+  btnStart.disabled = v.length === 0;
+}
+nameInput.addEventListener('input', () => {
+  const v = nameInput.value.trim();
+  if (v) localStorage.setItem(NICKNAME_KEY, v);
+  updateStartBtnState();
+});
+updateStartBtnState();
 
 // 初始化按鈕（用偵測到的或記住的設定）
 updateLangBtn();
