@@ -22,7 +22,8 @@ import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 
 import { verifySupabaseJwt, authConfigured } from './lib/auth.js';
-import { upsertUser, dbConfigured, startCall, endCall } from './lib/db.js';
+import { upsertUser, dbConfigured, startCall, endCall, getDbClient } from './lib/db.js';
+import { lookupIp, extractClientIp } from './lib/geo.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const PORT = process.env.PORT || 9001;
@@ -46,6 +47,8 @@ app.use((req, res, next) => {
   next();
 });
 app.use(express.static(join(__dirname, 'public')));
+// 解 trust proxy 讓 X-Forwarded-For 生效（cloudflared / nginx 後面用得到）
+app.set('trust proxy', true);
 
 // ─── Public client config ─────────────────────────────
 // 讓 client 知道要連哪個 Supabase 專案 + anon key。
@@ -56,6 +59,28 @@ app.get('/config.json', (req, res) => {
     supabaseUrl: process.env.SUPABASE_URL || null,
     supabaseAnonKey: process.env.SUPABASE_ANON_KEY || null,
   });
+});
+
+// ─── IP Geo lookup ────────────────────────────────────
+// 給 client 拿自己的位置（國家、地區、大區）。
+// 走 cache 優先，cache miss 才打 ipinfo.io。
+// 完全 graceful：失敗回 { country: null }
+app.get('/api/geo/me', async (req, res) => {
+  try {
+    const ip = extractClientIp(req);
+    const geo = await lookupIp(ip, getDbClient());
+    res.json({
+      ip: null, // 永遠不回原 IP
+      country: geo?.country || null,
+      region: geo?.region || null,
+      city: geo?.city || null,
+      bigRegion: geo?.bigRegion || null,
+      source: geo?.source || null, // 'mem' | 'cache' | 'ipinfo' | null
+    });
+  } catch (err) {
+    console.warn(`[geo] /api/geo/me failed: ${err.message}`);
+    res.json({ country: null, region: null, city: null, bigRegion: null, source: null });
+  }
 });
 
 // ─── 配對佇列（in-memory）─────────────────────────────
