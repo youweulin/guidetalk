@@ -22,7 +22,7 @@ import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 
 import { verifySupabaseJwt, authConfigured } from './lib/auth.js';
-import { upsertUser, dbConfigured } from './lib/db.js';
+import { upsertUser, dbConfigured, startCall, endCall } from './lib/db.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const PORT = process.env.PORT || 9001;
@@ -72,6 +72,65 @@ const removeFromAllQueues = (socketId) => {
     if (i !== -1) q.splice(i, 1);
   }
 };
+
+// ─── 進行中的通話（in-memory）────────────────────────
+// roomCode → { callId, userA, userB, startedAt, sockets: Set }
+// 用來記住「這個 room 的 DB call 紀錄」，以便掛斷時 endCall()
+const activeCalls = new Map();
+
+function startActiveCall(roomCode, players) {
+  const now = Date.now();
+  const userA = players[0].socket.data.userId || null;
+  const userB = players[1].socket.data.userId || null;
+  const langA = players[0].lang || null;
+  const langB = players[1].lang || null;
+
+  // 寫 DB（fire and forget）
+  startCall({ roomCode, userA, userB, langA, langB })
+    .then(callId => {
+      const entry = activeCalls.get(roomCode);
+      if (entry && callId) {
+        entry.callId = callId;
+      }
+    })
+    .catch(() => {});
+
+  activeCalls.set(roomCode, {
+    callId: null, // 會在 startCall promise resolve 時填
+    userA,
+    userB,
+    startedAt: now,
+    sockets: new Set([players[0].socket.id, players[1].socket.id]),
+  });
+}
+
+function endActiveCall(roomCode, endReason) {
+  const entry = activeCalls.get(roomCode);
+  if (!entry) return;
+  activeCalls.delete(roomCode);
+
+  if (!entry.callId) {
+    // startCall 還沒回來就結束了——通話可能 < 100ms，不寫 DB
+    return;
+  }
+
+  const durationSec = Math.round((Date.now() - entry.startedAt) / 1000);
+  endCall({
+    callId: entry.callId,
+    userA: entry.userA,
+    userB: entry.userB,
+    durationSec,
+    endReason,
+  }).catch(() => {});
+}
+
+// 用 socket.id 找它正在哪個 active call
+function findActiveCallBySocket(socketId) {
+  for (const [roomCode, entry] of activeCalls) {
+    if (entry.sockets.has(socketId)) return { roomCode, entry };
+  }
+  return null;
+}
 
 const generateRoomCode = () => {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
@@ -128,14 +187,14 @@ io.on('connection', (socket) => {
   }
 
   // ── 配對：客戶端要求進入佇列 ──
-  socket.on('find_match', ({ name, gender, targetGender } = {}) => {
+  socket.on('find_match', ({ name, gender, targetGender, lang } = {}) => {
     // 簡單版：先用單一佇列，篩選邏輯之後再加
     const game = 'voice';
     const q = getQueue(game);
 
     if (q.some(p => p.socket.id === socket.id)) return; // 防重入
 
-    q.push({ socket, name: name || 'Anonymous', gender, targetGender });
+    q.push({ socket, name: name || 'Anonymous', gender, targetGender, lang });
     socket.emit('match_queued', { position: q.length });
     console.log(`[Q] ${name || socket.id.slice(0, 8)} queued (${q.length}/${MAX_PEERS})`);
 
@@ -170,6 +229,9 @@ io.on('connection', (socket) => {
         });
       });
       console.log(`[★] Matched ${players.map(p => p.name).join(' ↔ ')} in room ${roomCode}`);
+
+      // 寫 DB（fire and forget），追蹤這通電話
+      startActiveCall(roomCode, players);
     }
   });
 
@@ -201,6 +263,12 @@ io.on('connection', (socket) => {
   socket.on('hangup', ({ target }) => {
     console.log(`[HANGUP] ${socket.id.slice(0, 6)} → ${(target || '').slice(0, 6)}`);
     io.to(target).emit('peer_hangup');
+
+    // 結束 active call（如果這個 socket 真的在某通電話裡）
+    const found = findActiveCallBySocket(socket.id);
+    if (found) {
+      endActiveCall(found.roomCode, 'hangup');
+    }
   });
 
   // ── DataChannel fallback（之後字幕也可以走這條 socket 備援）──
@@ -215,6 +283,11 @@ io.on('connection', (socket) => {
       if (room !== socket.id) {
         socket.to(room).emit('peer_hangup');
       }
+    }
+    // 結束 active call（如果這個 socket 在某通電話裡）
+    const found = findActiveCallBySocket(socket.id);
+    if (found) {
+      endActiveCall(found.roomCode, 'disconnect');
     }
     console.log(`[-] ${socket.id.slice(0, 8)} disconnected`);
   });
