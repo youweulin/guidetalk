@@ -6,7 +6,8 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "dev": "node server.js"
+    "dev": "node server.js",
+    "db:apply": "node --env-file=.env.local db/apply.js"
   },
   "engines": {
     "node": ">=18.0.0"
@@ -16,6 +17,7 @@
     "socket.io": "^4.8.1"
   },
   "devDependencies": {
+    "@libsql/client": "^0.17.2",
     "socket.io-client": "^4.8.1"
   }
 }
