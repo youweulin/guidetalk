@@ -70,70 +70,98 @@
     }
     @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
 
-    /* ─── 配對中卡片 ─── */
+    /* ─── 配對卡片（合併狀態 + 配對對方 + 自己暱稱）─── */
     .peer-card {
       display: none;
       background: linear-gradient(135deg, rgba(255,107,157,0.15), rgba(192,132,252,0.15));
       border: 1px solid rgba(255,107,157,0.3);
       border-radius: 16px;
-      padding: 18px;
-      margin-bottom: 16px;
+      padding: 14px 18px;
+      margin-bottom: 14px;
     }
     .peer-card.active { display: block; }
-    .peer-card .label {
+    .peer-card .pc-status {
+      display: flex;
+      align-items: center;
+      gap: 6px;
       font-size: 11px;
-      color: var(--muted);
+      color: var(--success);
       text-transform: uppercase;
-      letter-spacing: 0.1em;
-      margin-bottom: 6px;
+      letter-spacing: 0.08em;
+      margin-bottom: 10px;
     }
-    .peer-card .name {
-      font-size: 22px;
+    .peer-card .pc-status .dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--success);
+      animation: pulse 1.5s infinite;
+    }
+    .peer-card .pc-status.connecting { color: var(--warning); }
+    .peer-card .pc-status.connecting .dot { background: var(--warning); }
+    .peer-card .pc-status.failed { color: var(--danger); }
+    .peer-card .pc-status.failed .dot { background: var(--danger); animation: none; }
+    .peer-card .pc-names {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      font-size: 18px;
       font-weight: 700;
+    }
+    .peer-card .pc-names .me-name {
+      color: #60cdff;
+    }
+    .peer-card .pc-names .arrow {
+      color: var(--muted);
+      font-size: 14px;
+    }
+    .peer-card .pc-names .peer-name {
       background: linear-gradient(135deg, #ff6b9d, #c084fc);
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
-      margin-bottom: 4px;
     }
-    .peer-card .meta {
-      font-size: 11px;
+    .peer-card .pc-meta {
+      display: flex;
+      justify-content: center;
+      gap: 8px;
+      margin-top: 8px;
+      font-size: 10px;
       color: var(--muted);
       font-family: ui-monospace, monospace;
     }
     .peer-card .role {
-      display: inline-block;
-      padding: 2px 8px;
-      border-radius: 10px;
-      font-size: 10px;
-      font-weight: 600;
-      margin-top: 8px;
+      padding: 1px 6px;
+      border-radius: 8px;
+      font-size: 9px;
+      font-weight: 700;
     }
     .role.host { background: rgba(76,175,80,0.2); color: #81c784; }
     .role.guest { background: rgba(192,132,252,0.2); color: #c084fc; }
 
-    /* ─── Volume Meters ─── */
+    /* ─── Volume Meters（雙 meter 同一行）─── */
     .meters {
       display: none;
-      margin-bottom: 16px;
+      margin-bottom: 14px;
     }
-    .meters.active { display: block; }
-    .meter-row {
-      margin-bottom: 12px;
+    .meters.active { display: flex; gap: 12px; }
+    .meter-col {
+      flex: 1;
+      min-width: 0;
       text-align: left;
     }
-    .meter-row:last-child { margin-bottom: 0; }
     .meter-label {
       display: flex;
       justify-content: space-between;
-      font-size: 12px;
+      font-size: 11px;
       color: var(--muted);
-      margin-bottom: 6px;
+      margin-bottom: 5px;
     }
     .meter-label .level { font-family: ui-monospace, monospace; }
     .meter {
-      height: 14px;
+      height: 12px;
       background: rgba(255,255,255,0.06);
-      border-radius: 7px;
+      border-radius: 6px;
       overflow: hidden;
       position: relative;
     }
@@ -141,18 +169,8 @@
       height: 100%;
       width: 0%;
       background: linear-gradient(90deg, #4caf50 0%, #ffeb3b 60%, #f44336 100%);
-      border-radius: 7px;
+      border-radius: 6px;
       transition: width 0.05s linear;
-    }
-    .meter.active::after {
-      content: '';
-      position: absolute;
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.05));
-      pointer-events: none;
     }
 
     button {
@@ -238,44 +256,39 @@
       line-height: 1.5;
     }
 
-    /* ─── Lang bar (固定在字幕上方，不跟著訊息滑) ─── */
-    .lang-bar {
+    /* ─── Subtitle control bar（字幕開關 + STT 狀態 + 語言）─── */
+    .control-bar {
       display: none;
       align-items: center;
       justify-content: space-between;
-      gap: 8px;
-      padding: 8px 12px;
+      gap: 6px;
+      padding: 8px 10px;
       background: rgba(255,255,255,0.04);
       border-radius: 12px 12px 0 0;
       border-bottom: 1px solid rgba(255,255,255,0.06);
-      font-size: 11px;
-      color: var(--muted);
     }
-    .lang-bar.active { display: flex; }
-    .lang-bar .label {
-      text-transform: uppercase;
-      letter-spacing: 0.08em;
-    }
-    .lang-bar .right {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-    }
-    .lang-bar .lang-btn {
+    .control-bar.active { display: flex; }
+    .control-bar .ctrl-btn {
       background: rgba(96,205,255,0.12);
       border: 1px solid rgba(96,205,255,0.25);
       color: #60cdff;
-      padding: 5px 12px;
+      padding: 5px 10px;
       border-radius: 8px;
-      font-size: 12px;
+      font-size: 11px;
       font-weight: 600;
       cursor: pointer;
       width: auto;
       margin: 0;
       transition: background 0.15s;
+      white-space: nowrap;
     }
-    .lang-bar .lang-btn:hover { background: rgba(96,205,255,0.2); }
-    .lang-bar .lang-btn:active { transform: scale(0.95); }
+    .control-bar .ctrl-btn:hover { background: rgba(96,205,255,0.2); }
+    .control-bar .ctrl-btn:active { transform: scale(0.95); }
+    .control-bar .ctrl-btn.off {
+      background: rgba(255,255,255,0.04);
+      border-color: rgba(255,255,255,0.1);
+      color: var(--muted);
+    }
 
     /* ─── Subtitles (純訊息區，可滑動) ─── */
     .subtitles {
@@ -376,30 +389,37 @@
 
     <div id="status" class="status">準備中...</div>
 
-    <!-- 配對成功後的對方資訊卡 -->
+    <!-- 合併卡片：狀態 + 你 ↔ 對方 + 房號角色 -->
     <div id="peer-card" class="peer-card">
-      <div class="label">與你配對的是</div>
-      <div class="name" id="peer-name">—</div>
-      <div class="meta">
-        房號 <span id="room-code">—</span>
+      <div id="pc-status" class="pc-status">
+        <span class="dot"></span>
+        <span id="peer-status-text">通話中</span>
+      </div>
+      <div class="pc-names">
+        <span class="me-name" id="me-name-display">你</span>
+        <span class="arrow">↔</span>
+        <span class="peer-name" id="peer-name">—</span>
+      </div>
+      <div class="pc-meta">
+        <span>房號 <span id="room-code">—</span></span>
         <span class="role" id="my-role">—</span>
       </div>
     </div>
 
-    <!-- 音量 meter（通話中才顯示） -->
+    <!-- 音量 meter（雙 meter 同一行） -->
     <div id="meters" class="meters">
-      <div class="meter-row">
+      <div class="meter-col">
         <div class="meter-label">
-          <span>🎤 你的麥克風</span>
+          <span>🎤 你</span>
           <span class="level" id="local-level">0%</span>
         </div>
         <div class="meter">
           <div class="meter-fill" id="local-meter"></div>
         </div>
       </div>
-      <div class="meter-row">
+      <div class="meter-col">
         <div class="meter-label">
-          <span>🔊 對方的聲音</span>
+          <span>🔊 對方</span>
           <span class="level" id="remote-level">0%</span>
         </div>
         <div class="meter">
@@ -408,13 +428,11 @@
       </div>
     </div>
 
-    <!-- 語言 + STT 狀態（固定，不跟著字幕滑）-->
-    <div id="lang-bar" class="lang-bar">
-      <span class="label">💬 我講的語言</span>
-      <span class="right">
-        <span id="stt-status" class="stt-status idle"><span class="dot"></span>未啟動</span>
-        <button id="lang-btn" class="lang-btn">中文</button>
-      </span>
+    <!-- 控制列：字幕開關 + STT 狀態 + 語言（直接在字幕區上方）-->
+    <div id="control-bar" class="control-bar">
+      <button id="btn-subtitle" class="ctrl-btn">💬 字幕：開</button>
+      <span id="stt-status" class="stt-status idle"><span class="dot"></span>未啟動</span>
+      <button id="lang-btn" class="ctrl-btn">🇹🇼 中文</button>
     </div>
 
     <!-- 字幕（通話中才顯示，純訊息流可滑動）-->
@@ -428,7 +446,6 @@
 
     <button id="btn-start" class="btn-primary">🎤 開始配對</button>
     <button id="btn-cancel" class="btn-secondary" style="display:none">取消配對</button>
-    <button id="btn-subtitle" class="btn-subtitle" style="display:none">💬 字幕：開</button>
     <button id="btn-mute" class="btn-mute" style="display:none">🔊 喇叭：開（單機測試請按靜音）</button>
     <button id="btn-hangup" class="btn-danger" style="display:none">📞 掛斷</button>
 

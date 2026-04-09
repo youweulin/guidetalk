@@ -65,6 +65,9 @@ const nameInput = $('name');
 const remoteAudio = $('remote-audio');
 
 const peerCard = $('peer-card');
+const pcStatusEl = $('pc-status');
+const peerStatusTextEl = $('peer-status-text');
+const meNameDisplayEl = $('me-name-display');
 const peerNameEl = $('peer-name');
 const roomCodeEl = $('room-code');
 const myRoleEl = $('my-role');
@@ -77,7 +80,7 @@ const remoteLevelEl = $('remote-level');
 
 const subtitlesEl = $('subtitles');
 const subtitlesListEl = $('subtitles-list');
-const langBarEl = $('lang-bar');
+const controlBarEl = $('control-bar');
 const langBtn = $('lang-btn');
 const sttStatusEl = $('stt-status');
 
@@ -438,16 +441,32 @@ const showButtons = (state) => {
   btnSubtitle.style.display = state === 'in-call' ? 'block' : 'none';
 };
 
+// 取得用戶當下顯示的暱稱（input 有就用 input，沒有就用之前自動產生的）
+const myDisplayName = () => {
+  const v = nameInput.value.trim();
+  return v || (window._kaitalkLastName || '你');
+};
+
 const showPeerCard = (name, room, role) => {
+  meNameDisplayEl.textContent = myDisplayName();
   peerNameEl.textContent = name;
   roomCodeEl.textContent = room;
   myRoleEl.textContent = role === 'host' ? 'HOST' : 'GUEST';
   myRoleEl.className = `role ${role}`;
   peerCard.classList.add('active');
+  // 配對成功就把 status bar 收起來，避免重複資訊
+  statusEl.style.display = 'none';
+};
+
+const setPeerCardStatus = (state, text) => {
+  // state: 'connecting' | 'connected' | 'failed'
+  pcStatusEl.className = `pc-status ${state === 'connected' ? '' : state}`;
+  peerStatusTextEl.textContent = text;
 };
 
 const hidePeerCard = () => {
   peerCard.classList.remove('active');
+  statusEl.style.display = ''; // 還原 status bar
 };
 
 const showMeters = () => metersEl.classList.add('active');
@@ -455,11 +474,11 @@ const hideMeters = () => metersEl.classList.remove('active');
 
 const showSubtitles = () => {
   subtitlesEl.classList.add('active');
-  langBarEl.classList.add('active');
+  controlBarEl.classList.add('active');
 };
 const hideSubtitles = () => {
   subtitlesEl.classList.remove('active');
-  langBarEl.classList.remove('active');
+  controlBarEl.classList.remove('active');
 };
 
 // ─── Web Audio Analyser ──────────────────────────────
@@ -863,8 +882,8 @@ function connectSocket() {
     peerName = peer.name;
     isHost = hostFlag;
     log(`配對成功！房號 ${roomCode}, 對方 ${peer.name}, 我是 ${isHost ? 'host' : 'guest'}`);
-    setStatus(`🎉 已配對到 ${peer.name}，建立連線中...`, true);
     showPeerCard(peer.name, roomCode, isHost ? 'host' : 'guest');
+    setPeerCardStatus('connecting', '建立連線中...');
     showButtons('in-call');
     showMeters();
     if (subtitlesEnabled) showSubtitles();
@@ -980,7 +999,7 @@ async function setupPeerConnection() {
   pc.oniceconnectionstatechange = async () => {
     log(`ICE state: ${pc.iceConnectionState}`);
     if (pc.iceConnectionState === 'connected') {
-      setStatus(`🎙️ 與 ${peerName} P2P 連線成功，正在通話`, true);
+      setPeerCardStatus('connected', '通話中');
       // 連上後，查實際被選用的 candidate pair → 確認是走 host / srflx / relay
       try {
         const stats = await pc.getStats();
@@ -1006,7 +1025,7 @@ async function setupPeerConnection() {
         log(`getStats 失敗: ${err.message}`);
       }
     } else if (pc.iceConnectionState === 'failed') {
-      setStatus('連線失敗（可能需要 TURN）');
+      setPeerCardStatus('failed', '連線失敗');
     }
   };
 
@@ -1036,6 +1055,8 @@ async function startMatching() {
     startMeterLoop();
 
     const name = nameInput.value.trim() || `Anon${Math.floor(Math.random() * 1000)}`;
+    window._kaitalkLastName = name; // peer card 用
+    nameInput.value = name; // 自動回填讓用戶看到自己叫什麼
     socket.emit('find_match', { name });
     showButtons('matching');
   } catch (err) {
@@ -1078,10 +1099,10 @@ function toggleMute() {
 
 function updateSubtitleBtn() {
   if (subtitlesEnabled) {
-    btnSubtitle.textContent = '💬 字幕：開（點此關閉）';
+    btnSubtitle.textContent = '💬 字幕：開';
     btnSubtitle.classList.remove('off');
   } else {
-    btnSubtitle.textContent = '💬 字幕：關（點此開啟）';
+    btnSubtitle.textContent = '💬 字幕：關';
     btnSubtitle.classList.add('off');
   }
 }
