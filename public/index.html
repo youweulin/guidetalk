@@ -111,31 +111,29 @@
     .role.host { background: rgba(76,175,80,0.2); color: #81c784; }
     .role.guest { background: rgba(192,132,252,0.2); color: #c084fc; }
 
-    /* ─── Volume Meters（雙 meter 並排）─── */
+    /* ─── Volume Meters ─── */
     .meters {
       display: none;
       margin-bottom: 16px;
-      gap: 12px;
     }
-    .meters.active { display: flex; }
+    .meters.active { display: block; }
     .meter-row {
-      flex: 1;
-      min-width: 0;
+      margin-bottom: 12px;
       text-align: left;
     }
+    .meter-row:last-child { margin-bottom: 0; }
     .meter-label {
       display: flex;
       justify-content: space-between;
-      font-size: 11px;
+      font-size: 12px;
       color: var(--muted);
-      margin-bottom: 5px;
-      white-space: nowrap;
+      margin-bottom: 6px;
     }
     .meter-label .level { font-family: ui-monospace, monospace; }
     .meter {
-      height: 12px;
+      height: 14px;
       background: rgba(255,255,255,0.06);
-      border-radius: 6px;
+      border-radius: 7px;
       overflow: hidden;
       position: relative;
     }
@@ -410,11 +408,11 @@
       </div>
     </div>
 
-    <!-- 音量 meter（通話中才顯示，兩條並排）-->
+    <!-- 音量 meter（通話中才顯示） -->
     <div id="meters" class="meters">
       <div class="meter-row">
         <div class="meter-label">
-          <span>🎤 你</span>
+          <span>🎤 你的麥克風</span>
           <span class="level" id="local-level">0%</span>
         </div>
         <div class="meter">
@@ -423,7 +421,7 @@
       </div>
       <div class="meter-row">
         <div class="meter-label">
-          <span>🔊 對方</span>
+          <span>🔊 對方的聲音</span>
           <span class="level" id="remote-level">0%</span>
         </div>
         <div class="meter">
