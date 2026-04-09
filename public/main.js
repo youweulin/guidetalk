@@ -39,14 +39,13 @@ const roomCodeEl = $('room-code');
 const myRoleEl = $('my-role');
 
 const metersEl = $('meters');
-const meterRowLocalEl = $('meter-row-local');
-const localEqEl = $('local-eq');
-const remoteEqEl = $('remote-eq');
-const localEqBars = localEqEl ? localEqEl.querySelectorAll('.bar') : [];
-const remoteEqBars = remoteEqEl ? remoteEqEl.querySelectorAll('.bar') : [];
-const peerLangBadgeEl = $('peer-lang-badge');
+const localMeter = $('local-meter');
+const remoteMeter = $('remote-meter');
+const localLevelEl = $('local-level');
+const remoteLevelEl = $('remote-level');
 
 const subtitlesEl = $('subtitles');
+const langBarEl = $('lang-bar');
 const subtitlesListEl = $('subtitles-list');
 const langBtn = $('lang-btn');
 const sttStatusEl = $('stt-status');
@@ -420,30 +419,12 @@ const hideMeters = () => metersEl.classList.remove('active');
 
 const showSubtitles = () => {
   subtitlesEl.classList.add('active');
+  langBarEl.classList.add('active');
 };
 const hideSubtitles = () => {
   subtitlesEl.classList.remove('active');
+  langBarEl.classList.remove('active');
 };
-
-// 對方語言徽章：配對成功時顯示「？」，收到第一筆字幕後變成國旗+語言名
-function setPeerLangBadge(langCode) {
-  if (!peerLangBadgeEl) return;
-  if (!langCode) {
-    peerLangBadgeEl.textContent = '？';
-    peerLangBadgeEl.classList.add('unknown');
-    return;
-  }
-  const li = langInfo(langCode);
-  peerLangBadgeEl.textContent = `${li.flag} ${li.label}`;
-  peerLangBadgeEl.classList.remove('unknown');
-}
-
-// 你的麥克風 row：STT 啟動時加 .active class（CSS 把條子變綠）
-function setLocalEqActive(active) {
-  if (!meterRowLocalEl) return;
-  if (active) meterRowLocalEl.classList.add('active');
-  else meterRowLocalEl.classList.remove('active');
-}
 
 // ─── Web Audio Analyser ──────────────────────────────
 function ensureAudioCtx() {
@@ -467,7 +448,7 @@ function attachAnalyser(stream) {
   return analyser;
 }
 
-// 算 RMS level（time domain，給 echo 過濾用，現在沒在用 echo filter 但保留）
+// 算 RMS level（time domain，比 frequency 準）
 function getLevel(analyser) {
   if (!analyser) return 0;
   const data = new Uint8Array(analyser.frequencyBinCount);
@@ -477,48 +458,20 @@ function getLevel(analyser) {
     const v = (data[i] - 128) / 128;
     sum += v * v;
   }
-  return Math.min(1, Math.sqrt(sum / data.length) * 3);
-}
-
-// 把 frequency data 切成 N 個 band，每個 band 給一個 0~1 的高度值
-// 給 8 根 EQ 條子用
-function getEqBands(analyser, numBands) {
-  if (!analyser) return new Array(numBands).fill(0);
-  const buf = new Uint8Array(analyser.frequencyBinCount);
-  analyser.getByteFrequencyData(buf);
-  // 只取低頻到中頻區段（人聲主要在 80~3500 Hz），高頻 mostly 噪音
-  const usable = Math.floor(buf.length * 0.5);
-  const perBand = Math.floor(usable / numBands);
-  const bands = [];
-  for (let b = 0; b < numBands; b++) {
-    let sum = 0;
-    for (let i = 0; i < perBand; i++) {
-      sum += buf[b * perBand + i];
-    }
-    const avg = sum / perBand / 255;  // 0~1
-    bands.push(Math.min(1, avg * 1.6)); // 放大讓視覺有感
-  }
-  return bands;
-}
-
-const EQ_MIN_HEIGHT = 4;   // px，靜音時的最小高度
-const EQ_MAX_HEIGHT = 22;  // px，最大跳起來的高度（24px row 留 1px 上下 padding）
-
-function renderEq(bars, levels) {
-  for (let i = 0; i < bars.length; i++) {
-    const lv = levels[i] || 0;
-    const h = EQ_MIN_HEIGHT + lv * (EQ_MAX_HEIGHT - EQ_MIN_HEIGHT);
-    bars[i].style.height = h + 'px';
-  }
+  return Math.min(1, Math.sqrt(sum / data.length) * 3); // ×3 讓視覺更靈敏
 }
 
 function startMeterLoop() {
   if (meterRafId) return;
   const tick = () => {
-    const localBands = getEqBands(localAnalyser, localEqBars.length || 8);
-    const remoteBands = getEqBands(remoteAnalyser, remoteEqBars.length || 8);
-    renderEq(localEqBars, localBands);
-    renderEq(remoteEqBars, remoteBands);
+    const localLv = getLevel(localAnalyser);
+    const remoteLv = getLevel(remoteAnalyser);
+
+    localMeter.style.width = (localLv * 100) + '%';
+    remoteMeter.style.width = (remoteLv * 100) + '%';
+    localLevelEl.textContent = Math.round(localLv * 100) + '%';
+    remoteLevelEl.textContent = Math.round(remoteLv * 100) + '%';
+
     meterRafId = requestAnimationFrame(tick);
   };
   tick();
@@ -529,9 +482,10 @@ function stopMeterLoop() {
     cancelAnimationFrame(meterRafId);
     meterRafId = null;
   }
-  // 條子歸零
-  renderEq(localEqBars, new Array(localEqBars.length).fill(0));
-  renderEq(remoteEqBars, new Array(remoteEqBars.length).fill(0));
+  localMeter.style.width = '0%';
+  remoteMeter.style.width = '0%';
+  localLevelEl.textContent = '0%';
+  remoteLevelEl.textContent = '0%';
 }
 
 // ─── Subtitle Buffer ─────────────────────────────────
@@ -646,13 +600,9 @@ function isSTTSupported() {
 }
 
 function setSTTStatus(state, label) {
-  // sttStatusEl 現在是隱藏的，但仍然更新（保留 API 不破壞其他呼叫）
-  if (sttStatusEl) {
-    sttStatusEl.className = `stt-status ${state}`;
-    sttStatusEl.innerHTML = `<span class="dot"></span>${label}`;
-  }
-  // 主要視覺：你的 EQ 條子變色（active = 綠 / 否則灰）
-  setLocalEqActive(state === 'active');
+  if (!sttStatusEl) return;
+  sttStatusEl.className = `stt-status ${state}`;
+  sttStatusEl.innerHTML = `<span class="dot"></span>${label}`;
 }
 
 function startSTT() {
@@ -802,11 +752,10 @@ function setupSubtitleDC(dc) {
       const msg = JSON.parse(e.data);
       if (msg.type === 'subtitle' && msg.data) {
         const { text, lang, interim } = msg.data;
-        // 第一次收到對方字幕 → 記住對方的語言、更新右邊徽章
+        // 第一次收到對方字幕 → 記住對方的語言（之後可以判斷要不要翻譯）
         if (!peerLang && lang) {
           peerLang = lang;
           log(`對方語言: ${lang}`);
-          setPeerLangBadge(lang);
         }
         addSubtitle('peer', text, lang, interim);
       }
@@ -842,7 +791,6 @@ function connectSocket() {
     showPeerCard(peer.name, roomCode, isHost ? 'host' : 'guest');
     showButtons('in-call');
     showMeters();
-    setPeerLangBadge(null); // 對方語言一開始未知，顯示「？」
     if (subtitlesEnabled) showSubtitles();
     clearSubtitles();
     await setupPeerConnection();
