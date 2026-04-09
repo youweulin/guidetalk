@@ -47,6 +47,17 @@ app.use((req, res, next) => {
 });
 app.use(express.static(join(__dirname, 'public')));
 
+// ─── Public client config ─────────────────────────────
+// 讓 client 知道要連哪個 Supabase 專案 + anon key。
+// 兩個都是 public 資訊（anon key 設計就是給瀏覽器用的）
+// 不會洩漏 service_role key 或 JWT secret。
+app.get('/config.json', (req, res) => {
+  res.json({
+    supabaseUrl: process.env.SUPABASE_URL || null,
+    supabaseAnonKey: process.env.SUPABASE_ANON_KEY || null,
+  });
+});
+
 // ─── 配對佇列（in-memory）─────────────────────────────
 // queue[gameType] = [{ socket, name }]
 const queues = new Map();

@@ -789,8 +789,88 @@ function setupSubtitleDC(dc) {
 }
 
 // ─── Socket ──────────────────────────────────────────
+// ─── Supabase Auth state ──────────────────────────────
+// 匿名登入拿到的 JWT。socket.io 連線時帶上它。
+// 失敗都 fall back 到「沒 token」，舊行為照常。
+let supabaseClient = null;
+let kaitalkUserId = null;
+let kaitalkAccessToken = null;
+
+async function initSupabaseAnonAuth() {
+  // 1. 讀 server 給的 config
+  let config;
+  try {
+    const r = await fetch('/config.json');
+    config = await r.json();
+  } catch (err) {
+    log(`⚠️ /config.json 讀不到，跳過 Auth: ${err.message}`);
+    return;
+  }
+  if (!config?.supabaseUrl || !config?.supabaseAnonKey) {
+    log(`⚠️ Supabase config 沒設，跳過 Auth`);
+    return;
+  }
+
+  // 2. 建 supabase client（用 CDN 載入的 global 變數）
+  if (typeof window.supabase?.createClient !== 'function') {
+    log(`⚠️ Supabase JS 沒載入，跳過 Auth`);
+    return;
+  }
+  try {
+    supabaseClient = window.supabase.createClient(
+      config.supabaseUrl,
+      config.supabaseAnonKey,
+      {
+        auth: {
+          // 把 session 存 localStorage，刷新頁面也保留同一個 user.id
+          persistSession: true,
+          autoRefreshToken: true,
+          storageKey: 'kaitalk.supabase.session',
+        },
+      }
+    );
+  } catch (err) {
+    log(`⚠️ Supabase client 建立失敗: ${err.message}`);
+    return;
+  }
+
+  // 3. 看有沒有既有 session（之前匿名登入過、persistSession 帶回來的）
+  try {
+    const { data: { session } } = await supabaseClient.auth.getSession();
+    if (session?.access_token) {
+      kaitalkUserId = session.user.id;
+      kaitalkAccessToken = session.access_token;
+      log(`🔑 既有匿名 session: ${kaitalkUserId.slice(0, 8)}...`);
+      return;
+    }
+  } catch (err) {
+    log(`⚠️ getSession 失敗: ${err.message}`);
+  }
+
+  // 4. 沒 session → 建匿名帳號
+  try {
+    const { data, error } = await supabaseClient.auth.signInAnonymously();
+    if (error) {
+      log(`⚠️ 匿名登入失敗: ${error.message}`);
+      return;
+    }
+    if (data?.session) {
+      kaitalkUserId = data.session.user.id;
+      kaitalkAccessToken = data.session.access_token;
+      log(`🔑 匿名登入成功: ${kaitalkUserId.slice(0, 8)}...`);
+    }
+  } catch (err) {
+    log(`⚠️ signInAnonymously throw: ${err.message}`);
+  }
+}
+
 function connectSocket() {
-  socket = io({ transports: ['websocket', 'polling'] });
+  // 連 socket.io 時把 JWT 帶上去（沒 token 也 OK，server 會 fallback）
+  const opts = { transports: ['websocket', 'polling'] };
+  if (kaitalkAccessToken) {
+    opts.auth = { token: kaitalkAccessToken };
+  }
+  socket = io(opts);
 
   socket.on('connect', () => {
     log(`Socket connected: ${socket.id.slice(0, 8)}`);
@@ -1090,4 +1170,10 @@ if (!isSTTSupported()) {
 }
 
 setStatus('連接 server...');
-connectSocket();
+
+// 先做匿名 Auth，再連 socket
+// initSupabaseAnonAuth() 是 graceful 的，任何失敗都會 fallback 到「沒 token」
+// 連線本身永遠會發生
+initSupabaseAnonAuth().finally(() => {
+  connectSocket();
+});
