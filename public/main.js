@@ -37,6 +37,7 @@ const peerCard = $('peer-card');
 const peerNameEl = $('peer-name');
 const roomCodeEl = $('room-code');
 const myRoleEl = $('my-role');
+const peerLangBadgeEl = $('peer-lang-badge');
 
 const metersEl = $('meters');
 const localMeter = $('local-meter');
@@ -414,6 +415,19 @@ const hidePeerCard = () => {
   peerCard.classList.remove('active');
 };
 
+// 對方語言徽章：null = 偵測中、傳 lang code = 顯示國旗
+function setPeerLangBadge(langCode) {
+  if (!peerLangBadgeEl) return;
+  if (!langCode) {
+    peerLangBadgeEl.textContent = '🌐 偵測中';
+    peerLangBadgeEl.classList.add('detecting');
+    return;
+  }
+  const li = langInfo(langCode);
+  peerLangBadgeEl.textContent = li.flag;
+  peerLangBadgeEl.classList.remove('detecting');
+}
+
 const showMeters = () => metersEl.classList.add('active');
 const hideMeters = () => metersEl.classList.remove('active');
 
@@ -752,10 +766,11 @@ function setupSubtitleDC(dc) {
       const msg = JSON.parse(e.data);
       if (msg.type === 'subtitle' && msg.data) {
         const { text, lang, interim } = msg.data;
-        // 第一次收到對方字幕 → 記住對方的語言（之後可以判斷要不要翻譯）
+        // 第一次收到對方字幕 → 記住對方的語言、更新徽章
         if (!peerLang && lang) {
           peerLang = lang;
           log(`對方語言: ${lang}`);
+          setPeerLangBadge(lang);
         }
         addSubtitle('peer', text, lang, interim);
       }
@@ -789,6 +804,7 @@ function connectSocket() {
     log(`配對成功！房號 ${roomCode}, 對方 ${peer.name}, 我是 ${isHost ? 'host' : 'guest'}`);
     setStatus(`🎉 已配對到 ${peer.name}，建立連線中...`, true);
     showPeerCard(peer.name, roomCode, isHost ? 'host' : 'guest');
+    setPeerLangBadge(null); // 對方語言一開始未知
     showButtons('in-call');
     showMeters();
     if (subtitlesEnabled) showSubtitles();

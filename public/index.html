@@ -111,6 +111,27 @@
     .role.host { background: rgba(76,175,80,0.2); color: #81c784; }
     .role.guest { background: rgba(192,132,252,0.2); color: #c084fc; }
 
+    /* 對方的語言徽章（只顯示國旗，未知時顯示「🌐 偵測中」）*/
+    .peer-card .peer-lang {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 10px;
+      font-size: 12px;
+      font-weight: 600;
+      margin-top: 8px;
+      margin-left: 4px;
+      background: rgba(96,205,255,0.15);
+      color: #60cdff;
+      border: 1px solid rgba(96,205,255,0.25);
+    }
+    .peer-card .peer-lang.detecting {
+      background: rgba(255,255,255,0.05);
+      color: var(--muted);
+      border-color: rgba(255,255,255,0.08);
+      font-size: 10px;
+      font-weight: 500;
+    }
+
     /* ─── Volume Meters ─── */
     .meters {
       display: none;
@@ -405,6 +426,7 @@
       <div class="meta">
         房號 <span id="room-code">—</span>
         <span class="role" id="my-role">—</span>
+        <span class="peer-lang detecting" id="peer-lang-badge">🌐 偵測中</span>
       </div>
     </div>
 
