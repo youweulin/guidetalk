@@ -45,6 +45,7 @@ const localLevelEl = $('local-level');
 const remoteLevelEl = $('remote-level');
 
 const subtitlesEl = $('subtitles');
+const langBarEl = $('lang-bar');
 const subtitlesListEl = $('subtitles-list');
 const langBtn = $('lang-btn');
 const sttStatusEl = $('stt-status');
@@ -416,8 +417,14 @@ const hidePeerCard = () => {
 const showMeters = () => metersEl.classList.add('active');
 const hideMeters = () => metersEl.classList.remove('active');
 
-const showSubtitles = () => subtitlesEl.classList.add('active');
-const hideSubtitles = () => subtitlesEl.classList.remove('active');
+const showSubtitles = () => {
+  subtitlesEl.classList.add('active');
+  langBarEl.classList.add('active');
+};
+const hideSubtitles = () => {
+  subtitlesEl.classList.remove('active');
+  langBarEl.classList.remove('active');
+};
 
 // ─── Web Audio Analyser ──────────────────────────────
 function ensureAudioCtx() {

@@ -242,7 +242,7 @@
     .subtitles {
       display: none;
       background: rgba(0,0,0,0.35);
-      border-radius: 14px;
+      border-radius: 0 0 14px 14px;
       padding: 12px;
       margin-bottom: 14px;
       max-height: 200px;
@@ -273,6 +273,45 @@
       margin: 0;
     }
     .subtitles-header .lang-btn:hover { color: var(--text); }
+
+    /* ─── Lang bar：固定在字幕上方，永遠不會被滑掉 ─── */
+    .lang-bar {
+      display: none;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      padding: 8px 12px;
+      background: rgba(255,255,255,0.04);
+      border-radius: 12px 12px 0 0;
+      border-bottom: 1px solid rgba(255,255,255,0.06);
+      margin-bottom: -14px;  /* 跟下面的 subtitles 視覺上連起來 */
+      font-size: 11px;
+      color: var(--muted);
+    }
+    .lang-bar.active { display: flex; }
+    .lang-bar .label {
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+    .lang-bar .right {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .lang-bar .lang-btn {
+      background: rgba(96,205,255,0.12);
+      border: 1px solid rgba(96,205,255,0.25);
+      color: #60cdff;
+      padding: 5px 12px;
+      border-radius: 8px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      width: auto;
+      margin: 0;
+      transition: background 0.15s;
+    }
+    .lang-bar .lang-btn:hover { background: rgba(96,205,255,0.2); }
     .stt-status {
       display: inline-flex;
       align-items: center;
@@ -391,15 +430,17 @@
       </div>
     </div>
 
+    <!-- 語言 + STT 狀態（固定，不跟著字幕滑掉） -->
+    <div id="lang-bar" class="lang-bar">
+      <span class="label">💬 我講的語言</span>
+      <span class="right">
+        <span id="stt-status" class="stt-status idle"><span class="dot"></span>未啟動</span>
+        <button id="lang-btn" class="lang-btn">中文</button>
+      </span>
+    </div>
+
     <!-- 字幕（通話中才顯示）-->
     <div id="subtitles" class="subtitles">
-      <div class="subtitles-header">
-        <span>💬 即時字幕</span>
-        <span style="display:flex;align-items:center;gap:6px;">
-          <span id="stt-status" class="stt-status idle"><span class="dot"></span>未啟動</span>
-          <button id="lang-btn" class="lang-btn">中文</button>
-        </span>
-      </div>
       <div id="subtitles-list">
         <div class="subtitles-empty">等待字幕辨識啟動...</div>
       </div>
