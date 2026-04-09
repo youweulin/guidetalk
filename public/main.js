@@ -400,8 +400,13 @@ const showButtons = (state) => {
   btnStart.style.display = state === 'idle' ? 'block' : 'none';
   btnCancel.style.display = state === 'matching' ? 'block' : 'none';
   btnHangup.style.display = state === 'in-call' ? 'block' : 'none';
-  btnMute.style.display = state === 'in-call' ? 'block' : 'none';
-  btnSubtitle.style.display = state === 'in-call' ? 'block' : 'none';
+  // 通話中拿掉這些（讓字幕區可以更大）：
+  //   - 暱稱輸入框（已顯示在右上角 user-display）
+  //   - 喇叭按鈕（一般用戶用不到，只有單機測試需要）
+  //   - status 列（peer card 已經顯示「與你配對的是 X」）
+  btnMute.style.display = 'none';
+  nameInput.style.display = state === 'idle' || state === 'matching' ? 'block' : 'none';
+  statusEl.style.display = state === 'in-call' ? 'none' : 'block';
 };
 
 const showPeerCard = (name, room, role) => {

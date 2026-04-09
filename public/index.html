@@ -299,9 +299,11 @@
       display: none;
       background: rgba(0,0,0,0.35);
       border-radius: 0 0 14px 14px;
-      padding: 12px;
+      padding: 14px;
       margin-bottom: 14px;
-      max-height: 200px;
+      /* 字幕區最重要 — 讓它佔滿視窗高度減去其他元素 */
+      max-height: calc(100vh - 380px);
+      min-height: 200px;
       overflow-y: auto;
       text-align: left;
       scroll-behavior: smooth;
