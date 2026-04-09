@@ -997,11 +997,12 @@ function toggleMute() {
 }
 
 function updateSubtitleBtn() {
+  // 只顯示圖示，靠顏色暗示開/關（避免文字太多擠版）
+  btnSubtitle.textContent = '💬';
+  btnSubtitle.title = subtitlesEnabled ? '字幕開啟中（點此關閉）' : '字幕已關閉（點此開啟）';
   if (subtitlesEnabled) {
-    btnSubtitle.textContent = '💬 字幕：開（點此關閉）';
     btnSubtitle.classList.remove('off');
   } else {
-    btnSubtitle.textContent = '💬 字幕：關（點此開啟）';
     btnSubtitle.classList.add('off');
   }
 }
