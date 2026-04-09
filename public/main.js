@@ -61,6 +61,10 @@ let peerName = null;
 let isHost = false;
 let pendingCandidates = [];
 
+// Match timeout (30s 沒配到提示換 quick mode)
+let matchTimeoutId = null;
+let lastMatchOpts = null; // 記住目前是哪個模式發起的，超時提示用
+
 // Web Audio analyser state
 let audioCtx = null;
 let localAnalyser = null;
@@ -884,9 +888,13 @@ function connectSocket() {
   socket.on('match_queued', ({ position }) => {
     log(`進入佇列 (#${position})`);
     setStatus('等待其他使用者...', true);
+    // 啟動 30 秒沒配到提示
+    startMatchTimeoutTimer();
   });
 
   socket.on('match_found', async ({ roomCode, isHost: hostFlag, peer }) => {
+    // 配對成功，停掉等待逾時
+    stopMatchTimeoutTimer();
     peerId = peer.id;
     peerName = peer.name;
     isHost = hostFlag;
@@ -942,6 +950,7 @@ function connectSocket() {
   });
 
   socket.on('match_cancelled', () => {
+    stopMatchTimeoutTimer();
     log(`配對已取消`);
     setStatus('已取消');
     showButtons('idle');
@@ -1031,6 +1040,8 @@ async function setupPeerConnection() {
 async function startMatching(opts = {}) {
   const mode = opts.mode || 'quick';
   const targetRegion = opts.targetRegion || null;
+  // 記住，給逾時提示用
+  lastMatchOpts = { mode, targetRegion };
 
   try {
     setStatus('請求麥克風權限...');
@@ -1077,12 +1088,63 @@ async function startMatching(opts = {}) {
 }
 
 function cancelMatching() {
+  stopMatchTimeoutTimer();
   socket.emit('cancel_match');
   cleanup();
   hidePeerCard();
   hideMeters();
   hideSubtitles();
   showButtons('idle');
+}
+
+// ─── 配對逾時提示（30 秒沒配到）─────────
+const MATCH_TIMEOUT_MS = 30000;
+
+function startMatchTimeoutTimer() {
+  stopMatchTimeoutTimer();
+  matchTimeoutId = setTimeout(() => {
+    matchTimeoutId = null;
+    handleMatchTimeout();
+  }, MATCH_TIMEOUT_MS);
+}
+
+function stopMatchTimeoutTimer() {
+  if (matchTimeoutId) {
+    clearTimeout(matchTimeoutId);
+    matchTimeoutId = null;
+  }
+}
+
+function handleMatchTimeout() {
+  // 如果已經配上了或取消了 → 不做事
+  if (peerId || !lastMatchOpts) return;
+
+  const mode = lastMatchOpts.mode || 'quick';
+  if (mode === 'quick') {
+    // 已經是 quick 還配不到 → 不能 fallback 了，只是再等
+    setStatus('還在等待中，可以再耐心一下...', true);
+    log(`⏰ 配對逾時 (quick mode 已是最寬鬆)`);
+    return;
+  }
+
+  // nearby 或 specific → 提示換 quick
+  log(`⏰ 配對逾時 (${mode}) → 提示用戶換 quick`);
+  const modeLabel = mode === 'nearby' ? '附近' : '指定地方';
+  const wantQuick = confirm(
+    `「${modeLabel}」配對 30 秒了還沒人 😔\n\n` +
+    `要不要改成「快速配對」（隨機）試試？`
+  );
+  if (wantQuick) {
+    // 取消當前配對 → 換 quick mode
+    cancelMatching();
+    setTimeout(() => {
+      startMatching({ mode: 'quick' });
+    }, 200);
+  } else {
+    // 用戶選擇繼續等
+    setStatus('繼續等待中...', true);
+    startMatchTimeoutTimer(); // 再給 30 秒
+  }
 }
 
 function hangup() {
