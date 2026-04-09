@@ -312,6 +312,8 @@ const TRANSLATION_CACHE_LIMIT = 500;
 const TRANSLATION_CACHE_TTL = 30 * 24 * 60 * 60 * 1000; // 30 天
 
 function loadTranslationCache() {
+  // 注意：這個 function 在 module top-level（const translationCache = loadTranslationCache()）
+  // 就會跑，比 log() 函式宣告還早，所以這裡只能用 console.log，不能用 log()
   try {
     const raw = localStorage.getItem(TRANSLATION_CACHE_KEY);
     if (!raw) return new Map();
@@ -326,10 +328,10 @@ function loadTranslationCache() {
         expired++;
       }
     }
-    log(`📚 載入翻譯快取 ${map.size} 筆${expired ? `（過期 ${expired} 筆）` : ''}`);
+    console.log(`[kaitalk] 📚 載入翻譯快取 ${map.size} 筆${expired ? `（過期 ${expired} 筆）` : ''}`);
     return map;
   } catch (err) {
-    log(`快取載入失敗: ${err.message}`);
+    console.warn(`[kaitalk] 快取載入失敗: ${err.message}`);
     return new Map();
   }
 }

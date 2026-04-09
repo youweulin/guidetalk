@@ -29,6 +29,15 @@ const app = express();
 const server = createServer(app);
 const io = new Server(server, { cors: { origin: '*' } });
 
+// 開發階段：禁止瀏覽器快取靜態檔，每次 refresh 都拿到最新版
+// 正式上線改成 max-age 即可
+app.use((req, res, next) => {
+  res.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+  res.set('Pragma', 'no-cache');
+  res.set('Expires', '0');
+  res.set('Surrogate-Control', 'no-store');
+  next();
+});
 app.use(express.static(join(__dirname, 'public')));
 
 // ─── 配對佇列（in-memory）─────────────────────────────
