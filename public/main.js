@@ -405,14 +405,18 @@ const showButtons = (state) => {
   const matchModes = document.getElementById('match-modes');
   if (matchModes) matchModes.style.display = state === 'idle' ? 'block' : 'none';
 
+  // user-bar（暱稱+地區+語言）只在 idle 顯示
+  const ub = document.getElementById('user-bar');
+  if (ub) ub.style.display = state === 'idle' ? 'flex' : 'none';
+
   btnCancel.style.display = state === 'matching' ? 'block' : 'none';
   btnHangup.style.display = state === 'in-call' ? 'block' : 'none';
   // 通話中拿掉這些（讓字幕區可以更大）：
-  //   - 暱稱輸入框（已顯示在右上角 user-display）
+  //   - 暱稱輸入框（已顯示在 user-bar）
   //   - 喇叭按鈕（一般用戶用不到，只有單機測試需要）
   //   - status 列（peer card 已經顯示「與你配對的是 X」）
   btnMute.style.display = 'none';
-  nameInput.style.display = state === 'idle' || state === 'matching' ? 'block' : 'none';
+  // nameInput 永遠 hidden（HTML 已 set display:none），不再用 showButtons 控制
   statusEl.style.display = state === 'in-call' ? 'none' : 'block';
 };
 
@@ -1057,7 +1061,8 @@ async function startMatching(opts = {}) {
     startMeterLoop();
 
     // 強迫暱稱：button disabled 已經擋掉空字串，這裡再保險一次
-    const name = nameInput.value.trim();
+    // 優先讀 localStorage（input 在主畫面是 hidden）
+    const name = (localStorage.getItem(ONB_NICKNAME_KEY) || nameInput.value || '').trim();
     if (!name) {
       log('⚠️ 請先輸入暱稱');
       setStatus('請先輸入暱稱');
@@ -1352,7 +1357,7 @@ function onbFinish() {
 
   onboardingEl.classList.remove('active');
 
-  // 把暱稱填回主畫面的 input + 鎖死
+  // 同步把名字也填回隱藏的 input（既有 code 還會讀 nameInput.value）
   if (nameInput) {
     nameInput.value = name;
     nameInput.disabled = true;
@@ -1366,6 +1371,7 @@ function onbFinish() {
   }
 
   updateStartBtnState();
+  renderUserBar(); // 更新主畫面 user bar
 }
 
 if (onbNameInput) {
@@ -1524,11 +1530,54 @@ function saveSettings() {
 
   log(`設定已儲存：region=${settingsTempRegion}, lang=${settingsTempLang}`);
   closeSettings();
+  renderUserBar(); // 更新主畫面 user bar
 }
 
 btnSettings?.addEventListener('click', openSettings);
 btnSettingsCancel?.addEventListener('click', closeSettings);
 btnSettingsSave?.addEventListener('click', saveSettings);
+
+// ─── User bar 渲染（暱稱 + 地區 + 語言）─────────────
+const userBarEl = document.getElementById('user-bar');
+const userBarNameEl = document.getElementById('user-bar-name');
+const userBarRegionEl = document.getElementById('user-bar-region');
+const userBarLangEl = document.getElementById('user-bar-lang');
+
+function renderUserBar() {
+  if (!userBarEl) return;
+
+  // 暱稱
+  const name = localStorage.getItem(ONB_NICKNAME_KEY) || '—';
+  if (userBarNameEl) userBarNameEl.textContent = `👤 ${name}`;
+
+  // 地區
+  const regionId = localStorage.getItem(ONB_BIG_REGION_KEY);
+  if (userBarRegionEl) {
+    if (regionId) {
+      const r = BIG_REGIONS.find(x => x.id === regionId);
+      userBarRegionEl.textContent = r ? `${r.flag} ${r.name}` : `📍 ${regionId}`;
+      userBarRegionEl.classList.remove('unset');
+    } else {
+      userBarRegionEl.textContent = '📍 點此設定';
+      userBarRegionEl.classList.add('unset');
+    }
+  }
+
+  // 語言
+  if (userBarLangEl) {
+    const li = langInfo(sttLang);
+    userBarLangEl.textContent = `${li.flag} ${li.label}`;
+  }
+}
+
+// 整列可點 → 直接開設定 overlay
+userBarEl?.addEventListener('click', openSettings);
+userBarEl?.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter' || e.key === ' ') {
+    e.preventDefault();
+    openSettings();
+  }
+});
 
 // 暱稱：強迫輸入 + localStorage 持久化（onboarding 完成後 disable）
 const NICKNAME_KEY = ONB_NICKNAME_KEY; // 同 key
@@ -1543,7 +1592,13 @@ if (onboardingDone && savedNickname) {
 }
 
 function updateStartBtnState() {
-  const v = nameInput.value.trim();
+  // 讀 localStorage 的暱稱（input 已 hide）
+  const stored = (localStorage.getItem(NICKNAME_KEY) || '').trim();
+  // 兼容：如果 input 還在顯示（例如 onboarding 還沒做完的舊 path），也讀它
+  const fromInput = nameInput && !nameInput.disabled && nameInput.value
+    ? nameInput.value.trim()
+    : '';
+  const v = stored || fromInput;
   const empty = v.length === 0;
   btnStart.disabled = empty;
   if (btnNearby) btnNearby.disabled = empty;
@@ -1555,6 +1610,9 @@ nameInput.addEventListener('input', () => {
   updateStartBtnState();
 });
 updateStartBtnState();
+
+// 主畫面初始化：渲染 user bar
+renderUserBar();
 
 // 沒做過 onboarding → 顯示
 if (!onboardingDone) {

@@ -294,6 +294,58 @@
       line-height: 1.5;
     }
 
+    /* ─── User bar（暱稱 + 地區 + 語言，整列可點開設定）─── */
+    .user-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 12px 14px;
+      margin-bottom: 12px;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 14px;
+      cursor: pointer;
+      transition: background 0.15s, border-color 0.15s;
+    }
+    .user-bar:hover {
+      background: rgba(96,205,255,0.08);
+      border-color: rgba(96,205,255,0.25);
+    }
+    .user-bar:active { transform: scale(0.99); }
+    .user-bar-name {
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--text);
+      flex-shrink: 1;
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .user-bar-meta {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex-shrink: 0;
+    }
+    .user-bar-region,
+    .user-bar-lang {
+      font-size: 11px;
+      font-weight: 600;
+      padding: 3px 8px;
+      border-radius: 10px;
+      background: rgba(96,205,255,0.12);
+      color: #60cdff;
+      border: 1px solid rgba(96,205,255,0.25);
+      white-space: nowrap;
+    }
+    .user-bar-region.unset {
+      background: rgba(255,167,38,0.12);
+      color: var(--warning);
+      border-color: rgba(255,167,38,0.25);
+    }
+
     /* ─── Match modes (3 buttons) ─── */
     #match-modes { display: block; }
     #match-modes .btn-primary { margin-bottom: 10px; }
@@ -783,7 +835,7 @@
       <div class="onboarding-step" id="step-1">
         <h2>歡迎來 kaitalk 👋</h2>
         <p class="step-hint">先取個暱稱，讓對方知道怎麼稱呼你。</p>
-        <input id="onb-name" class="input" placeholder="你的暱稱（8 字內）" maxlength="8">
+        <input id="onb-name" class="input" placeholder="你的暱稱（12 字內）" maxlength="12">
         <p class="step-warning">⚠️ 暱稱設定後不能修改（除非升級會員）</p>
         <button id="onb-step1-next" class="btn-primary" disabled>下一步</button>
       </div>
@@ -884,7 +936,17 @@
       </div>
     </div>
 
-    <input id="name" class="input" placeholder="暱稱（必填）" maxlength="8">
+    <!-- 暱稱 input 仍保留在 DOM（給 onboarding callback / 既有邏輯用），但主畫面隱藏 -->
+    <input id="name" class="input" placeholder="暱稱（必填）" maxlength="12" style="display:none">
+
+    <!-- 主畫面身分列：點任何地方都開設定 -->
+    <div id="user-bar" class="user-bar" role="button" tabindex="0">
+      <span class="user-bar-name" id="user-bar-name">👤 —</span>
+      <span class="user-bar-meta">
+        <span class="user-bar-region" id="user-bar-region">📍 點此設定</span>
+        <span class="user-bar-lang" id="user-bar-lang">🇹🇼 中文</span>
+      </span>
+    </div>
 
     <!-- 3 種配對模式按鈕（idle 時顯示）-->
     <div id="match-modes">
