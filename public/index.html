@@ -447,9 +447,177 @@
       font-size: 12px;
       padding: 12px;
     }
+
+    /* ─── Onboarding overlay ─── */
+    .onboarding {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: var(--bg);
+      z-index: 100;
+      padding: 24px;
+      overflow-y: auto;
+    }
+    .onboarding.active {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .onboarding-card {
+      max-width: 380px;
+      width: 100%;
+      background: var(--card);
+      border-radius: 24px;
+      padding: 32px 28px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.4);
+    }
+    .onboarding-step {
+      display: none;
+    }
+    .onboarding-step.active {
+      display: block;
+      animation: fadeIn 0.3s ease-out;
+    }
+    .onboarding h2 {
+      font-size: 22px;
+      margin-bottom: 8px;
+      background: linear-gradient(135deg, #ff6b9d, #c084fc);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .onboarding .step-hint {
+      font-size: 13px;
+      color: var(--muted);
+      margin-bottom: 20px;
+      line-height: 1.5;
+    }
+    .onboarding .step-warning {
+      font-size: 11px;
+      color: var(--warning);
+      margin-top: 6px;
+      margin-bottom: 16px;
+    }
+    .onboarding .input {
+      margin-bottom: 8px;
+    }
+    .onboarding .detected-box {
+      background: rgba(96,205,255,0.08);
+      border: 1px solid rgba(96,205,255,0.2);
+      border-radius: 12px;
+      padding: 14px;
+      margin-bottom: 16px;
+      text-align: center;
+    }
+    .onboarding .detected-box .label {
+      font-size: 11px;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      margin-bottom: 6px;
+    }
+    .onboarding .detected-box .value {
+      font-size: 18px;
+      font-weight: 700;
+      color: #60cdff;
+    }
+    .onboarding .lang-grid,
+    .onboarding .region-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 8px;
+      margin-bottom: 16px;
+    }
+    .onboarding .grid-btn {
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.1);
+      color: var(--text);
+      padding: 12px 8px;
+      border-radius: 12px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      width: 100%;
+      margin: 0;
+      transition: background 0.15s, border-color 0.15s;
+    }
+    .onboarding .grid-btn:hover {
+      background: rgba(96,205,255,0.1);
+      border-color: rgba(96,205,255,0.3);
+    }
+    .onboarding .grid-btn.selected {
+      background: rgba(96,205,255,0.2);
+      border-color: #60cdff;
+      color: #60cdff;
+    }
+    .onboarding .step-progress {
+      display: flex;
+      justify-content: center;
+      gap: 6px;
+      margin-bottom: 20px;
+    }
+    .onboarding .progress-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.15);
+    }
+    .onboarding .progress-dot.active {
+      background: var(--primary);
+    }
+    .onboarding .progress-dot.done {
+      background: var(--success);
+    }
   </style>
 </head>
 <body>
+  <!-- Onboarding overlay (新用戶第一次開或缺資料時顯示) -->
+  <div id="onboarding" class="onboarding">
+    <div class="onboarding-card">
+      <div class="step-progress">
+        <span class="progress-dot" id="dot-1"></span>
+        <span class="progress-dot" id="dot-2"></span>
+        <span class="progress-dot" id="dot-3"></span>
+      </div>
+
+      <!-- Step 1: 暱稱 -->
+      <div class="onboarding-step" id="step-1">
+        <h2>歡迎來 kaitalk 👋</h2>
+        <p class="step-hint">先取個暱稱，讓對方知道怎麼稱呼你。</p>
+        <input id="onb-name" class="input" placeholder="你的暱稱（8 字內）" maxlength="8">
+        <p class="step-warning">⚠️ 暱稱設定後不能修改（除非升級會員）</p>
+        <button id="onb-step1-next" class="btn-primary" disabled>下一步</button>
+      </div>
+
+      <!-- Step 2: 國家/地區 -->
+      <div class="onboarding-step" id="step-2">
+        <h2>你在哪裡？🌏</h2>
+        <p class="step-hint">這個會用在「附近配對」跟「指定地方」功能。<br>之後可以隨時改。</p>
+        <div class="detected-box" id="onb-detected-region" style="display:none">
+          <div class="label">系統偵測到</div>
+          <div class="value" id="onb-detected-region-value">—</div>
+        </div>
+        <div class="region-grid" id="onb-region-grid">
+          <!-- 由 JS 填入 13 個大區按鈕 -->
+        </div>
+        <button id="onb-step2-next" class="btn-primary" disabled>下一步</button>
+      </div>
+
+      <!-- Step 3: 語言 -->
+      <div class="onboarding-step" id="step-3">
+        <h2>你講什麼語言？💬</h2>
+        <p class="step-hint">會用來辨識你的語音、轉成文字。<br>對方看不懂的話會自動翻譯。</p>
+        <div class="lang-grid">
+          <button class="grid-btn" data-lang="zh-TW">🇹🇼 中文（繁）</button>
+          <button class="grid-btn" data-lang="ja-JP">🇯🇵 日本語</button>
+          <button class="grid-btn" data-lang="en-US">🇺🇸 English</button>
+          <button class="grid-btn" data-lang="ko-KR">🇰🇷 한국어</button>
+          <button class="grid-btn" data-lang="zh-CN">🇨🇳 简中</button>
+        </div>
+        <button id="onb-step3-next" class="btn-primary" disabled>開始使用 🚀</button>
+      </div>
+    </div>
+  </div>
+
   <div class="card">
     <h1>kaitalk</h1>
     <p class="subtitle">兩人隨機語音盲盒 · Phase 0</p>

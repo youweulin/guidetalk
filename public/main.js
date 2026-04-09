@@ -1137,6 +1137,157 @@ function cleanup() {
   if (userDisplayEl) userDisplayEl.textContent = '👤 —';
 }
 
+// ─── Onboarding（新用戶第一次開時的 3 步驟引導）────
+const ONB_NICKNAME_KEY = 'kaitalk.nickname';
+const ONB_BIG_REGION_KEY = 'kaitalk.bigRegion';
+const ONB_DONE_KEY = 'kaitalk.onboardingDone';
+
+const BIG_REGIONS = [
+  { id: 'tw-north',    flag: '🇹🇼', name: '北部' },
+  { id: 'tw-central',  flag: '🇹🇼', name: '中部' },
+  { id: 'tw-south',    flag: '🇹🇼', name: '南部' },
+  { id: 'tw-east',     flag: '🇹🇼', name: '東部' },
+  { id: 'tw-island',   flag: '🇹🇼', name: '離島' },
+  { id: 'jp-hokkaido', flag: '🇯🇵', name: '北海道' },
+  { id: 'jp-tohoku',   flag: '🇯🇵', name: '東北' },
+  { id: 'jp-kanto',    flag: '🇯🇵', name: '関東' },
+  { id: 'jp-chubu',    flag: '🇯🇵', name: '中部' },
+  { id: 'jp-kansai',   flag: '🇯🇵', name: '関西' },
+  { id: 'jp-chugoku',  flag: '🇯🇵', name: '中国' },
+  { id: 'jp-shikoku',  flag: '🇯🇵', name: '四国' },
+  { id: 'jp-kyushu',   flag: '🇯🇵', name: '九州' },
+];
+
+const onboardingEl = $('onboarding');
+const onbStep1El = $('step-1');
+const onbStep2El = $('step-2');
+const onbStep3El = $('step-3');
+const onbDot1 = $('dot-1');
+const onbDot2 = $('dot-2');
+const onbDot3 = $('dot-3');
+const onbNameInput = $('onb-name');
+const onbStep1Next = $('onb-step1-next');
+const onbStep2Next = $('onb-step2-next');
+const onbStep3Next = $('onb-step3-next');
+const onbRegionGrid = $('onb-region-grid');
+const onbDetectedRegion = $('onb-detected-region');
+const onbDetectedRegionValue = $('onb-detected-region-value');
+
+let onbSelectedRegion = null;
+let onbSelectedLang = null;
+
+function onbShowStep(n) {
+  [onbStep1El, onbStep2El, onbStep3El].forEach((el, i) => {
+    if (el) el.classList.toggle('active', i === n - 1);
+  });
+  [onbDot1, onbDot2, onbDot3].forEach((dot, i) => {
+    if (!dot) return;
+    dot.classList.remove('active', 'done');
+    if (i < n - 1) dot.classList.add('done');
+    else if (i === n - 1) dot.classList.add('active');
+  });
+}
+
+function onbBuildRegionGrid() {
+  if (!onbRegionGrid) return;
+  onbRegionGrid.innerHTML = BIG_REGIONS.map(r =>
+    `<button class="grid-btn" data-region="${r.id}">${r.flag} ${r.name}</button>`
+  ).join('');
+  onbRegionGrid.querySelectorAll('.grid-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      onbRegionGrid.querySelectorAll('.grid-btn').forEach(b => b.classList.remove('selected'));
+      btn.classList.add('selected');
+      onbSelectedRegion = btn.dataset.region;
+      onbStep2Next.disabled = false;
+    });
+  });
+}
+
+async function onbDetectRegion() {
+  try {
+    const r = await fetch('/api/geo/me');
+    const data = await r.json();
+    if (data?.bigRegion) {
+      const found = BIG_REGIONS.find(x => x.id === data.bigRegion);
+      if (found && onbDetectedRegion) {
+        onbDetectedRegion.style.display = 'block';
+        onbDetectedRegionValue.textContent = `${found.flag} ${found.name}`;
+        const btn = onbRegionGrid?.querySelector(`[data-region="${data.bigRegion}"]`);
+        if (btn) {
+          btn.classList.add('selected');
+          onbSelectedRegion = data.bigRegion;
+          onbStep2Next.disabled = false;
+        }
+      }
+    }
+  } catch (err) {
+    log(`onb geo detect failed: ${err.message}`);
+  }
+}
+
+function onbBuildLangGrid() {
+  document.querySelectorAll('.lang-grid .grid-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.lang-grid .grid-btn').forEach(b => b.classList.remove('selected'));
+      btn.classList.add('selected');
+      onbSelectedLang = btn.dataset.lang;
+      onbStep3Next.disabled = false;
+    });
+  });
+  // 預選使用者瀏覽器語言
+  const detected = detectInitialLang();
+  const btn = document.querySelector(`.lang-grid .grid-btn[data-lang="${detected}"]`);
+  if (btn) {
+    btn.classList.add('selected');
+    onbSelectedLang = detected;
+    onbStep3Next.disabled = false;
+  }
+}
+
+function onbStart() {
+  if (!onboardingEl) return;
+  onbBuildRegionGrid();
+  onbBuildLangGrid();
+  onbShowStep(1);
+  onboardingEl.classList.add('active');
+  onbDetectRegion();
+}
+
+function onbFinish() {
+  const name = onbNameInput.value.trim();
+  if (!name) return;
+  localStorage.setItem(ONB_NICKNAME_KEY, name);
+  localStorage.setItem(ONB_BIG_REGION_KEY, onbSelectedRegion);
+  if (onbSelectedLang) localStorage.setItem('kaitalk.lang', onbSelectedLang);
+  localStorage.setItem(ONB_DONE_KEY, 'true');
+
+  onboardingEl.classList.remove('active');
+
+  // 把暱稱填回主畫面的 input + 鎖死
+  if (nameInput) {
+    nameInput.value = name;
+    nameInput.disabled = true;
+    nameInput.title = '暱稱已鎖定（升級會員可修改）';
+  }
+
+  // 套用新語言
+  if (onbSelectedLang) {
+    sttLang = onbSelectedLang;
+    updateLangBtn();
+  }
+
+  updateStartBtnState();
+}
+
+if (onbNameInput) {
+  onbNameInput.addEventListener('input', () => {
+    onbStep1Next.disabled = onbNameInput.value.trim().length === 0;
+  });
+}
+onbStep1Next?.addEventListener('click', () => onbShowStep(2));
+onbStep2Next?.addEventListener('click', () => onbShowStep(3));
+onbStep3Next?.addEventListener('click', onbFinish);
+
 // ─── Wire up ─────────────────────────────────────────
 btnStart.addEventListener('click', startMatching);
 btnCancel.addEventListener('click', cancelMatching);
@@ -1145,10 +1296,17 @@ btnMute.addEventListener('click', toggleMute);
 btnSubtitle.addEventListener('click', toggleSubtitles);
 langBtn.addEventListener('click', toggleLang);
 
-// 暱稱：強迫輸入 + localStorage 持久化
-const NICKNAME_KEY = 'kaitalk.nickname';
+// 暱稱：強迫輸入 + localStorage 持久化（onboarding 完成後 disable）
+const NICKNAME_KEY = ONB_NICKNAME_KEY; // 同 key
 const savedNickname = localStorage.getItem(NICKNAME_KEY) || '';
 if (savedNickname) nameInput.value = savedNickname;
+
+// 既有用戶 (onboarding 已做過)：暱稱直接鎖
+const onboardingDone = localStorage.getItem(ONB_DONE_KEY) === 'true';
+if (onboardingDone && savedNickname) {
+  nameInput.disabled = true;
+  nameInput.title = '暱稱已鎖定（升級會員可修改）';
+}
 
 function updateStartBtnState() {
   const v = nameInput.value.trim();
@@ -1160,6 +1318,11 @@ nameInput.addEventListener('input', () => {
   updateStartBtnState();
 });
 updateStartBtnState();
+
+// 沒做過 onboarding → 顯示
+if (!onboardingDone) {
+  onbStart();
+}
 
 // 初始化按鈕（用偵測到的或記住的設定）
 updateLangBtn();
