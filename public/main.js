@@ -848,14 +848,74 @@ function connectSocket() {
   });
 }
 
+// ─── 音訊診斷輪詢 ─────────────────────────────────
+// 每 3 秒打一次 getStats，看 inbound/outbound RTP 的真實 byte 數
+// 如果 ICE 顯示 connected 但 bytesReceived 一直是 0 → 就是 NAT 的「半穿透」問題
+let audioStatsInterval = null;
+let lastBytesReceived = 0;
+let lastBytesSent = 0;
+
+function startAudioStatsPoll() {
+  if (audioStatsInterval) return;
+  lastBytesReceived = 0;
+  lastBytesSent = 0;
+  audioStatsInterval = setInterval(async () => {
+    if (!pc) return;
+    try {
+      const stats = await pc.getStats();
+      let inbound = null, outbound = null;
+      stats.forEach(r => {
+        if (r.type === 'inbound-rtp' && r.kind === 'audio') inbound = r;
+        if (r.type === 'outbound-rtp' && r.kind === 'audio') outbound = r;
+      });
+      const inBytes = inbound?.bytesReceived || 0;
+      const outBytes = outbound?.bytesSent || 0;
+      const inDelta = inBytes - lastBytesReceived;
+      const outDelta = outBytes - lastBytesSent;
+      lastBytesReceived = inBytes;
+      lastBytesSent = outBytes;
+
+      const inKbps = Math.round((inDelta * 8 / 1000) / 3);
+      const outKbps = Math.round((outDelta * 8 / 1000) / 3);
+      const inPackets = inbound?.packetsReceived || 0;
+      const inLost = inbound?.packetsLost || 0;
+      const inJitter = inbound?.jitter ? Math.round(inbound.jitter * 1000) : 0;
+
+      log(`📊 audio: ↑${outKbps}kbps ↓${inKbps}kbps | rcv=${inBytes}B(${inPackets}p, lost=${inLost}, jitter=${inJitter}ms) snd=${outBytes}B`);
+
+      // 警告：ICE 通了但 audio 沒流量
+      if (pc.iceConnectionState === 'connected' && inBytes === 0) {
+        log(`🚨 ICE connected 但對方音訊 0 bytes — 典型的 NAT 半穿透`);
+      }
+    } catch (err) {
+      log(`audio stats poll 錯誤: ${err.message}`);
+    }
+  }, 3000);
+}
+
+function stopAudioStatsPoll() {
+  if (audioStatsInterval) {
+    clearInterval(audioStatsInterval);
+    audioStatsInterval = null;
+  }
+}
+
 // ─── WebRTC ──────────────────────────────────────────
 async function setupPeerConnection() {
   pc = new RTCPeerConnection({ iceServers: ICE_SERVERS });
 
   // 加入本地音訊 track（這就是 kaitalk vs porkergame 的關鍵差別）
   if (localStream) {
-    localStream.getTracks().forEach(track => pc.addTrack(track, localStream));
-    log(`本地 audio track 已加入`);
+    const tracks = localStream.getTracks();
+    tracks.forEach(track => {
+      const sender = pc.addTrack(track, localStream);
+      // 診斷 log：本地 track 的真實狀態
+      log(`📤 本地 ${track.kind} track: enabled=${track.enabled} muted=${track.muted} state=${track.readyState} label="${track.label?.slice(0, 30) || ''}"`);
+      log(`📤 sender created: ${sender ? 'yes' : 'NO'}`);
+    });
+    log(`本地 audio track 已加入（共 ${tracks.length} 條）`);
+  } else {
+    log(`⚠️ localStream 是 null，沒有 track 可以加`);
   }
 
   // 字幕 DataChannel：host 建立、guest 接收
@@ -882,9 +942,23 @@ async function setupPeerConnection() {
 
   // 收到對方的 track → 接到 <audio> 播放 + 接到 analyser 顯示音量
   pc.ontrack = (event) => {
-    log(`收到對方 audio track`);
+    const t = event.track;
+    log(`📥 收到對方 ${t.kind} track: enabled=${t.enabled} muted=${t.muted} state=${t.readyState}`);
+    log(`📥 streams 數量: ${event.streams.length}`);
     const remoteStream = event.streams[0];
+    if (!remoteStream) {
+      log(`⚠️ event.streams[0] 是 undefined！`);
+      return;
+    }
+    log(`📥 remoteStream tracks: ${remoteStream.getTracks().map(x => `${x.kind}/${x.readyState}`).join(', ')}`);
     remoteAudio.srcObject = remoteStream;
+    log(`📥 已掛到 <audio>，audio.muted=${remoteAudio.muted} audio.paused=${remoteAudio.paused}`);
+    // 嘗試強制 play（某些瀏覽器 autoplay policy 會擋）
+    remoteAudio.play().then(() => {
+      log(`▶️ remoteAudio.play() 成功`);
+    }).catch(err => {
+      log(`⚠️ remoteAudio.play() 失敗: ${err.message}`);
+    });
     remoteAnalyser = attachAnalyser(remoteStream);
     setStatus(`🎙️ 與 ${peerName} 通話中`, true);
   };
@@ -892,16 +966,48 @@ async function setupPeerConnection() {
   // ICE candidate → 透過 server 轉給對方
   pc.onicecandidate = (event) => {
     if (event.candidate && peerId) {
+      // 診斷 log：candidate 種類
+      log(`🧊 local ICE candidate: ${event.candidate.type || '?'} ${event.candidate.protocol || ''} ${event.candidate.address || ''}`);
       socket.emit('webrtc_signal', { target: peerId, signal: event.candidate });
+    } else if (!event.candidate) {
+      log(`🧊 ICE candidates 蒐集完畢`);
     }
   };
 
-  pc.oniceconnectionstatechange = () => {
-    log(`ICE state: ${pc.iceConnectionState}`);
-    if (pc.iceConnectionState === 'connected') {
+  // 連線狀態（高層）
+  pc.onconnectionstatechange = () => {
+    log(`🔌 connectionState: ${pc.connectionState}`);
+  };
+
+  // ICE 狀態（低層）
+  pc.oniceconnectionstatechange = async () => {
+    log(`🧊 iceConnectionState: ${pc.iceConnectionState}`);
+    if (pc.iceConnectionState === 'connected' || pc.iceConnectionState === 'completed') {
       setStatus(`🎙️ 與 ${peerName} P2P 連線成功，正在通話`, true);
+      // 連上後查實際被選用的 candidate pair
+      try {
+        const stats = await pc.getStats();
+        let pair = null, local = null, remote = null;
+        stats.forEach(r => {
+          if (r.type === 'candidate-pair' && r.state === 'succeeded' && r.nominated) pair = r;
+        });
+        if (pair) {
+          stats.forEach(r => {
+            if (r.id === pair.localCandidateId) local = r;
+            if (r.id === pair.remoteCandidateId) remote = r;
+          });
+          log(`✨ ICE 路徑: local=${local?.candidateType || '?'} ↔ remote=${remote?.candidateType || '?'}`);
+        }
+      } catch (err) {
+        log(`getStats 失敗: ${err.message}`);
+      }
+      // 啟動定期音訊統計輪詢
+      startAudioStatsPoll();
     } else if (pc.iceConnectionState === 'failed') {
       setStatus('連線失敗（可能需要 TURN）');
+      stopAudioStatsPoll();
+    } else if (pc.iceConnectionState === 'disconnected' || pc.iceConnectionState === 'closed') {
+      stopAudioStatsPoll();
     }
   };
 
@@ -1001,6 +1107,7 @@ function toggleSubtitles() {
 function cleanup() {
   stopSTT();
   stopMeterLoop();
+  stopAudioStatsPoll();
   if (subtitleDC) {
     try { subtitleDC.close(); } catch {}
     subtitleDC = null;
