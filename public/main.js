@@ -1373,6 +1373,101 @@ btnSpecificConfirm?.addEventListener('click', () => {
   startMatching({ mode: 'specific', targetRegion: specificSelectedRegion });
 });
 
+// ─── Settings overlay ─────────────────────────────────
+//
+// 點齒輪 icon 開設定，可以改：
+//   - 我的地區（更新 localStorage 的 myBigRegion）
+//   - 我的語言（更新 sttLang + localStorage）
+// 暱稱顯示在 read-only 區，要改要付費（之後接 paywall）
+const btnSettings = document.getElementById('btn-settings');
+const settingsOverlay = document.getElementById('settings-overlay');
+const settingsNicknameDisplay = document.getElementById('settings-nickname-display');
+const settingsRegionGrid = document.getElementById('settings-region-grid');
+const btnSettingsSave = document.getElementById('btn-settings-save');
+const btnSettingsCancel = document.getElementById('btn-settings-cancel');
+
+let settingsTempRegion = null;
+let settingsTempLang = null;
+
+function buildSettingsRegionGrid() {
+  if (!settingsRegionGrid) return;
+  settingsRegionGrid.innerHTML = BIG_REGIONS.map(r =>
+    `<button class="grid-btn" data-region="${r.id}">${r.flag} ${r.name}</button>`
+  ).join('');
+  settingsRegionGrid.querySelectorAll('.grid-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      settingsRegionGrid.querySelectorAll('.grid-btn').forEach(b => b.classList.remove('selected'));
+      btn.classList.add('selected');
+      settingsTempRegion = btn.dataset.region;
+    });
+  });
+}
+buildSettingsRegionGrid();
+
+function wireSettingsLangButtons() {
+  document.querySelectorAll('.settings-lang-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.settings-lang-btn').forEach(b => b.classList.remove('selected'));
+      btn.classList.add('selected');
+      settingsTempLang = btn.dataset.lang;
+    });
+  });
+}
+wireSettingsLangButtons();
+
+function openSettings() {
+  if (!settingsOverlay) return;
+
+  // 顯示當前暱稱
+  if (settingsNicknameDisplay) {
+    settingsNicknameDisplay.textContent = localStorage.getItem(ONB_NICKNAME_KEY) || '（未設定）';
+  }
+
+  // 預選當前地區
+  const currentRegion = localStorage.getItem(ONB_BIG_REGION_KEY);
+  settingsTempRegion = currentRegion;
+  settingsRegionGrid?.querySelectorAll('.grid-btn').forEach(b => {
+    b.classList.toggle('selected', b.dataset.region === currentRegion);
+  });
+
+  // 預選當前語言
+  settingsTempLang = sttLang;
+  document.querySelectorAll('.settings-lang-btn').forEach(b => {
+    b.classList.toggle('selected', b.dataset.lang === sttLang);
+  });
+
+  settingsOverlay.classList.add('active');
+}
+
+function closeSettings() {
+  settingsOverlay?.classList.remove('active');
+}
+
+function saveSettings() {
+  // 儲存地區
+  if (settingsTempRegion) {
+    localStorage.setItem(ONB_BIG_REGION_KEY, settingsTempRegion);
+  }
+
+  // 儲存語言並重啟 STT 套用
+  if (settingsTempLang && settingsTempLang !== sttLang) {
+    sttLang = settingsTempLang;
+    localStorage.setItem('kaitalk.lang', sttLang);
+    updateLangBtn();
+    if (sttActive) {
+      stopSTT();
+      setTimeout(() => startSTT(), 200);
+    }
+  }
+
+  log(`設定已儲存：region=${settingsTempRegion}, lang=${settingsTempLang}`);
+  closeSettings();
+}
+
+btnSettings?.addEventListener('click', openSettings);
+btnSettingsCancel?.addEventListener('click', closeSettings);
+btnSettingsSave?.addEventListener('click', saveSettings);
+
 // 暱稱：強迫輸入 + localStorage 持久化（onboarding 完成後 disable）
 const NICKNAME_KEY = ONB_NICKNAME_KEY; // 同 key
 const savedNickname = localStorage.getItem(NICKNAME_KEY) || '';

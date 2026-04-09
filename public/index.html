@@ -318,6 +318,122 @@
       cursor: not-allowed;
     }
 
+    /* ─── Settings button (top right of card) ─── */
+    .settings-btn {
+      position: absolute;
+      top: 16px;
+      right: 16px;
+      background: rgba(255,255,255,0.06);
+      color: var(--muted);
+      border: none;
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      font-size: 16px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0;
+      margin: 0;
+      transition: background 0.15s, color 0.15s;
+    }
+    .settings-btn:hover {
+      background: rgba(96,205,255,0.15);
+      color: #60cdff;
+    }
+    .card { position: relative; }
+
+    /* ─── Settings overlay (similar to specific-picker) ─── */
+    .settings-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.7);
+      backdrop-filter: blur(4px);
+      -webkit-backdrop-filter: blur(4px);
+      z-index: 95;
+      padding: 20px;
+      align-items: center;
+      justify-content: center;
+    }
+    .settings-overlay.active { display: flex; }
+    .settings-overlay-content {
+      background: var(--card);
+      border-radius: 20px;
+      padding: 24px;
+      max-width: 400px;
+      width: 100%;
+      max-height: 85vh;
+      overflow-y: auto;
+    }
+    .settings-overlay-content h3 {
+      font-size: 18px;
+      margin-bottom: 16px;
+      text-align: center;
+      background: linear-gradient(135deg, #ff6b9d, #c084fc);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .settings-section {
+      margin-bottom: 20px;
+    }
+    .settings-section h4 {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      margin-bottom: 8px;
+    }
+    .settings-locked-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 12px;
+      background: rgba(255,255,255,0.04);
+      border-radius: 12px;
+      font-size: 14px;
+      color: var(--text);
+    }
+    .settings-locked-row .lock-icon {
+      color: var(--warning);
+      font-size: 14px;
+    }
+    .settings-locked-row .locked-hint {
+      font-size: 11px;
+      color: var(--muted);
+      margin-left: auto;
+    }
+    .settings-overlay-content .region-grid,
+    .settings-overlay-content .lang-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 8px;
+    }
+    .settings-overlay-content .grid-btn {
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.1);
+      color: var(--text);
+      padding: 12px 8px;
+      border-radius: 12px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      width: 100%;
+      margin: 0;
+      transition: background 0.15s, border-color 0.15s;
+    }
+    .settings-overlay-content .grid-btn:hover {
+      background: rgba(96,205,255,0.1);
+      border-color: rgba(96,205,255,0.3);
+    }
+    .settings-overlay-content .grid-btn.selected {
+      background: rgba(96,205,255,0.2);
+      border-color: #60cdff;
+      color: #60cdff;
+    }
+
     /* ─── Specific picker (overlay) ─── */
     .specific-picker {
       display: none;
@@ -703,6 +819,7 @@
   </div>
 
   <div class="card">
+    <button id="btn-settings" class="settings-btn" title="設定">⚙️</button>
     <h1>kaitalk</h1>
     <p class="subtitle">兩人隨機語音盲盒 · Phase 0</p>
 
@@ -796,6 +913,44 @@
     </p>
 
     <div id="log" class="log"></div>
+  </div>
+
+  <!-- 設定 overlay -->
+  <div id="settings-overlay" class="settings-overlay">
+    <div class="settings-overlay-content">
+      <h3>⚙️ 設定</h3>
+
+      <!-- 暱稱（鎖死） -->
+      <div class="settings-section">
+        <h4>暱稱</h4>
+        <div class="settings-locked-row">
+          <span class="lock-icon">🔒</span>
+          <span id="settings-nickname-display">—</span>
+          <span class="locked-hint">升級會員可改</span>
+        </div>
+      </div>
+
+      <!-- 我的地區（可改） -->
+      <div class="settings-section">
+        <h4>我的地區</h4>
+        <div class="region-grid" id="settings-region-grid"></div>
+      </div>
+
+      <!-- 我的語言（可改） -->
+      <div class="settings-section">
+        <h4>我講的語言</h4>
+        <div class="lang-grid">
+          <button class="grid-btn settings-lang-btn" data-lang="zh-TW">🇹🇼 中文（繁）</button>
+          <button class="grid-btn settings-lang-btn" data-lang="ja-JP">🇯🇵 日本語</button>
+          <button class="grid-btn settings-lang-btn" data-lang="en-US">🇺🇸 English</button>
+          <button class="grid-btn settings-lang-btn" data-lang="ko-KR">🇰🇷 한국어</button>
+          <button class="grid-btn settings-lang-btn" data-lang="zh-CN">🇨🇳 简中</button>
+        </div>
+      </div>
+
+      <button id="btn-settings-save" class="btn-primary">儲存</button>
+      <button id="btn-settings-cancel" class="btn-secondary">取消</button>
+    </div>
   </div>
 
   <audio id="remote-audio" autoplay playsinline></audio>
