@@ -16,40 +16,9 @@
  *   - 證明 P2P 真的連通且音訊有在流，但耳朵不會 echo
  */
 
-// ICE servers — STUN 找公網 IP，TURN 在嚴格 NAT（CGNAT、企業網路、行動 4G）時當中繼
-//
-// ⚠️ Metered Open Relay 是公共免費 TURN，**僅供測試**：
-//    - 沒有 SLA、可能不穩
-//    - 不能拿來正式營運
-//
-// 正式上線前要換成：
-//    - Cloudflare Realtime TURN（免費 1000 GB/月，需 API token）
-//    - 或自己用 coturn 架（VPS ~$5/月）
-//
-// 4 條 TURN：80/443/UDP/TCP 都試，最大化穿透成功率
 const ICE_SERVERS = [
   { urls: 'stun:stun.l.google.com:19302' },
   { urls: 'stun:stun1.l.google.com:19302' },
-  {
-    urls: 'turn:openrelay.metered.ca:80',
-    username: 'openrelayproject',
-    credential: 'openrelayproject',
-  },
-  {
-    urls: 'turn:openrelay.metered.ca:443',
-    username: 'openrelayproject',
-    credential: 'openrelayproject',
-  },
-  {
-    urls: 'turn:openrelay.metered.ca:443?transport=tcp',
-    username: 'openrelayproject',
-    credential: 'openrelayproject',
-  },
-  {
-    urls: 'turns:openrelay.metered.ca:443?transport=tcp',
-    username: 'openrelayproject',
-    credential: 'openrelayproject',
-  },
 ];
 
 // ─── DOM ─────────────────────────────────────────────
@@ -94,13 +63,6 @@ let audioCtx = null;
 let localAnalyser = null;
 let remoteAnalyser = null;
 let meterRafId = null;
-
-// Level history for echo cross-talk detection
-// 我們在 60fps tick 把音量塞進這兩個 buffer，
-// STT 出結果時看「最近 2 秒誰比較大聲」決定要不要當 echo 丟掉
-const LEVEL_HISTORY_FRAMES = 120; // ~2 秒
-const localLevelHistory = [];
-const remoteLevelHistory = [];
 
 // Subtitle / STT state
 let subtitleDC = null;          // RTCDataChannel for subtitle messages
@@ -308,8 +270,8 @@ const TRANSLATION_CACHE_LIMIT = 500;
 const TRANSLATION_CACHE_TTL = 30 * 24 * 60 * 60 * 1000; // 30 天
 
 function loadTranslationCache() {
-  // 注意：這個 function 在 module top-level（const translationCache = loadTranslationCache()）
-  // 就會跑，比 log() 函式宣告還早，所以這裡只能用 console.log，不能用 log()
+  // 注意：這個 function 在 module top-level 就會跑（const translationCache = loadTranslationCache()），
+  // 比 log() 還早被叫，所以這裡只能用 console.log，不能用 log()
   try {
     const raw = localStorage.getItem(TRANSLATION_CACHE_KEY);
     if (!raw) return new Map();
@@ -498,12 +460,6 @@ function startMeterLoop() {
     const localLv = getLevel(localAnalyser);
     const remoteLv = getLevel(remoteAnalyser);
 
-    // 紀錄歷史，給 echo 過濾用
-    localLevelHistory.push(localLv);
-    remoteLevelHistory.push(remoteLv);
-    if (localLevelHistory.length > LEVEL_HISTORY_FRAMES) localLevelHistory.shift();
-    if (remoteLevelHistory.length > LEVEL_HISTORY_FRAMES) remoteLevelHistory.shift();
-
     localMeter.style.width = (localLv * 100) + '%';
     remoteMeter.style.width = (remoteLv * 100) + '%';
     localLevelEl.textContent = Math.round(localLv * 100) + '%';
@@ -512,27 +468,6 @@ function startMeterLoop() {
     meterRafId = requestAnimationFrame(tick);
   };
   tick();
-}
-
-function avgRecentLocalLevel() {
-  if (localLevelHistory.length === 0) return 0;
-  return localLevelHistory.reduce((a, b) => a + b, 0) / localLevelHistory.length;
-}
-
-function avgRecentRemoteLevel() {
-  if (remoteLevelHistory.length === 0) return 0;
-  return remoteLevelHistory.reduce((a, b) => a + b, 0) / remoteLevelHistory.length;
-}
-
-// echo 判定：對方音量明顯比本地大，本地的 STT 結果幾乎一定是 echo
-const ECHO_REMOTE_FLOOR = 0.04;   // 對方音量低於這個 → 不可能是 echo（喇叭沒在響）
-const ECHO_DOMINANCE_RATIO = 1.2; // 本地必須是對方的 1.2 倍才算「真人講話」
-function isLikelyEcho() {
-  const localAvg = avgRecentLocalLevel();
-  const remoteAvg = avgRecentRemoteLevel();
-  if (remoteAvg < ECHO_REMOTE_FLOOR) return false;        // 對方沒在響 → 不是 echo
-  if (localAvg >= remoteAvg * ECHO_DOMINANCE_RATIO) return false; // 本地壓過對方 → 真的有講
-  return true; // 對方在響，本地沒壓過 → 是 echo
 }
 
 function stopMeterLoop() {
@@ -544,8 +479,6 @@ function stopMeterLoop() {
   remoteMeter.style.width = '0%';
   localLevelEl.textContent = '0%';
   remoteLevelEl.textContent = '0%';
-  localLevelHistory.length = 0;
-  remoteLevelHistory.length = 0;
 }
 
 // ─── Subtitle Buffer ─────────────────────────────────
@@ -702,17 +635,6 @@ function startSTT() {
       const text = result[0].transcript.trim();
       const isFinal = result.isFinal;
       if (!text) continue;
-
-      // ─── Echo / 串音過濾 ───
-      // 如果對方音訊正在播放，且本地麥克風音量沒明顯壓過對方，
-      // 表示這段「STT 聽到的內容」其實是喇叭播出來的對方聲音（被麥克風收進來）
-      // 不是用戶真的在講話 → 直接丟掉
-      if (isLikelyEcho()) {
-        const lAvg = avgRecentLocalLevel().toFixed(2);
-        const rAvg = avgRecentRemoteLevel().toFixed(2);
-        log(`🚫 echo 過濾: "${text}" (local=${lAvg}, remote=${rAvg})`);
-        continue;
-      }
 
       log(`📝 STT result: "${text}" (final=${isFinal})`);
 
@@ -963,43 +885,14 @@ async function setupPeerConnection() {
   // ICE candidate → 透過 server 轉給對方
   pc.onicecandidate = (event) => {
     if (event.candidate && peerId) {
-      // 記錄本地產生的 candidate 類型：
-      //   host  = 同網路直連（最快）
-      //   srflx = STUN 穿透成功（家用 NAT 通常 OK）
-      //   relay = 走 TURN 中繼（嚴格 NAT/4G 必要）
-      log(`🧊 local ICE candidate: ${event.candidate.type || '?'}`);
       socket.emit('webrtc_signal', { target: peerId, signal: event.candidate });
     }
   };
 
-  pc.oniceconnectionstatechange = async () => {
+  pc.oniceconnectionstatechange = () => {
     log(`ICE state: ${pc.iceConnectionState}`);
     if (pc.iceConnectionState === 'connected') {
       setStatus(`🎙️ 與 ${peerName} P2P 連線成功，正在通話`, true);
-      // 連上後，查實際被選用的 candidate pair → 確認是走 host / srflx / relay
-      try {
-        const stats = await pc.getStats();
-        let selectedPair = null;
-        let localCand = null;
-        let remoteCand = null;
-        stats.forEach(report => {
-          if (report.type === 'candidate-pair' && report.state === 'succeeded' && report.nominated) {
-            selectedPair = report;
-          }
-        });
-        if (selectedPair) {
-          stats.forEach(report => {
-            if (report.id === selectedPair.localCandidateId) localCand = report;
-            if (report.id === selectedPair.remoteCandidateId) remoteCand = report;
-          });
-          const localType = localCand?.candidateType || '?';
-          const remoteType = remoteCand?.candidateType || '?';
-          const isRelay = localType === 'relay' || remoteType === 'relay';
-          log(`✨ ICE 路徑確認: local=${localType} ↔ remote=${remoteType}${isRelay ? ' 🌐 (走 TURN 中繼)' : ' ⚡ (P2P 直連)'}`);
-        }
-      } catch (err) {
-        log(`getStats 失敗: ${err.message}`);
-      }
     } else if (pc.iceConnectionState === 'failed') {
       setStatus('連線失敗（可能需要 TURN）');
     }
