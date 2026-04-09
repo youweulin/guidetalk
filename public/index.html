@@ -111,48 +111,78 @@
     .role.host { background: rgba(76,175,80,0.2); color: #81c784; }
     .role.guest { background: rgba(192,132,252,0.2); color: #c084fc; }
 
-    /* ─── Volume Meters ─── */
+    /* ─── Volume Meters（條狀 EQ + 語言徽章）─── */
     .meters {
       display: none;
-      margin-bottom: 16px;
+      flex-direction: column;
+      gap: 8px;
+      margin-bottom: 14px;
+      padding: 12px 14px;
+      background: rgba(255,255,255,0.04);
+      border-radius: 14px;
     }
-    .meters.active { display: block; }
+    .meters.active { display: flex; }
     .meter-row {
-      margin-bottom: 12px;
-      text-align: left;
-    }
-    .meter-row:last-child { margin-bottom: 0; }
-    .meter-label {
       display: flex;
-      justify-content: space-between;
-      font-size: 12px;
+      align-items: center;
+      gap: 10px;
+      height: 24px;
+    }
+    .meter-row .who {
+      flex-shrink: 0;
+      width: 32px;
+      font-size: 11px;
       color: var(--muted);
-      margin-bottom: 6px;
+      font-weight: 600;
     }
-    .meter-label .level { font-family: ui-monospace, monospace; }
-    .meter {
-      height: 14px;
-      background: rgba(255,255,255,0.06);
-      border-radius: 7px;
-      overflow: hidden;
-      position: relative;
+    .meter-row .eq {
+      flex: 1;
+      height: 24px;
+      display: flex;
+      align-items: center;
+      gap: 3px;
+      min-width: 0;
     }
-    .meter-fill {
-      height: 100%;
-      width: 0%;
-      background: linear-gradient(90deg, #4caf50 0%, #ffeb3b 60%, #f44336 100%);
-      border-radius: 7px;
-      transition: width 0.05s linear;
+    .meter-row .eq .bar {
+      flex: 1;
+      height: 4px;          /* 預設靜音時 4px */
+      background: #4a4a5a;   /* 灰色（預設未啟動）*/
+      border-radius: 2px;
+      transition: height 0.06s ease-out, background 0.3s;
     }
-    .meter.active::after {
-      content: '';
-      position: absolute;
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.05));
-      pointer-events: none;
+    /* 你的麥克風 STT 啟動時：條子變綠 */
+    .meter-row.local.active .bar {
+      background: #4caf50;
+    }
+    /* 對方音訊：藍紫色 */
+    .meter-row.remote .bar {
+      background: #c084fc;
+    }
+    .meter-row .lang-badge {
+      flex-shrink: 0;
+      padding: 3px 8px;
+      border-radius: 8px;
+      font-size: 11px;
+      font-weight: 600;
+      white-space: nowrap;
+      background: rgba(96,205,255,0.12);
+      color: #60cdff;
+      border: 1px solid rgba(96,205,255,0.25);
+    }
+    .meter-row .lang-badge.clickable {
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+    .meter-row .lang-badge.clickable:hover {
+      background: rgba(96,205,255,0.2);
+    }
+    .meter-row .lang-badge.clickable:active {
+      transform: scale(0.95);
+    }
+    .meter-row .lang-badge.unknown {
+      background: rgba(255,255,255,0.05);
+      color: var(--muted);
+      border-color: rgba(255,255,255,0.1);
     }
 
     button {
@@ -408,36 +438,28 @@
       </div>
     </div>
 
-    <!-- 音量 meter（通話中才顯示） -->
+    <!-- 音量 meter（條狀 EQ + 語言徽章）-->
     <div id="meters" class="meters">
-      <div class="meter-row">
-        <div class="meter-label">
-          <span>🎤 你的麥克風</span>
-          <span class="level" id="local-level">0%</span>
+      <div class="meter-row local" id="meter-row-local">
+        <span class="who">你</span>
+        <div class="eq" id="local-eq">
+          <div class="bar"></div><div class="bar"></div><div class="bar"></div><div class="bar"></div>
+          <div class="bar"></div><div class="bar"></div><div class="bar"></div><div class="bar"></div>
         </div>
-        <div class="meter">
-          <div class="meter-fill" id="local-meter"></div>
-        </div>
+        <span class="lang-badge clickable" id="lang-btn">🇹🇼 中文</span>
       </div>
-      <div class="meter-row">
-        <div class="meter-label">
-          <span>🔊 對方的聲音</span>
-          <span class="level" id="remote-level">0%</span>
+      <div class="meter-row remote">
+        <span class="who">對方</span>
+        <div class="eq" id="remote-eq">
+          <div class="bar"></div><div class="bar"></div><div class="bar"></div><div class="bar"></div>
+          <div class="bar"></div><div class="bar"></div><div class="bar"></div><div class="bar"></div>
         </div>
-        <div class="meter">
-          <div class="meter-fill" id="remote-meter"></div>
-        </div>
+        <span class="lang-badge unknown" id="peer-lang-badge">？</span>
       </div>
     </div>
 
-    <!-- 語言 + STT 狀態（固定，不跟著字幕滑掉） -->
-    <div id="lang-bar" class="lang-bar">
-      <span class="label">💬 我講的語言</span>
-      <span class="right">
-        <span id="stt-status" class="stt-status idle"><span class="dot"></span>未啟動</span>
-        <button id="lang-btn" class="lang-btn">中文</button>
-      </span>
-    </div>
+    <!-- 隱藏：原本的 stt-status 還保留給 main.js 用，但不顯示 -->
+    <span id="stt-status" class="stt-status idle" style="display:none"><span class="dot"></span></span>
 
     <!-- 字幕（通話中才顯示）-->
     <div id="subtitles" class="subtitles">
