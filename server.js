@@ -270,7 +270,7 @@ io.on('connection', (socket) => {
   //   - 用「**雙向相容**」演算法：A 願意跟 B + B 願意跟 A 才配
   //   - 走 queue 找第一個 compatible 的對手
   //   - 找不到就留在 queue 裡等
-  socket.on('find_match', ({ name, gender, targetGender, lang, mode, myBigRegion, targetRegion, targetLangs } = {}) => {
+  socket.on('find_match', async ({ name, gender, targetGender, lang, mode, myBigRegion, targetRegion, targetLangs } = {}) => {
     const game = 'voice';
     const q = getQueue(game);
 
@@ -298,19 +298,54 @@ io.on('connection', (socket) => {
       const roomCode = generateRoomCode();
 
       players.forEach(p => p.socket.join(roomCode));
+
+      // 查雙方 IP geo，跟 declared region 比較（fire-and-forget，不阻塞 match_found）
+      // 結果透過 match_found 帶給對方
+      const verifyResults = [null, null]; // [player0 verified?, player1 verified?]
+      const verifyPromises = players.map(async (p, idx) => {
+        try {
+          const ip = extractClientIp(p.socket.request);
+          const geo = await lookupIp(ip, getDbClient());
+          // 比較：IP 偵測的大區 vs 用戶自選的大區
+          // 「一致」= 已驗證，「不一致 或 偵測不到」= 未驗證
+          if (geo?.bigRegion && p.myBigRegion) {
+            // 比國家即可（同國 = 驗證通過，不用精確到大區）
+            const ipCountry = (geo.country || '').toUpperCase();
+            const declaredCountry = p.myBigRegion.split('-')[0].toUpperCase();
+            verifyResults[idx] = ipCountry === declaredCountry;
+          } else {
+            verifyResults[idx] = null; // 無法判斷
+          }
+        } catch {
+          verifyResults[idx] = null;
+        }
+      });
+
+      // 等 verify 但設 timeout（不能讓 match_found 卡住）
+      await Promise.race([
+        Promise.all(verifyPromises),
+        new Promise(r => setTimeout(r, 2000)), // 最多等 2 秒
+      ]);
+
       const host = players[0];
       players.forEach((p, idx) => {
+        const peerIdx = 1 - idx;
         p.socket.emit('match_found', {
           roomCode,
           isHost: p.socket.id === host.socket.id,
           peer: {
-            id: players[1 - idx].socket.id,
-            name: players[1 - idx].name,
+            id: players[peerIdx].socket.id,
+            name: players[peerIdx].name,
           },
+          // 告訴這一端：對方的位置驗證結果
+          // true = IP 跟 declared 同國（綠勾）
+          // false = 不同國
+          // null = 無法判斷
+          peerVerified: verifyResults[peerIdx],
           matchedMode: me.mode === other.mode ? me.mode : 'mixed',
         });
       });
-      console.log(`[★] Matched ${players[0].name}(${players[0].mode}) ↔ ${players[1].name}(${players[1].mode}) in room ${roomCode}`);
+      console.log(`[★] Matched ${players[0].name}(${players[0].mode}) ↔ ${players[1].name}(${players[1].mode}) in room ${roomCode} [verify: ${verifyResults}]`);
 
       // 寫 DB（fire and forget），追蹤這通電話
       startActiveCall(roomCode, players);

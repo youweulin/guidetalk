@@ -111,6 +111,18 @@
     .role.host { background: rgba(76,175,80,0.2); color: #81c784; }
     .role.guest { background: rgba(192,132,252,0.2); color: #c084fc; }
 
+    /* 位置驗證綠勾（IP 跟 declared 同國）*/
+    .verified-badge {
+      display: inline-block;
+      padding: 2px 6px;
+      border-radius: 10px;
+      font-size: 11px;
+      font-weight: 700;
+      background: rgba(76,175,80,0.2);
+      color: #81c784;
+      margin-left: 4px;
+    }
+
     /* 對方的語言徽章（只顯示國旗，未知時顯示「🌐 偵測中」）*/
     .peer-card .peer-lang {
       display: inline-block;
@@ -942,6 +954,7 @@
         房號 <span id="room-code">—</span>
         <span class="role" id="my-role">—</span>
         <span class="peer-lang detecting" id="peer-lang-badge">🌐 偵測中</span>
+        <span id="peer-verified-badge" class="verified-badge" style="display:none">✓</span>
       </div>
     </div>
 

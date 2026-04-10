@@ -424,11 +424,22 @@ const showButtons = (state) => {
   statusEl.style.display = state === 'in-call' ? 'none' : 'block';
 };
 
-const showPeerCard = (name, room, role) => {
+const showPeerCard = (name, room, role, peerVerified) => {
   peerNameEl.textContent = name;
   roomCodeEl.textContent = room;
   myRoleEl.textContent = role === 'host' ? 'HOST' : 'GUEST';
   myRoleEl.className = `role ${role}`;
+  // 位置驗證徽章：true = 綠勾（IP 跟 declared 同國），其他 = 不顯示
+  const verifyEl = document.getElementById('peer-verified-badge');
+  if (verifyEl) {
+    if (peerVerified === true) {
+      verifyEl.textContent = '✓';
+      verifyEl.title = '對方位置已驗證（IP 與申報一致）';
+      verifyEl.style.display = 'inline-block';
+    } else {
+      verifyEl.style.display = 'none';
+    }
+  }
   peerCard.classList.add('active');
 };
 
@@ -900,15 +911,15 @@ function connectSocket() {
     startMatchTimeoutTimer();
   });
 
-  socket.on('match_found', async ({ roomCode, isHost: hostFlag, peer }) => {
+  socket.on('match_found', async ({ roomCode, isHost: hostFlag, peer, peerVerified }) => {
     // 配對成功，停掉等待逾時
     stopMatchTimeoutTimer();
     peerId = peer.id;
     peerName = peer.name;
     isHost = hostFlag;
-    log(`配對成功！房號 ${roomCode}, 對方 ${peer.name}, 我是 ${isHost ? 'host' : 'guest'}`);
+    log(`配對成功！房號 ${roomCode}, 對方 ${peer.name}, 我是 ${isHost ? 'host' : 'guest'}, 對方位置驗證=${peerVerified}`);
     setStatus(`🎉 已配對到 ${peer.name}，建立連線中...`, true);
-    showPeerCard(peer.name, roomCode, isHost ? 'host' : 'guest');
+    showPeerCard(peer.name, roomCode, isHost ? 'host' : 'guest', peerVerified);
     setPeerLangBadge(null); // 對方語言一開始未知
     showButtons('in-call');
     showMeters();
