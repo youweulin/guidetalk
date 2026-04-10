@@ -1735,6 +1735,7 @@ let onbSelectedRegion = null;
 let onbSelectedLang = null;
 let onbSelectedGender = null;
 let onbSelectedTargetGender = null;
+let onbSelectedAvatar = 'avatar_mature.png';
 
 function onbShowStep(n) {
   onbStepEls.forEach((el, i) => {
@@ -1758,7 +1759,7 @@ function onbBuildRegionGrid() {
       onbRegionGrid.querySelectorAll('.grid-btn').forEach(b => b.classList.remove('selected'));
       btn.classList.add('selected');
       onbSelectedRegion = btn.dataset.region;
-      onbStep4Next.disabled = false;
+      onbStep5Next.disabled = false;
     });
   });
 }
@@ -1776,7 +1777,7 @@ async function onbDetectRegion() {
         if (btn) {
           btn.classList.add('selected');
           onbSelectedRegion = data.bigRegion;
-          onbStep4Next.disabled = false;
+          onbStep5Next.disabled = false;
         }
       }
     }
@@ -1786,44 +1787,51 @@ async function onbDetectRegion() {
 }
 
 function onbBuildLangGrid() {
-  // Step 5 lang grid (only onboarding step-5 lang-grid buttons)
-  document.querySelectorAll('#step-5 .lang-grid .grid-btn').forEach(btn => {
+  // Step 6 lang grid (only onboarding step-6 lang-grid buttons)
+  document.querySelectorAll('#step-6 .lang-grid .grid-btn').forEach(btn => {
     btn.addEventListener('click', () => {
-      document.querySelectorAll('#step-5 .lang-grid .grid-btn').forEach(b => b.classList.remove('selected'));
+      document.querySelectorAll('#step-6 .lang-grid .grid-btn').forEach(b => b.classList.remove('selected'));
       btn.classList.add('selected');
       onbSelectedLang = btn.dataset.lang;
-      onbStep5Next.disabled = false;
+      $('onb-step6-next').disabled = false;
     });
   });
   const detected = detectInitialLang();
-  const btn = document.querySelector(`#step-5 .lang-grid .grid-btn[data-lang="${detected}"]`);
+  const btn = document.querySelector(`#step-6 .lang-grid .grid-btn[data-lang="${detected}"]`);
   if (btn) {
     btn.classList.add('selected');
     onbSelectedLang = detected;
-    onbStep5Next.disabled = false;
+    $('onb-step6-next').disabled = false;
   }
 }
 
 function onbWireGenderGrid() {
-  // Step 2: gender
+  // Step 2: gender（選完變主題色）
   document.querySelectorAll('.onb-gender-btn').forEach(btn => {
     btn.addEventListener('click', () => {
       document.querySelectorAll('.onb-gender-btn').forEach(b => b.classList.remove('selected'));
       btn.classList.add('selected');
       onbSelectedGender = btn.dataset.gender;
-      // 即時預覽主題色
       localStorage.setItem(ONB_GENDER_KEY, onbSelectedGender);
       applyGenderTheme();
       onbStep2Next.disabled = false;
     });
   });
-  // Step 3: target gender
+  // Step 3: avatar
+  document.querySelectorAll('#step-3 .avatar-option').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('#step-3 .avatar-option').forEach(b => b.classList.remove('selected'));
+      btn.classList.add('selected');
+      onbSelectedAvatar = btn.dataset.avatar;
+    });
+  });
+  // Step 4: target gender
   document.querySelectorAll('.onb-target-gender-btn').forEach(btn => {
     btn.addEventListener('click', () => {
       document.querySelectorAll('.onb-target-gender-btn').forEach(b => b.classList.remove('selected'));
       btn.classList.add('selected');
       onbSelectedTargetGender = btn.dataset.tgender;
-      onbStep3Next.disabled = false;
+      onbStep4Next.disabled = false;
     });
   });
 }
@@ -1875,18 +1883,7 @@ onbStep2Next?.addEventListener('click', () => onbShowStep(3));
 onbStep3Next?.addEventListener('click', () => onbShowStep(4));
 onbStep4Next?.addEventListener('click', () => onbShowStep(5));
 onbStep5Next?.addEventListener('click', () => onbShowStep(6));
-
-// Step 6: avatar selection
 const onbStep6Next = $('onb-step6-next');
-let onbSelectedAvatar = 'avatar_mature.png'; // 預設
-
-document.querySelectorAll('#step-6 .avatar-option').forEach(btn => {
-  btn.addEventListener('click', () => {
-    document.querySelectorAll('#step-6 .avatar-option').forEach(b => b.classList.remove('selected'));
-    btn.classList.add('selected');
-    onbSelectedAvatar = btn.dataset.avatar;
-  });
-});
 onbStep6Next?.addEventListener('click', () => {
   localStorage.setItem(ONB_AVATAR_KEY, onbSelectedAvatar);
   onbFinish();

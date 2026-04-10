@@ -2027,46 +2027,8 @@
         <button id="onb-step2-next" class="btn-primary" disabled>下一步</button>
       </div>
 
-      <!-- Step 3: 想找 -->
+      <!-- Step 3: 頭像 -->
       <div class="onboarding-step" id="step-3">
-        <h2>想跟誰聊？</h2>
-        <p class="step-hint">配對時會優先配給你想要的對象。</p>
-        <div class="gender-grid">
-          <button class="grid-btn onb-target-gender-btn" data-tgender="male">👨 男生</button>
-          <button class="grid-btn onb-target-gender-btn" data-tgender="female">👩 女生</button>
-          <button class="grid-btn onb-target-gender-btn" data-tgender="any">😊 都可以</button>
-        </div>
-        <button id="onb-step3-next" class="btn-primary" disabled>下一步</button>
-      </div>
-
-      <!-- Step 4: 國家/地區 -->
-      <div class="onboarding-step" id="step-4">
-        <h2>你在哪裡？🌏</h2>
-        <p class="step-hint">這個會用在「附近配對」跟「指定地方」功能。<br>之後可以隨時改。</p>
-        <div class="detected-box" id="onb-detected-region" style="display:none">
-          <div class="label">系統偵測到</div>
-          <div class="value" id="onb-detected-region-value">—</div>
-        </div>
-        <div class="region-grid" id="onb-region-grid"></div>
-        <button id="onb-step4-next" class="btn-primary" disabled>下一步</button>
-      </div>
-
-      <!-- Step 5: 語言 -->
-      <div class="onboarding-step" id="step-5">
-        <h2>你講什麼語言？💬</h2>
-        <p class="step-hint">會用來辨識你的語音、轉成文字。<br>對方看不懂的話會自動翻譯。</p>
-        <div class="lang-grid">
-          <button class="grid-btn" data-lang="zh-TW">🇹🇼 中文（繁）</button>
-          <button class="grid-btn" data-lang="ja-JP">🇯🇵 日本語</button>
-          <button class="grid-btn" data-lang="en-US">🇺🇸 English</button>
-          <button class="grid-btn" data-lang="ko-KR">🇰🇷 한국어</button>
-          <button class="grid-btn" data-lang="zh-CN">🇨🇳 简中</button>
-        </div>
-        <button id="onb-step5-next" class="btn-primary" disabled>下一步</button>
-      </div>
-
-      <!-- Step 6: 頭像 -->
-      <div class="onboarding-step" id="step-6">
         <h2>選一個虛擬頭像 🎭</h2>
         <p class="step-hint">對方會看到這個頭像。<br>之後可以在設定裡更換。</p>
         <div class="avatar-grid">
@@ -2079,7 +2041,45 @@
           <div class="avatar-option" data-avatar="avatar_idol_m.png"><img src="https://imagedelivery.net/8vYNanmJriUCfsABJIN-Gw/avatar_idol_m/public" style="transform: scale(1.0) translateY(0);"></div>
           <div class="avatar-option" data-avatar="avatar_idol_f.png"><img src="https://imagedelivery.net/8vYNanmJriUCfsABJIN-Gw/avatar_idol_f/public" style="transform: scale(1.15) translateY(4%);"></div>
         </div>
-        <button id="onb-step6-next" class="btn-primary">開始使用 🚀</button>
+        <button id="onb-step3-next" class="btn-primary">下一步</button>
+      </div>
+
+      <!-- Step 4: 想找 -->
+      <div class="onboarding-step" id="step-4">
+        <h2>想跟誰聊？</h2>
+        <p class="step-hint">配對時會優先配給你想要的對象。</p>
+        <div class="gender-grid">
+          <button class="grid-btn onb-target-gender-btn" data-tgender="male">👨 男生</button>
+          <button class="grid-btn onb-target-gender-btn" data-tgender="female">👩 女生</button>
+          <button class="grid-btn onb-target-gender-btn" data-tgender="any">😊 都可以</button>
+        </div>
+        <button id="onb-step4-next" class="btn-primary" disabled>下一步</button>
+      </div>
+
+      <!-- Step 5: 國家/地區 -->
+      <div class="onboarding-step" id="step-5">
+        <h2>你在哪裡？🌏</h2>
+        <p class="step-hint">這個會用在「附近配對」跟「指定地方」功能。<br>之後可以隨時改。</p>
+        <div class="detected-box" id="onb-detected-region" style="display:none">
+          <div class="label">系統偵測到</div>
+          <div class="value" id="onb-detected-region-value">—</div>
+        </div>
+        <div class="region-grid" id="onb-region-grid"></div>
+        <button id="onb-step5-next" class="btn-primary" disabled>下一步</button>
+      </div>
+
+      <!-- Step 6: 語言 -->
+      <div class="onboarding-step" id="step-6">
+        <h2>你講什麼語言？💬</h2>
+        <p class="step-hint">會用來辨識你的語音、轉成文字。<br>對方看不懂的話會自動翻譯。</p>
+        <div class="lang-grid">
+          <button class="grid-btn" data-lang="zh-TW">🇹🇼 中文（繁）</button>
+          <button class="grid-btn" data-lang="ja-JP">🇯🇵 日本語</button>
+          <button class="grid-btn" data-lang="en-US">🇺🇸 English</button>
+          <button class="grid-btn" data-lang="ko-KR">🇰🇷 한국어</button>
+          <button class="grid-btn" data-lang="zh-CN">🇨🇳 简中</button>
+        </div>
+        <button id="onb-step6-next" class="btn-primary" disabled>開始使用 🚀</button>
       </div>
     </div>
   </div>
