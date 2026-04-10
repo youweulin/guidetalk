@@ -348,10 +348,9 @@ io.on('connection', (socket) => {
             name: players[peerIdx].name,
           },
           // 告訴這一端：對方的位置驗證結果
-          // true = IP 跟 declared 同國（綠勾）
-          // false = 不同國
-          // null = 無法判斷
           peerVerified: verifyResults[peerIdx],
+          // 告訴這一端：對方選的大區（用在地化豆知識用）
+          peerRegion: players[peerIdx].myBigRegion || null,
           matchedMode: me.mode === other.mode ? me.mode : 'mixed',
         });
       });

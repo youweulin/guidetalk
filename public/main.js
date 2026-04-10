@@ -923,17 +923,19 @@ function connectSocket() {
     startMatchTimeoutTimer();
   });
 
-  socket.on('match_found', async ({ roomCode, isHost: hostFlag, peer, peerVerified }) => {
+  socket.on('match_found', async ({ roomCode, isHost: hostFlag, peer, peerVerified, peerRegion }) => {
     // 配對成功，停掉等待逾時
     stopMatchTimeoutTimer();
     peerId = peer.id;
     peerName = peer.name;
     isHost = hostFlag;
-    log(`配對成功！房號 ${roomCode}, 對方 ${peer.name}, 我是 ${isHost ? 'host' : 'guest'}, 對方位置驗證=${peerVerified}`);
+    log(`配對成功！房號 ${roomCode}, 對方 ${peer.name}, 我是 ${isHost ? 'host' : 'guest'}, 對方位置驗證=${peerVerified}, 對方地區=${peerRegion}`);
     setStatus(`🎉 已配對到 ${peer.name}，建立連線中...`, true);
     showPeerCard(peer.name, roomCode, isHost ? 'host' : 'guest', peerVerified);
     setPeerLangBadge(null); // 對方語言一開始未知
-    showRandomTrivia(); // 豆知識破冰
+    // 在地化豆知識：根據雙方地區選
+    const myRegion = localStorage.getItem(ONB_BIG_REGION_KEY) || null;
+    showRandomTrivia(myRegion, peerRegion);
     showButtons('in-call');
     showMeters();
     if (subtitlesEnabled) showSubtitles();
@@ -1812,15 +1814,45 @@ async function loadTrivia() {
   }
 }
 
-function showRandomTrivia() {
+function showRandomTrivia(myRegion, peerRegion) {
   const cardEl = document.getElementById('trivia-card');
+  const headerEl = cardEl?.querySelector('.trivia-header');
   const zhEl = document.getElementById('trivia-text-zh');
   const jaEl = document.getElementById('trivia-text-ja');
   if (!cardEl || !zhEl || !jaEl || triviaData.length === 0) return;
 
-  const item = triviaData[Math.floor(Math.random() * triviaData.length)];
-  zhEl.textContent = item.zh;
-  jaEl.textContent = item.ja;
+  // 1. 先找跟兩人地區相關的 trivia
+  let pool = [];
+  let headerText = '💡 今日話題';
+
+  if (myRegion || peerRegion) {
+    pool = triviaData.filter(t =>
+      Array.isArray(t.regions) && t.regions.length > 0 &&
+      t.regions.some(r => r === myRegion || r === peerRegion)
+    );
+  }
+
+  if (pool.length > 0) {
+    // 有在地化的 → 用在地化的，標出「關於 XX」
+    const item = pool[Math.floor(Math.random() * pool.length)];
+    // 判斷是哪個地區的
+    const matchedRegion = item.regions.find(r => r === myRegion || r === peerRegion);
+    const regionInfo = BIG_REGIONS.find(r => r.id === matchedRegion);
+    if (regionInfo) {
+      headerText = `💡 關於 ${regionInfo.flag} ${regionInfo.name}`;
+    }
+    zhEl.textContent = item.zh;
+    jaEl.textContent = item.ja;
+  } else {
+    // 沒在地化的 → fallback 到通用池
+    const universal = triviaData.filter(t => !t.regions || t.regions.length === 0);
+    const fallback = universal.length > 0 ? universal : triviaData;
+    const item = fallback[Math.floor(Math.random() * fallback.length)];
+    zhEl.textContent = item.zh;
+    jaEl.textContent = item.ja;
+  }
+
+  if (headerEl) headerEl.textContent = headerText;
   cardEl.classList.add('active');
 }
 
