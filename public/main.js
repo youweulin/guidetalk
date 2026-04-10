@@ -660,7 +660,9 @@ function isSTTSupported() {
 function setSTTStatus(state, label) {
   if (!sttStatusEl) return;
   sttStatusEl.className = `stt-status ${state}`;
-  sttStatusEl.innerHTML = `<span class="dot"></span>${label}`;
+  // 只顯示圓點，不顯示文字（省空間）
+  sttStatusEl.innerHTML = `<span class="dot"></span>`;
+  sttStatusEl.title = label || state; // hover 才看得到文字
 }
 
 function startSTT() {
@@ -782,7 +784,9 @@ function stopSTT() {
 
 function updateLangBtn() {
   const li = langInfo(sttLang);
-  langBtn.textContent = `${li.flag} ${li.label}`;
+  // 只顯示國旗（省空間）
+  langBtn.textContent = li.flag;
+  langBtn.title = li.label; // hover 看完整名
 }
 
 function toggleLang() {
