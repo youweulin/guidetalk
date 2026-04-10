@@ -24,6 +24,7 @@ import { dirname, join } from 'path';
 import { verifySupabaseJwt, authConfigured } from './lib/auth.js';
 import { upsertUser, dbConfigured, startCall, endCall, getDbClient } from './lib/db.js';
 import { lookupIp, extractClientIp } from './lib/geo.js';
+import { onReport, onBlock, onCallEnd, isBanned } from './lib/karma.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const PORT = process.env.PORT || 9001;
@@ -61,6 +62,157 @@ app.get('/config.json', (req, res) => {
   });
 });
 
+// ─── Admin API ────────────────────────────────────────
+const ADMIN_KEY = process.env.ADMIN_KEY || 'kaitalk-admin-2026';
+
+function requireAdmin(req, res, next) {
+  if (req.headers['x-admin-key'] !== ADMIN_KEY) {
+    return res.status(401).json({ error: 'unauthorized' });
+  }
+  next();
+}
+
+app.get('/admin/api/overview', requireAdmin, async (req, res) => {
+  try {
+    const db = getDbClient();
+    if (!db) return res.json({});
+    const [users, calls, pending, bans, todayR, todayC] = await Promise.all([
+      db.execute(`SELECT COUNT(*) as c FROM users`),
+      db.execute(`SELECT COUNT(*) as c FROM kaitalk_calls`),
+      db.execute(`SELECT COUNT(*) as c FROM kaitalk_reports WHERE status = 'pending'`),
+      db.execute(`SELECT COUNT(*) as c FROM users WHERE banned_until > CURRENT_TIMESTAMP`),
+      db.execute(`SELECT COUNT(*) as c FROM kaitalk_reports WHERE reported_at > datetime('now','-1 day')`),
+      db.execute(`SELECT COUNT(*) as c FROM kaitalk_calls WHERE started_at > datetime('now','-1 day')`),
+    ]);
+    res.json({
+      totalUsers: users.rows[0]?.c || 0,
+      totalCalls: calls.rows[0]?.c || 0,
+      pendingReports: pending.rows[0]?.c || 0,
+      activeBans: bans.rows[0]?.c || 0,
+      todayReports: todayR.rows[0]?.c || 0,
+      todayCalls: todayC.rows[0]?.c || 0,
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.get('/admin/api/reports', requireAdmin, async (req, res) => {
+  try {
+    const db = getDbClient();
+    const status = req.query.status;
+    const limit = parseInt(req.query.limit) || 50;
+    const where = status ? `WHERE r.status = ?` : '';
+    const args = status ? [status, limit] : [limit];
+    const result = await db.execute({
+      sql: `SELECT r.*,
+              u1.nickname as reporter_name, u2.nickname as reported_name
+            FROM kaitalk_reports r
+            LEFT JOIN users u1 ON u1.id = r.reporter_id
+            LEFT JOIN users u2 ON u2.id = r.reported_id
+            ${where}
+            ORDER BY r.reported_at DESC LIMIT ?`,
+      args,
+    });
+    res.json({ reports: result.rows });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/admin/api/reports/resolve', requireAdmin, express.json(), async (req, res) => {
+  try {
+    const { reportId, resolution } = req.body;
+    const db = getDbClient();
+    await db.execute({
+      sql: `UPDATE kaitalk_reports SET status = 'resolved', resolution = ?, reviewed_at = CURRENT_TIMESTAMP WHERE id = ?`,
+      args: [resolution, reportId],
+    });
+    // 如果是 temp_ban，封禁被檢舉人 7 天
+    if (resolution === 'temp_ban') {
+      const report = await db.execute({ sql: `SELECT reported_id FROM kaitalk_reports WHERE id = ?`, args: [reportId] });
+      if (report.rows[0]) {
+        const uid = report.rows[0].reported_id;
+        const expires = new Date(Date.now() + 7 * 24 * 3600 * 1000).toISOString();
+        await db.execute({ sql: `UPDATE users SET banned_until = ? WHERE id = ?`, args: [expires, uid] });
+      }
+    }
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.get('/admin/api/penalties', requireAdmin, async (req, res) => {
+  try {
+    const db = getDbClient();
+    const result = await db.execute({
+      sql: `SELECT p.*, u.nickname as user_name FROM kaitalk_penalties p
+            LEFT JOIN users u ON u.id = p.user_id
+            ORDER BY p.created_at DESC LIMIT 50`,
+      args: [],
+    });
+    res.json({ penalties: result.rows });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.get('/admin/api/user', requireAdmin, async (req, res) => {
+  try {
+    const q = req.query.q;
+    const db = getDbClient();
+    let user = (await db.execute({ sql: `SELECT * FROM users WHERE id = ?`, args: [q] })).rows[0];
+    if (!user) {
+      user = (await db.execute({ sql: `SELECT * FROM users WHERE nickname = ? LIMIT 1`, args: [q] })).rows[0];
+    }
+    if (!user) return res.json({ user: null });
+    const reportCount = (await db.execute({ sql: `SELECT COUNT(*) as c FROM kaitalk_reports WHERE reported_id = ?`, args: [user.id] })).rows[0]?.c || 0;
+    const blockCount = (await db.execute({ sql: `SELECT COUNT(*) as c FROM connections WHERE (user_a = ? OR user_b = ?) AND (a_blocked_b = 1 OR b_blocked_a = 1)`, args: [user.id, user.id] })).rows[0]?.c || 0;
+    res.json({ user, reportCount, blockCount });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/admin/api/user/ban', requireAdmin, express.json(), async (req, res) => {
+  try {
+    const { userId, hours } = req.body;
+    const db = getDbClient();
+    const expires = new Date(Date.now() + (hours || 168) * 3600 * 1000).toISOString();
+    await db.execute({ sql: `UPDATE users SET banned_until = ? WHERE id = ?`, args: [expires, userId] });
+    await db.execute({
+      sql: `INSERT INTO kaitalk_penalties (user_id, action, reason, duration_hours, expires_at) VALUES (?, 'temp_ban', 'manual', ?, ?)`,
+      args: [userId, hours || 168, expires],
+    });
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/admin/api/user/unban', requireAdmin, express.json(), async (req, res) => {
+  try {
+    const { userId } = req.body;
+    const db = getDbClient();
+    await db.execute({ sql: `UPDATE users SET banned_until = NULL WHERE id = ?`, args: [userId] });
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/admin/api/user/karma', requireAdmin, express.json(), async (req, res) => {
+  try {
+    const { userId, delta } = req.body;
+    const db = getDbClient();
+    await db.execute({ sql: `UPDATE users SET karma = MAX(-100, MIN(200, karma + ?)) WHERE id = ?`, args: [delta, userId] });
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // ─── IP Geo lookup ────────────────────────────────────
 // 給 client 拿自己的位置（國家、地區、大區）。
 // 走 cache 優先，cache miss 才打 ipinfo.io。
@@ -80,6 +232,285 @@ app.get('/api/geo/me', async (req, res) => {
   } catch (err) {
     console.warn(`[geo] /api/geo/me failed: ${err.message}`);
     res.json({ country: null, region: null, city: null, bigRegion: null, source: null });
+  }
+});
+
+// ─── 封鎖名單（in-memory cache）──────────────────────
+// blockedPairs: Set of "userA|userB" (sorted) → O(1) lookup
+const blockedPairs = new Set();
+
+async function loadBlockedPairs() {
+  try {
+    const db = getDbClient();
+    if (!db) return;
+    const result = await db.execute(`
+      SELECT user_a, user_b FROM connections
+       WHERE a_blocked_b = 1 OR b_blocked_a = 1
+    `);
+    for (const row of result.rows) {
+      blockedPairs.add(`${row.user_a}|${row.user_b}`);
+    }
+    console.log(`[🛡️] Loaded ${blockedPairs.size} blocked pairs`);
+  } catch (err) {
+    console.warn(`[🛡️] Failed to load blocked pairs: ${err.message}`);
+  }
+}
+
+function isBlocked(uidA, uidB) {
+  if (!uidA || !uidB) return false;
+  const [a, b] = [uidA, uidB].sort();
+  return blockedPairs.has(`${a}|${b}`);
+}
+
+function addBlock(uidA, uidB) {
+  const [a, b] = [uidA, uidB].sort();
+  blockedPairs.add(`${a}|${b}`);
+}
+
+// 啟動時載入封鎖名單
+loadBlockedPairs();
+
+// ─── 檢舉 + 封鎖 API ──────────────────────────────────
+// 需要 Supabase JWT auth — 從 Authorization header 驗證
+
+async function authenticateRequest(req) {
+  const authHeader = req.headers.authorization;
+  if (!authHeader?.startsWith('Bearer ')) return null;
+  const token = authHeader.slice(7);
+  const result = await verifySupabaseJwt(token);
+  return result?.userId || null;
+}
+
+// POST /api/report — 檢舉用戶
+app.post('/api/report', express.json(), async (req, res) => {
+  const userId = await authenticateRequest(req);
+  if (!userId) return res.status(401).json({ error: 'unauthorized' });
+
+  const { reportedId, callId, reason, notes, evidenceSnapshot } = req.body;
+  if (!reportedId || !reason) {
+    return res.status(400).json({ error: 'missing reportedId or reason' });
+  }
+
+  const validReasons = ['harassment', 'inappropriate', 'spam', 'underage', 'other'];
+  if (!validReasons.includes(reason)) {
+    return res.status(400).json({ error: 'invalid reason' });
+  }
+
+  try {
+    const db = getDbClient();
+    if (!db) return res.status(503).json({ error: 'db unavailable' });
+
+    // 限制 evidence 大小（~10KB）
+    const evidence = typeof evidenceSnapshot === 'string'
+      ? evidenceSnapshot.slice(0, 10000)
+      : JSON.stringify(evidenceSnapshot || []).slice(0, 10000);
+
+    await db.execute({
+      sql: `INSERT INTO kaitalk_reports (reporter_id, reported_id, call_id, reason, notes, evidence_snapshot)
+            VALUES (?, ?, ?, ?, ?, ?)`,
+      args: [userId, reportedId, callId || null, reason, (notes || '').slice(0, 500), evidence],
+    });
+
+    // 自動封鎖對方（檢舉 = 同時封鎖）
+    const [a, b] = [userId, reportedId].sort();
+    const isA = userId === a;
+    const blockCol = isA ? 'a_blocked_b' : 'b_blocked_a';
+    const blockAtCol = isA ? 'a_blocked_at' : 'b_blocked_at';
+
+    await db.execute({
+      sql: `INSERT INTO connections (user_a, user_b, first_met_via, ${blockCol}, ${blockAtCol})
+            VALUES (?, ?, 'kaitalk', 1, CURRENT_TIMESTAMP)
+            ON CONFLICT(user_a, user_b) DO UPDATE SET
+              ${blockCol} = 1, ${blockAtCol} = CURRENT_TIMESTAMP`,
+      args: [a, b],
+    });
+    addBlock(userId, reportedId);
+
+    console.log(`[🚨] Report: ${userId.slice(0, 8)} reported ${reportedId.slice(0, 8)} for ${reason}`);
+    // Karma: 被檢舉 -10 + 自動懲罰檢查
+    onReport(db, reportedId);
+    res.json({ ok: true });
+  } catch (err) {
+    console.error(`[🚨] Report failed: ${err.message}`);
+    res.status(500).json({ error: 'internal' });
+  }
+});
+
+// POST /api/block — 單純封鎖（不檢舉）
+app.post('/api/block', express.json(), async (req, res) => {
+  const userId = await authenticateRequest(req);
+  if (!userId) return res.status(401).json({ error: 'unauthorized' });
+
+  const { blockedId } = req.body;
+  if (!blockedId) return res.status(400).json({ error: 'missing blockedId' });
+
+  try {
+    const db = getDbClient();
+    if (!db) return res.status(503).json({ error: 'db unavailable' });
+
+    const [a, b] = [userId, blockedId].sort();
+    const isA = userId === a;
+    const blockCol = isA ? 'a_blocked_b' : 'b_blocked_a';
+    const blockAtCol = isA ? 'a_blocked_at' : 'b_blocked_at';
+
+    await db.execute({
+      sql: `INSERT INTO connections (user_a, user_b, first_met_via, ${blockCol}, ${blockAtCol})
+            VALUES (?, ?, 'kaitalk', 1, CURRENT_TIMESTAMP)
+            ON CONFLICT(user_a, user_b) DO UPDATE SET
+              ${blockCol} = 1, ${blockAtCol} = CURRENT_TIMESTAMP`,
+      args: [a, b],
+    });
+    addBlock(userId, blockedId);
+
+    console.log(`[🛡️] Block: ${userId.slice(0, 8)} blocked ${blockedId.slice(0, 8)}`);
+    // Karma: 被封鎖 -5
+    onBlock(db, blockedId);
+    res.json({ ok: true });
+  } catch (err) {
+    console.error(`[🛡️] Block failed: ${err.message}`);
+    res.status(500).json({ error: 'internal' });
+  }
+});
+
+// GET /api/friends — 我的好友列表（互相想再遇的人）
+app.get('/api/friends', async (req, res) => {
+  const userId = await authenticateRequest(req);
+  if (!userId) return res.status(401).json({ error: 'unauthorized' });
+
+  try {
+    const db = getDbClient();
+    if (!db) return res.status(503).json({ error: 'db unavailable' });
+
+    const result = await db.execute({
+      sql: `
+        SELECT c.user_a, c.user_b, c.reunion_code, c.matched_at, c.last_interaction_at,
+               c.kaitalk_call_count,
+               ua.nickname AS name_a, ub.nickname AS name_b
+          FROM connections c
+          LEFT JOIN users ua ON ua.id = c.user_a
+          LEFT JOIN users ub ON ub.id = c.user_b
+         WHERE c.matched = 1
+           AND c.a_blocked_b = 0 AND c.b_blocked_a = 0
+           AND (c.user_a = ? OR c.user_b = ?)
+         ORDER BY c.last_interaction_at DESC
+         LIMIT 50
+      `,
+      args: [userId, userId],
+    });
+
+    const friends = result.rows.map(row => {
+      const isA = row.user_a === userId;
+      return {
+        friendId: isA ? row.user_b : row.user_a,
+        friendName: isA ? (row.name_b || '未知') : (row.name_a || '未知'),
+        reunionCode: row.reunion_code || null,
+        matchedAt: row.matched_at,
+        lastInteraction: row.last_interaction_at,
+        callCount: row.kaitalk_call_count || 0,
+      };
+    });
+
+    res.json({ friends });
+  } catch (err) {
+    console.error(`[👥] Friends list failed: ${err.message}`);
+    res.status(500).json({ error: 'internal' });
+  }
+});
+
+// ─── 信件 API ────────────────────────────────────────
+
+// POST /api/letters/send — 寄信給好友
+app.post('/api/letters/send', express.json(), async (req, res) => {
+  const userId = await authenticateRequest(req);
+  if (!userId) return res.status(401).json({ error: 'unauthorized' });
+
+  const { toUid, body } = req.body;
+  if (!toUid || !body?.trim()) return res.status(400).json({ error: 'missing toUid or body' });
+
+  try {
+    const db = getDbClient();
+    if (!db) return res.status(503).json({ error: 'db unavailable' });
+
+    // 確認是好友（matched=true）
+    const [a, b] = [userId, toUid].sort();
+    const conn = await db.execute({
+      sql: `SELECT matched FROM connections WHERE user_a = ? AND user_b = ? AND matched = 1`,
+      args: [a, b],
+    });
+    if (conn.rows.length === 0) return res.status(403).json({ error: 'not_friends' });
+
+    // 檢查今日寄信數量（每天 3 封限制）
+    const todayCount = await db.execute({
+      sql: `SELECT COUNT(*) as c FROM kaitalk_letters WHERE from_uid = ? AND created_at > datetime('now','-1 day')`,
+      args: [userId],
+    });
+    if ((todayCount.rows[0]?.c || 0) >= 3) {
+      return res.status(429).json({ error: 'daily_limit', message: '今日寄信已達上限（3 封）' });
+    }
+
+    await db.execute({
+      sql: `INSERT INTO kaitalk_letters (from_uid, to_uid, body, lang) VALUES (?, ?, ?, ?)`,
+      args: [userId, toUid, body.trim().slice(0, 500), req.body.lang || null],
+    });
+
+    console.log(`[✉️] Letter: ${userId.slice(0, 8)} → ${toUid.slice(0, 8)}`);
+    res.json({ ok: true });
+  } catch (err) {
+    console.error(`[✉️] Letter send failed: ${err.message}`);
+    res.status(500).json({ error: 'internal' });
+  }
+});
+
+// GET /api/letters/inbox — 我的收件匣
+app.get('/api/letters/inbox', async (req, res) => {
+  const userId = await authenticateRequest(req);
+  if (!userId) return res.status(401).json({ error: 'unauthorized' });
+
+  try {
+    const db = getDbClient();
+    if (!db) return res.status(503).json({ error: 'db unavailable' });
+
+    const result = await db.execute({
+      sql: `SELECT l.*, u.nickname as from_name
+            FROM kaitalk_letters l
+            LEFT JOIN users u ON u.id = l.from_uid
+            WHERE l.to_uid = ?
+            ORDER BY l.created_at DESC LIMIT 50`,
+      args: [userId],
+    });
+
+    // 計算未讀數
+    const unread = result.rows.filter(r => !r.read_at).length;
+    res.json({ letters: result.rows, unread });
+  } catch (err) {
+    res.status(500).json({ error: 'internal' });
+  }
+});
+
+// GET /api/letters/thread/:friendId — 跟某好友的往來信件
+app.get('/api/letters/thread/:friendId', async (req, res) => {
+  const userId = await authenticateRequest(req);
+  if (!userId) return res.status(401).json({ error: 'unauthorized' });
+
+  try {
+    const db = getDbClient();
+    const fid = req.params.friendId;
+    const result = await db.execute({
+      sql: `SELECT * FROM kaitalk_letters
+            WHERE (from_uid = ? AND to_uid = ?) OR (from_uid = ? AND to_uid = ?)
+            ORDER BY created_at ASC LIMIT 100`,
+      args: [userId, fid, fid, userId],
+    });
+
+    // 標記已讀
+    await db.execute({
+      sql: `UPDATE kaitalk_letters SET read_at = CURRENT_TIMESTAMP WHERE to_uid = ? AND from_uid = ? AND read_at IS NULL`,
+      args: [userId, fid],
+    });
+
+    res.json({ messages: result.rows });
+  } catch (err) {
+    res.status(500).json({ error: 'internal' });
   }
 });
 
@@ -151,6 +582,15 @@ function endActiveCall(roomCode, endReason) {
     durationSec,
     endReason,
   }).catch(() => {});
+
+  // Karma: 通話結束事件
+  onCallEnd(getDbClient(), {
+    userA: entry.userA,
+    userB: entry.userB,
+    durationSec,
+    aMarkedMeetAgain: entry.meetAgainMarks.has([...entry.sockets][0]),
+    bMarkedMeetAgain: entry.meetAgainMarks.has([...entry.sockets][1]),
+  });
 }
 
 // 用 socket.id 找它正在哪個 active call
@@ -165,6 +605,13 @@ const generateRoomCode = () => {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
   let code = '';
   for (let i = 0; i < 6; i++) code += chars[Math.floor(Math.random() * chars.length)];
+  return code;
+};
+
+// 重逢碼：6 碼數字，好記好輸入
+const generateReunionCode = () => {
+  let code = '';
+  for (let i = 0; i < 6; i++) code += Math.floor(Math.random() * 10);
   return code;
 };
 
@@ -218,6 +665,8 @@ function aWillingToB(a, b) {
 
 function isCompatible(a, b) {
   if (a.socket.id === b.socket.id) return false;
+  // 封鎖過濾：任一方封鎖了另一方就不配
+  if (isBlocked(a.socket.data.userId, b.socket.data.userId)) return false;
   return aWillingToB(a, b) && aWillingToB(b, a);
 }
 
@@ -282,11 +731,17 @@ io.on('connection', (socket) => {
   //   - 用「**雙向相容**」演算法：A 願意跟 B + B 願意跟 A 才配
   //   - 走 queue 找第一個 compatible 的對手
   //   - 找不到就留在 queue 裡等
-  socket.on('find_match', async ({ name, gender, targetGender, lang, mode, myBigRegion, targetRegion, targetLangs } = {}) => {
+  socket.on('find_match', async ({ name, gender, targetGender, lang, mode, myBigRegion, targetRegion, targetLangs, reunionCode } = {}) => {
     const game = 'voice';
     const q = getQueue(game);
 
     if (q.some(p => p.socket.id === socket.id)) return; // 防重入
+
+    // 封禁檢查
+    if (socket.data.userId && await isBanned(getDbClient(), socket.data.userId)) {
+      socket.emit('banned', { message: '你的帳號已被暫時停權，請稍後再試。' });
+      return;
+    }
 
     const me = {
       socket,
@@ -298,16 +753,54 @@ io.on('connection', (socket) => {
       myBigRegion: myBigRegion || null,
       targetRegion: targetRegion || null,
       targetLangs: Array.isArray(targetLangs) ? targetLangs : [],
+      reunionCode: reunionCode || null,
     };
 
-    // 嘗試在 queue 裡找一個 compatible 的對手
-    // 優先找 matched=true（互相想再遇的人），再找一般 compatible
-    // 這樣「想再遇」的人會被優先配在一起
     let otherIdx = -1;
 
-    // 先看有沒有 mutual matched 的對象（需要查 DB，但太慢不現實）
-    // 簡化方案：直接走 findIndex 即可，之後 Phase 4 做更精密的
-    otherIdx = q.findIndex(other => isCompatible(me, other));
+    // 重逢碼優先配對：查 DB 找到對方 userId，再到 queue 裡找
+    if (reunionCode && socket.data.userId) {
+      try {
+        const db = getDbClient();
+        if (db) {
+          const row = await db.execute({
+            sql: `SELECT user_a, user_b FROM connections WHERE reunion_code = ? AND matched = 1`,
+            args: [reunionCode],
+          });
+          if (row.rows.length > 0) {
+            const { user_a, user_b } = row.rows[0];
+            const partnerId = socket.data.userId === user_a ? user_b : user_a;
+            // 在 queue 裡找這個人
+            otherIdx = q.findIndex(other => other.socket.data.userId === partnerId);
+            if (otherIdx !== -1) {
+              console.log(`[💌] Reunion code ${reunionCode}: matched ${socket.data.userId} ↔ ${partnerId}`);
+            } else {
+              console.log(`[💌] Reunion code ${reunionCode}: partner ${partnerId} not in queue, waiting...`);
+              me.reunionPartnerId = partnerId; // 記住，之後有人進來再比對
+            }
+          } else {
+            console.log(`[💌] Reunion code ${reunionCode}: not found or not matched`);
+            socket.emit('reunion_invalid');
+          }
+        }
+      } catch (err) {
+        console.log(`[💌] Reunion code lookup error: ${err.message}`);
+      }
+    }
+
+    // 一般配對（如果重逢碼沒找到人）
+    if (otherIdx === -1) {
+      // 先查有沒有人是用重逢碼在等我
+      if (socket.data.userId) {
+        otherIdx = q.findIndex(other =>
+          other.reunionPartnerId === socket.data.userId
+        );
+      }
+      // 再用一般相容性配對
+      if (otherIdx === -1) {
+        otherIdx = q.findIndex(other => isCompatible(me, other));
+      }
+    }
 
     if (otherIdx !== -1) {
       // 配對成功
@@ -354,6 +847,7 @@ io.on('connection', (socket) => {
           peer: {
             id: players[peerIdx].socket.id,
             name: players[peerIdx].name,
+            userId: players[peerIdx].socket.data.userId || null,
           },
           // 告訴這一端：對方資訊
           peerVerified: verifyResults[peerIdx],
@@ -453,17 +947,25 @@ io.on('connection', (socket) => {
 
         console.log(`[🎉] Mutual meet-again in room ${found.roomCode}!`);
 
-        // 寫 connections.matched = true
+        // 產生重逢碼 + 寫 connections.matched = true
         const [a, b] = [found.entry.userA, found.entry.userB].sort();
+        const reunionCode = generateReunionCode();
+
         getDbClient()?.execute({
           sql: `
             UPDATE connections
                SET a_likes_b = 1, b_likes_a = 1,
-                   matched = 1, matched_at = CURRENT_TIMESTAMP
+                   matched = 1, matched_at = CURRENT_TIMESTAMP,
+                   reunion_code = ?
              WHERE user_a = ? AND user_b = ?
           `,
-          args: [a, b],
+          args: [reunionCode, a, b],
         }).catch(() => {});
+
+        // 把重逢碼傳給雙方
+        socketIds.forEach(sid => {
+          io.to(sid).emit('reunion_code', { code: reunionCode });
+        });
       }
 
       endActiveCall(found.roomCode, 'hangup');

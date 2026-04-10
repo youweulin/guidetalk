@@ -57,6 +57,7 @@ let socket = null;
 let pc = null;
 let localStream = null;
 let peerId = null;
+let peerUserId = null;          // Supabase uid（for block/report API）
 let peerName = null;
 let isHost = false;
 let pendingCandidates = [];
@@ -77,6 +78,8 @@ let recognition = null;         // SpeechRecognition instance
 let sttActive = false;          // 是否正在跑 STT
 let sttLang = detectInitialLang(); // 我講的語言（影響 STT + 對方知道我在講什麼）
 let peerLang = null;            // 對方講的語言（從對方第一筆字幕學到）
+let peerRegionStored = null;    // 對方的地區（match_found 取得）
+let peerGenderStored = null;    // 對方的性別（match_found 取得）
 let subtitlesEnabled = localStorage.getItem('kaitalk.subtitles') !== 'false'; // 用戶開關，預設開
 const subtitleBuffer = [];      // event log: [{ id, speaker, text, lang, interim, ts }]
 const MAX_BUFFER = 50;          // in-memory buffer 上限
@@ -409,6 +412,16 @@ const showButtons = (state) => {
   const ub = document.getElementById('user-bar');
   if (ub) ub.style.display = state === 'idle' ? 'flex' : 'none';
 
+  // 歷史對話區只在 idle 顯示（有紀錄時）
+  const bottomTabs = document.getElementById('bottom-tabs');
+  if (bottomTabs) {
+    if (state === 'idle') {
+      renderBottomTabs();
+    } else {
+      bottomTabs.style.display = 'none';
+    }
+  }
+
   // status 只在 matching 時顯示（idle 隱藏，in-call 也隱藏）
   statusEl.style.display = state === 'matching' ? 'block' : 'none';
 
@@ -418,6 +431,11 @@ const showButtons = (state) => {
   const callActions = document.getElementById('call-actions');
   if (callActions) {
     callActions.style.display = state === 'in-call' ? 'flex' : 'none';
+  }
+  // 封鎖 + 檢舉
+  const safetyActions = document.getElementById('safety-actions');
+  if (safetyActions) {
+    safetyActions.style.display = state === 'in-call' ? 'flex' : 'none';
   }
   // 打字輸入框（通話中才顯示）
   const cib = document.getElementById('chat-input-bar');
@@ -945,7 +963,10 @@ function connectSocket() {
     // 配對成功，停掉等待逾時
     stopMatchTimeoutTimer();
     peerId = peer.id;
+    peerUserId = peer.userId || null; // Supabase uid（for block/report API）
     peerName = peer.name;
+    peerRegionStored = peerRegion || null;
+    peerGenderStored = peerGender || null;
     isHost = hostFlag;
     log(`配對成功！房號 ${roomCode}, 對方 ${peer.name} ${peerGender || '?'}, 我是 ${isHost ? 'host' : 'guest'}`);
     setStatus(`🎉 已配對到 ${peer.name}，建立連線中...`, true);
@@ -992,6 +1013,8 @@ function connectSocket() {
 
   socket.on('peer_hangup', () => {
     log(`對方掛斷`);
+    saveConversationHistory(); // 對方掛斷也要存
+    renderBottomTabs();
     const oldName = peerName;
     cleanup();
     setStatus(`${oldName || '對方'} 掛斷了`);
@@ -1011,6 +1034,34 @@ function connectSocket() {
       nameEl.textContent = mutualName || '—';
       overlay.classList.add('active');
     }
+  });
+
+  socket.on('reunion_code', ({ code }) => {
+    log(`💌 重逢碼: ${code}`);
+    const codeBox = document.getElementById('reunion-code-box');
+    const codeDisplay = document.getElementById('reunion-code-display');
+    if (codeBox && codeDisplay) {
+      codeDisplay.textContent = code;
+      codeBox.style.display = 'block';
+    }
+    // 也存到 localStorage，方便之後查看
+    try {
+      const codes = JSON.parse(localStorage.getItem('kaitalk.reunionCodes') || '[]');
+      codes.unshift({ code, peerName: peerName || '未知', ts: Date.now() });
+      if (codes.length > 20) codes.length = 20;
+      localStorage.setItem('kaitalk.reunionCodes', JSON.stringify(codes));
+    } catch {}
+  });
+
+  socket.on('reunion_invalid', () => {
+    log('⚠️ 重逢碼無效或已過期');
+    setStatus('重逢碼無效，請確認後重試');
+  });
+
+  socket.on('banned', ({ message }) => {
+    log(`🚫 ${message}`);
+    setStatus(message);
+    showButtons('idle');
   });
 
   socket.on('match_cancelled', () => {
@@ -1116,6 +1167,7 @@ async function setupPeerConnection() {
 async function startMatching(opts = {}) {
   const mode = opts.mode || 'quick';
   const targetRegion = opts.targetRegion || null;
+  const reunionCode = opts.reunionCode || null;
   // 記住，給逾時提示用
   lastMatchOpts = { mode, targetRegion };
 
@@ -1165,9 +1217,13 @@ async function startMatching(opts = {}) {
       targetLangs: getTargetLangs(),
       gender: localStorage.getItem(ONB_GENDER_KEY) || null,
       targetGender: localStorage.getItem(ONB_TARGET_GENDER_KEY) || 'any',
+      reunionCode,
     };
 
-    log(`📡 開始配對 (mode=${mode}${targetRegion ? ', target=' + targetRegion : ''})`);
+    log(`📡 開始配對 (mode=${mode}${targetRegion ? ', target=' + targetRegion : ''}${reunionCode ? ', 重逢碼=' + reunionCode : ''})`);
+    if (reunionCode) {
+      setStatus('💌 使用重逢碼尋找對方...', true);
+    }
     socket.emit('find_match', matchPayload);
     showButtons('matching');
   } catch (err) {
@@ -1204,7 +1260,7 @@ function stopMatchTimeoutTimer() {
   }
 }
 
-function handleMatchTimeout() {
+async function handleMatchTimeout() {
   // 如果已經配上了或取消了 → 不做事
   if (peerId || !lastMatchOpts) return;
 
@@ -1219,25 +1275,155 @@ function handleMatchTimeout() {
   // nearby 或 specific → 提示換 quick
   log(`⏰ 配對逾時 (${mode}) → 提示用戶換 quick`);
   const modeLabel = mode === 'nearby' ? '附近' : '指定地方';
-  const wantQuick = confirm(
-    `「${modeLabel}」配對 30 秒了還沒人 😔\n\n` +
-    `要不要改成「快速配對」（隨機）試試？`
-  );
+  const wantQuick = await showConfirm({
+    icon: '😔',
+    text: `「${modeLabel}」配對 30 秒了還沒人，要不要改成「快速配對」試試？`,
+    okLabel: '快速配對',
+    cancelLabel: '繼續等',
+  });
   if (wantQuick) {
-    // 取消當前配對 → 換 quick mode
     cancelMatching();
     setTimeout(() => {
       startMatching({ mode: 'quick' });
     }, 200);
   } else {
-    // 用戶選擇繼續等
     setStatus('繼續等待中...', true);
-    startMatchTimeoutTimer(); // 再給 30 秒
+    startMatchTimeoutTimer();
   }
 }
 
-function hangup() {
-  if (!confirm('確定要結束通話嗎？')) return;
+function showConfirm({ icon = '📞', text = '確定嗎？', okLabel = '確定', cancelLabel = '取消' }) {
+  return new Promise(resolve => {
+    const overlay = document.getElementById('confirm-overlay');
+    const iconEl = document.getElementById('confirm-icon');
+    const textEl = document.getElementById('confirm-text');
+    const btnOk = document.getElementById('btn-confirm-ok');
+    const btnCancel = document.getElementById('btn-confirm-cancel');
+    if (!overlay) return resolve(false);
+
+    iconEl.textContent = icon;
+    textEl.textContent = text;
+    btnOk.textContent = okLabel;
+    btnCancel.textContent = cancelLabel;
+    overlay.classList.add('active');
+
+    const cleanup = () => {
+      overlay.classList.remove('active');
+      btnOk.removeEventListener('click', onOk);
+      btnCancel.removeEventListener('click', onCancel);
+    };
+    const onOk = () => { cleanup(); resolve(true); };
+    const onCancel = () => { cleanup(); resolve(false); };
+    btnOk.addEventListener('click', onOk);
+    btnCancel.addEventListener('click', onCancel);
+  });
+}
+
+// ─── 封鎖 + 檢舉 ─────────────────────────────────────
+
+async function apiCall(path, body) {
+  if (!kaitalkAccessToken) return { error: 'no auth' };
+  try {
+    const resp = await fetch(path, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${kaitalkAccessToken}`,
+      },
+      body: JSON.stringify(body),
+    });
+    return await resp.json();
+  } catch (err) {
+    return { error: err.message };
+  }
+}
+
+async function blockCurrentPeer() {
+  if (!peerUserId) {
+    log('⚠️ 對方未驗證，無法封鎖');
+    return;
+  }
+  const yes = await showConfirm({
+    icon: '🚫',
+    text: `封鎖 ${peerName || '對方'}？\n封鎖後將永遠不會再配對到此人。`,
+    okLabel: '封鎖',
+    cancelLabel: '取消',
+  });
+  if (!yes) return;
+
+  const result = await apiCall('/api/block', { blockedId: peerUserId });
+  if (result.ok) {
+    log(`🚫 已封鎖 ${peerName}`);
+  } else {
+    log(`封鎖失敗: ${result.error || '未知錯誤'}`);
+  }
+}
+
+function showReportOverlay() {
+  const overlay = document.getElementById('report-overlay');
+  if (!overlay) return;
+  // 重置選中狀態
+  overlay.querySelectorAll('.report-reason-btn').forEach(b => b.classList.remove('selected'));
+  document.getElementById('report-notes')?.setAttribute('value', '');
+  if (document.getElementById('report-notes')) document.getElementById('report-notes').value = '';
+  document.getElementById('btn-report-submit')?.setAttribute('disabled', '');
+  overlay.classList.add('active');
+}
+
+async function submitReport() {
+  if (!peerUserId) {
+    log('⚠️ 對方未驗證，無法檢舉');
+    return;
+  }
+  const overlay = document.getElementById('report-overlay');
+  const selectedBtn = overlay?.querySelector('.report-reason-btn.selected');
+  if (!selectedBtn) return;
+
+  const reason = selectedBtn.dataset.reason;
+  const notes = document.getElementById('report-notes')?.value || '';
+
+  // 用字幕 buffer 當證據
+  const evidenceSnapshot = subtitleBuffer
+    .filter(s => !s.interim && s.text)
+    .map(s => ({ speaker: s.speaker, text: s.text, lang: s.lang, ts: s.ts }));
+
+  const result = await apiCall('/api/report', {
+    reportedId: peerUserId,
+    reason,
+    notes: notes.slice(0, 500),
+    evidenceSnapshot,
+  });
+
+  overlay?.classList.remove('active');
+
+  if (result.ok) {
+    log(`🚨 已檢舉 ${peerName}（${reason}），對方已被自動封鎖`);
+    // 檢舉 = 自動封鎖 + 掛斷
+    saveConversationHistory();
+    renderBottomTabs();
+    if (peerId) socket.emit('hangup', { target: peerId });
+    cleanup();
+    setStatus('已檢舉並掛斷');
+    hidePeerCard();
+    hideMeters();
+    hideSubtitles();
+    showButtons('idle');
+  } else {
+    log(`檢舉失敗: ${result.error || '未知錯誤'}`);
+  }
+}
+
+async function hangup() {
+  const yes = await showConfirm({
+    icon: '📞',
+    text: '確定要結束通話嗎？',
+    okLabel: '結束通話',
+    cancelLabel: '繼續聊',
+  });
+  if (!yes) return;
+  // 掛斷前保存對話紀錄
+  saveConversationHistory();
+  renderBottomTabs();
   if (peerId) socket.emit('hangup', { target: peerId });
   cleanup();
   setStatus('已掛斷');
@@ -1309,8 +1495,11 @@ function cleanup() {
   localAnalyser = null;
   remoteAnalyser = null;
   peerId = null;
+  peerUserId = null;
   peerName = null;
   peerLang = null;
+  peerRegionStored = null;
+  peerGenderStored = null;
   isHost = false;
   pendingCandidates = [];
   if (userDisplayEl) userDisplayEl.textContent = '—';
@@ -1436,6 +1625,9 @@ function onbWireGenderGrid() {
       document.querySelectorAll('.onb-gender-btn').forEach(b => b.classList.remove('selected'));
       btn.classList.add('selected');
       onbSelectedGender = btn.dataset.gender;
+      // 即時預覽主題色
+      localStorage.setItem(ONB_GENDER_KEY, onbSelectedGender);
+      applyGenderTheme();
       onbStep2Next.disabled = false;
     });
   });
@@ -1506,6 +1698,26 @@ btnMute.addEventListener('click', toggleMute);
 btnSubtitle.addEventListener('click', toggleSubtitles);
 langBtn.addEventListener('click', toggleLang);
 
+// 封鎖 + 檢舉
+document.getElementById('btn-block')?.addEventListener('click', blockCurrentPeer);
+document.getElementById('btn-report')?.addEventListener('click', showReportOverlay);
+
+// 檢舉 overlay 互動
+const reportOverlay = document.getElementById('report-overlay');
+reportOverlay?.querySelectorAll('.report-reason-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    reportOverlay.querySelectorAll('.report-reason-btn').forEach(b => b.classList.remove('selected'));
+    btn.classList.add('selected');
+    const submitBtn = document.getElementById('btn-report-submit');
+    if (submitBtn) submitBtn.disabled = false;
+  });
+});
+document.getElementById('btn-report-submit')?.addEventListener('click', submitReport);
+document.getElementById('btn-report-cancel')?.addEventListener('click', () => {
+  reportOverlay?.classList.remove('active');
+});
+
+
 // 「附近配對」按鈕：用 onboarding 存的 myBigRegion 做為「同地區」
 const btnNearby = document.getElementById('btn-nearby');
 btnNearby?.addEventListener('click', () => {
@@ -1555,6 +1767,369 @@ btnSpecificConfirm?.addEventListener('click', () => {
   specificPicker?.classList.remove('active');
   startMatching({ mode: 'specific', targetRegion: specificSelectedRegion });
 });
+
+// ── 對話紀錄（本機 localStorage）──
+const HISTORY_KEY = 'kaitalk.chatHistory';
+const HISTORY_TTL = 30 * 24 * 60 * 60 * 1000; // 30 天
+const HISTORY_MAX = 50; // 最多保存 50 筆對話
+
+function saveConversationHistory() {
+  // 只存有內容的 final 訊息（不存 interim）
+  const messages = subtitleBuffer
+    .filter(s => !s.interim && s.text)
+    .map(s => ({
+      speaker: s.speaker,
+      text: s.text,
+      lang: s.lang,
+      translated: s.translated || null,
+      ts: s.ts,
+    }));
+  if (messages.length === 0) return;
+
+  // 找重逢碼（剛剛這通有沒有產生）
+  let reunionCode = null;
+  try {
+    const codes = JSON.parse(localStorage.getItem('kaitalk.reunionCodes') || '[]');
+    const match = codes.find(c => c.peerName === (peerName || '未知'));
+    if (match) reunionCode = match.code;
+  } catch {}
+
+  const entry = {
+    id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+    peerName: peerName || '未知',
+    peerGender: peerGenderStored || null,
+    peerRegion: peerRegionStored || null,
+    peerLang: peerLang || null,
+    reunionCode,
+    myName: localStorage.getItem(ONB_NICKNAME_KEY) || '我',
+    startedAt: messages[0]?.ts || Date.now(),
+    endedAt: Date.now(),
+    messageCount: messages.length,
+    messages,
+  };
+
+  try {
+    const raw = localStorage.getItem(HISTORY_KEY);
+    let history = raw ? JSON.parse(raw) : [];
+    // 清掉過期的
+    const now = Date.now();
+    history = history.filter(h => now - h.endedAt < HISTORY_TTL);
+    // 加新的
+    history.unshift(entry);
+    // 限制筆數
+    if (history.length > HISTORY_MAX) history = history.slice(0, HISTORY_MAX);
+    localStorage.setItem(HISTORY_KEY, JSON.stringify(history));
+    log(`📋 對話已保存（${messages.length} 則訊息）`);
+  } catch (err) {
+    log(`對話保存失敗: ${err.message}`);
+  }
+}
+
+function getHistory() {
+  try {
+    const raw = localStorage.getItem(HISTORY_KEY);
+    if (!raw) return [];
+    const history = JSON.parse(raw);
+    const now = Date.now();
+    return history.filter(h => now - h.endedAt < HISTORY_TTL);
+  } catch {
+    return [];
+  }
+}
+
+function renderBottomTabs() {
+  const tabsEl = document.getElementById('bottom-tabs');
+  if (!tabsEl) return;
+
+  const history = getHistory();
+  // 有歷史或已登入就顯示 tabs
+  tabsEl.style.display = (history.length > 0 || kaitalkUserId) ? 'block' : 'none';
+
+  renderHistoryTab(history);
+  renderFriendsTab();
+}
+
+function renderHistoryTab(history) {
+  const listEl = document.getElementById('history-list');
+  if (!listEl) return;
+
+  if (!history || history.length === 0) {
+    listEl.innerHTML = '<div class="friends-empty">還沒有對話紀錄</div>';
+    return;
+  }
+
+  listEl.innerHTML = history.map(h => {
+    const date = new Date(h.endedAt);
+    const dateStr = `${date.getMonth() + 1}/${date.getDate()} ${date.getHours()}:${String(date.getMinutes()).padStart(2, '0')}`;
+    const durationSec = Math.round((h.endedAt - h.startedAt) / 1000);
+    const durationStr = durationSec < 60 ? `${durationSec}秒` : `${Math.floor(durationSec / 60)}分`;
+    const regionObj = BIG_REGIONS.find(r => r.id === h.peerRegion);
+    const regionTag = regionObj ? `<span class="tag tag-blue">${regionObj.flag} ${regionObj.name}</span>` : '';
+    const li = h.peerLang ? langInfo(h.peerLang) : null;
+    const langTag = li ? `<span class="tag tag-red">${li.flag} ${li.label}</span>` : '';
+    const gIcon = GENDER_ICONS[h.peerGender] || '';
+    return `
+      <div class="history-item" data-id="${h.id}">
+        <div class="hi-row">
+          <div class="hi-avatar">${gIcon || '👤'}</div>
+          <div class="hi-info">
+            <div class="hi-name">${escapeHtml(h.peerName)}</div>
+            <div class="hi-tags">${regionTag}${langTag}</div>
+          </div>
+          <div class="hi-right">
+            <span class="hi-date">${dateStr}</span>
+            <span class="hi-meta">${durationStr} · ${h.messageCount}則</span>
+          </div>
+        </div>
+      </div>
+    `;
+  }).join('');
+
+  listEl.querySelectorAll('.history-item').forEach(item => {
+    item.addEventListener('click', () => {
+      const id = item.dataset.id;
+      const h = history.find(x => x.id === id);
+      if (h) showHistoryDetail(h);
+    });
+  });
+}
+
+async function renderFriendsTab() {
+  const listEl = document.getElementById('friends-list');
+  if (!listEl) return;
+
+  if (!kaitalkAccessToken) {
+    listEl.innerHTML = '<div class="friends-empty">登入後可查看好友</div>';
+    return;
+  }
+
+  listEl.innerHTML = '<div class="friends-empty">載入中...</div>';
+
+  try {
+    const resp = await fetch('/api/friends', {
+      headers: { 'Authorization': `Bearer ${kaitalkAccessToken}` },
+    });
+    const data = await resp.json();
+    const friends = data.friends || [];
+
+    if (friends.length === 0) {
+      listEl.innerHTML = '<div class="friends-empty">還沒有好友<br><span style="font-size:11px;">通話時互按「💚 想再遇」就能成為好友</span></div>';
+      return;
+    }
+
+    listEl.innerHTML = friends.map(f => {
+      const codeHtml = f.reunionCode
+        ? `<span style="font-family:ui-monospace;letter-spacing:0.1em;color:var(--primary);font-weight:700;">${f.reunionCode}</span>`
+        : '';
+      return `
+        <div class="friend-item" data-code="${f.reunionCode || ''}" data-name="${escapeHtml(f.friendName)}">
+          <div class="fi-row">
+            <div class="fi-avatar">👤</div>
+            <div class="fi-info">
+              <div class="fi-name">${escapeHtml(f.friendName)}</div>
+              <div class="fi-meta">聊過 ${f.callCount} 次 ${codeHtml}</div>
+            </div>
+            <div class="fi-actions">
+              <button class="fi-btn fi-btn-call" data-code="${f.reunionCode || ''}">📞</button>
+              <button class="fi-btn fi-btn-mail" data-friend-id="${f.friendId}" data-friend-name="${escapeHtml(f.friendName)}">✉️</button>
+            </div>
+          </div>
+        </div>
+      `;
+    }).join('');
+
+    // 一鍵再次通話
+    listEl.querySelectorAll('.fi-btn-call').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const code = btn.dataset.code;
+        if (code) {
+          startMatching({ mode: 'quick', reunionCode: code });
+        }
+      });
+    });
+
+    // 寫信
+    listEl.querySelectorAll('.fi-btn-mail').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        openLetterThread(btn.dataset.friendId, btn.dataset.friendName);
+      });
+    });
+  } catch (err) {
+    listEl.innerHTML = '<div class="friends-empty">載入失敗</div>';
+  }
+}
+
+// ─── 信件系統 ─────────────────────────────────────
+
+async function openLetterThread(friendId, friendName) {
+  const overlay = document.getElementById('letter-overlay');
+  const contentEl = overlay?.querySelector('.letter-overlay-content');
+  if (!overlay || !contentEl) return;
+
+  contentEl.innerHTML = `
+    <div class="letter-header">
+      <h3>✉️ 與 ${escapeHtml(friendName)} 的信件</h3>
+    </div>
+    <div class="letter-messages" id="letter-messages"><div class="friends-empty">載入中...</div></div>
+    <div class="letter-compose">
+      <textarea id="letter-input" class="letter-input" placeholder="寫封信..." maxlength="500" rows="2"></textarea>
+      <button id="btn-letter-send" class="btn-primary" style="margin-top:8px;">寄出</button>
+    </div>
+    <button class="btn-secondary" id="btn-letter-close" style="margin-top:8px;">關閉</button>
+  `;
+
+  overlay.classList.add('active');
+
+  // 載入信件
+  try {
+    const resp = await fetch(`/api/letters/thread/${friendId}`, {
+      headers: { 'Authorization': `Bearer ${kaitalkAccessToken}` },
+    });
+    const data = await resp.json();
+    const msgsEl = document.getElementById('letter-messages');
+    const msgs = data.messages || [];
+
+    if (msgs.length === 0) {
+      msgsEl.innerHTML = '<div class="friends-empty">還沒有信件<br><span style="font-size:11px;">寫第一封信給對方吧</span></div>';
+    } else {
+      msgsEl.innerHTML = msgs.map(m => {
+        const isMine = m.from_uid === kaitalkUserId;
+        const time = new Date(m.created_at).toLocaleString('zh-TW', { month:'numeric', day:'numeric', hour:'numeric', minute:'2-digit' });
+        return `
+          <div class="letter-msg ${isMine ? 'self' : 'peer'}">
+            <div class="letter-bubble">${escapeHtml(m.body)}</div>
+            <div class="letter-time">${time}</div>
+          </div>
+        `;
+      }).join('');
+      msgsEl.scrollTop = msgsEl.scrollHeight;
+    }
+  } catch {
+    document.getElementById('letter-messages').innerHTML = '<div class="friends-empty">載入失敗</div>';
+  }
+
+  // 寄信
+  document.getElementById('btn-letter-send')?.addEventListener('click', async () => {
+    const input = document.getElementById('letter-input');
+    const body = input?.value?.trim();
+    if (!body) return;
+
+    const resp = await fetch('/api/letters/send', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${kaitalkAccessToken}`,
+      },
+      body: JSON.stringify({ toUid: friendId, body, lang: sttLang }),
+    });
+    const result = await resp.json();
+
+    if (result.ok) {
+      input.value = '';
+      openLetterThread(friendId, friendName); // 重新載入
+    } else if (result.error === 'daily_limit') {
+      log('⚠️ 今日寄信已達上限（3 封）');
+    } else {
+      log(`⚠️ 寄信失敗: ${result.error || result.message || ''}`);
+    }
+  });
+
+  document.getElementById('btn-letter-close')?.addEventListener('click', () => {
+    overlay.classList.remove('active');
+  });
+}
+
+// Tab 切換
+document.querySelectorAll('.tab-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    const tab = btn.dataset.tab;
+    document.getElementById('tab-history').style.display = tab === 'history' ? 'block' : 'none';
+    document.getElementById('tab-friends').style.display = tab === 'friends' ? 'block' : 'none';
+    if (tab === 'friends') renderFriendsTab();
+  });
+});
+
+function deleteHistoryById(id) {
+  try {
+    const raw = localStorage.getItem(HISTORY_KEY);
+    if (!raw) return;
+    let history = JSON.parse(raw);
+    history = history.filter(h => h.id !== id);
+    localStorage.setItem(HISTORY_KEY, JSON.stringify(history));
+  } catch {}
+}
+
+function showHistoryDetail(h) {
+  const overlay = document.getElementById('history-overlay');
+  const contentEl = overlay?.querySelector('.history-overlay-content');
+  if (!overlay || !contentEl) return;
+
+  const regionObj = BIG_REGIONS.find(r => r.id === h.peerRegion);
+  const regionTag = regionObj ? `${regionObj.flag} ${regionObj.name}` : '';
+  const li = h.peerLang ? langInfo(h.peerLang) : null;
+  const langTag = li ? `${li.flag} ${li.label}` : '';
+  const gIcon = GENDER_ICONS[h.peerGender] || '';
+
+  const msgs = h.messages.map(m => {
+    const label = m.speaker === 'self' ? '你' : h.peerName;
+    const mli = langInfo(m.lang || 'unknown');
+    const transHtml = m.translated ? `<div class="hd-trans">↳ ${escapeHtml(m.translated)}</div>` : '';
+    return `
+      <div class="hd-msg ${m.speaker}">
+        <div class="hd-bubble">
+          <div class="hd-text">${escapeHtml(m.text)}</div>
+          ${transHtml}
+        </div>
+        <div class="hd-label">${mli.flag} ${escapeHtml(label)}</div>
+      </div>
+    `;
+  }).join('');
+
+  contentEl.innerHTML = `
+    <div class="hd-header">
+      <span class="hd-avatar">${gIcon || '👤'}</span>
+      <span class="hd-name">${escapeHtml(h.peerName)}</span>
+      <span class="hd-info">${regionTag} ${langTag}</span>
+    </div>
+    ${h.reunionCode ? `
+    <div class="hd-reunion">
+      <span class="hd-reunion-label">💌 重逢碼</span>
+      <span class="hd-reunion-code">${h.reunionCode}</span>
+      <button class="btn-reunion-use" id="btn-reunion-use">用此碼配對</button>
+    </div>` : ''}
+    <div class="hd-messages">${msgs}</div>
+    <div class="hd-actions">
+      <button class="btn-secondary" id="btn-history-close">關閉</button>
+      <button class="btn-danger-small" id="btn-history-delete">🗑️ 刪除紀錄</button>
+    </div>
+  `;
+
+  overlay.classList.add('active');
+  document.getElementById('btn-history-close')?.addEventListener('click', () => {
+    overlay.classList.remove('active');
+  });
+  document.getElementById('btn-reunion-use')?.addEventListener('click', () => {
+    overlay.classList.remove('active');
+    startMatching({ mode: 'quick', reunionCode: h.reunionCode });
+  });
+  document.getElementById('btn-history-delete')?.addEventListener('click', async () => {
+    const yes = await showConfirm({
+      icon: '🗑️',
+      text: `刪除與 ${h.peerName} 的對話紀錄？`,
+      okLabel: '刪除',
+      cancelLabel: '取消',
+    });
+    if (yes) {
+      deleteHistoryById(h.id);
+      overlay.classList.remove('active');
+      renderBottomTabs();
+    }
+  });
+}
 
 // ── 文字訊息（打字送出）──
 const chatInputBar = document.getElementById('chat-input-bar');
@@ -1625,6 +2200,7 @@ let settingsTempLang = null;
 let settingsTempGender = null;
 let settingsTempTargetGender = null;
 let settingsTempAvatar = null;
+let settingsTempTargetLangs = [];
 
 function buildSettingsRegionGrid() {
   if (!settingsRegionGrid) return;
@@ -1679,6 +2255,19 @@ document.querySelectorAll('.settings-tgender-btn').forEach(btn => {
   });
 });
 
+// 想找講什麼語言（多選 toggle）
+document.querySelectorAll('.settings-target-lang-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    btn.classList.toggle('selected');
+    const lang = btn.dataset.tlang;
+    if (btn.classList.contains('selected')) {
+      if (!settingsTempTargetLangs.includes(lang)) settingsTempTargetLangs.push(lang);
+    } else {
+      settingsTempTargetLangs = settingsTempTargetLangs.filter(l => l !== lang);
+    }
+  });
+});
+
 function openSettings() {
   if (!settingsOverlay) return;
 
@@ -1719,6 +2308,13 @@ function openSettings() {
     b.classList.toggle('selected', b.dataset.lang === sttLang);
   });
 
+  // 預選想找的語言（多選）
+  const curTargetLangs = getTargetLangs();
+  settingsTempTargetLangs = [...curTargetLangs];
+  document.querySelectorAll('.settings-target-lang-btn').forEach(b => {
+    b.classList.toggle('selected', curTargetLangs.includes(b.dataset.tlang));
+  });
+
   settingsOverlay.classList.add('active');
 }
 
@@ -1748,6 +2344,13 @@ function saveSettings() {
     }
   }
 
+  // 儲存想找的語言
+  if (settingsTempTargetLangs.length === 0) {
+    localStorage.removeItem(TARGET_LANGS_KEY);
+  } else {
+    localStorage.setItem(TARGET_LANGS_KEY, JSON.stringify(settingsTempTargetLangs));
+  }
+
   log(`設定已儲存`);
   closeSettings();
   renderUserBar();
@@ -1763,8 +2366,20 @@ const userBarNameEl = document.getElementById('user-bar-name');
 const userBarRegionEl = document.getElementById('user-bar-region');
 const userBarLangEl = document.getElementById('user-bar-lang');
 
+function applyGenderTheme() {
+  const gender = localStorage.getItem(ONB_GENDER_KEY);
+  if (gender === 'female') {
+    document.documentElement.dataset.theme = 'female';
+  } else if (gender === 'male') {
+    document.documentElement.dataset.theme = 'male';
+  } else {
+    delete document.documentElement.dataset.theme; // 中性
+  }
+}
+
 function renderUserBar() {
   if (!userBarEl) return;
+  applyGenderTheme();
 
   // 暱稱（純名字，不帶性別 icon — icon 在 avatar 圈裡）
   const name = localStorage.getItem(ONB_NICKNAME_KEY) || '—';
@@ -1777,13 +2392,17 @@ function renderUserBar() {
   if (avatarImgEl) {
     const chosenAvatar = localStorage.getItem(ONB_AVATAR_KEY) || 'avatar_mature.png';
     avatarImgEl.src = '/' + chosenAvatar;
-    if (chosenAvatar === 'avatar_sporty.png') {
-      avatarImgEl.style.transform = 'scale(1.28) translateY(6%)';
-    } else if (chosenAvatar === 'avatar_elegant.png') {
-      avatarImgEl.style.transform = 'scale(1.15) translateY(4%)';
-    } else {
-      avatarImgEl.style.transform = 'scale(1) translateY(0)';
-    }
+    const avatarTransforms = {
+      'avatar_mature.png':   'scale(1.1) translateY(2%)',
+      'avatar_sporty.png':   'scale(1.4) translateY(10%)',
+      'avatar_elegant.png':  'scale(1.2) translateY(5%)',
+      'avatar_shorthair.png':'scale(1.1) translateY(3%)',
+      'avatar_older_m.png':  'scale(1.15) translateY(3%)',
+      'avatar_older_f.png':  'scale(1.2) translateY(5%)',
+      'avatar_idol_m.png':   'scale(1.0) translateY(0)',
+      'avatar_idol_f.png':   'scale(1.15) translateY(4%)',
+    };
+    avatarImgEl.style.transform = avatarTransforms[chosenAvatar] || 'scale(1) translateY(0)';
   }
 
   // 地區
@@ -1803,6 +2422,23 @@ function renderUserBar() {
   if (userBarLangEl) {
     const li = langInfo(sttLang);
     userBarLangEl.textContent = `${li.flag} ${li.label}`;
+  }
+
+  // 想找（性別 + 語言）
+  const targetEl = document.getElementById('user-bar-target');
+  if (targetEl) {
+    const tg = localStorage.getItem(ONB_TARGET_GENDER_KEY) || 'any';
+    const tgLabel = tg === 'male' ? '👨 男生' : tg === 'female' ? '👩 女生' : '😊 都可以';
+    targetEl.textContent = `想找：${tgLabel}`;
+  }
+  const tlEl = document.getElementById('target-lang-value');
+  if (tlEl) {
+    const tl = getTargetLangs();
+    if (tl.length === 0) {
+      tlEl.textContent = '所有語言';
+    } else {
+      tlEl.textContent = tl.map(c => langInfo(c).flag).join(' ');
+    }
   }
 }
 
@@ -2020,6 +2656,8 @@ function hideTrivia() {
 }
 
 loadTrivia();
+renderBottomTabs();
+applyGenderTheme();
 
 // 沒做過 onboarding → 顯示
 if (!onboardingDone) {

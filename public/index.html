@@ -6,20 +6,15 @@
   <title>KaiTalk — 兩人語音盲盒</title>
   <style>
     :root {
-      /* ─── 蘋果體系高質感淺色主題（依照設計藍圖）─── */
+      /* ─── 共用底色 ─── */
       --bg: #f2f2f7;
       --card: #ffffff;
       --card-2: #f8f8fa;
       --text: #1d1d1f;
       --muted: #86868b;
-      --primary: #ff6b9d;
-      --primary-dark: #e65c8a;
-      --accent: #b388ff;
       --success: #34c759;
       --danger: #ff3b30;
       --warning: #ff9500;
-      --gradient-btn: linear-gradient(135deg, #ff8c8c 0%, #ff6b9d 100%);
-      --btn-shadow: rgba(255, 107, 157, 0.35);
       --tag-blue-bg: #eaf2ff;
       --tag-blue-text: #4b89ff;
       --tag-red-bg: #ffeaea;
@@ -27,6 +22,40 @@
       --border: #f0f0f0;
       --soft-shadow: 0 16px 40px rgba(0, 0, 0, 0.04), 0 4px 12px rgba(0, 0, 0, 0.02);
       --card-shadow: 0 4px 16px rgba(0, 0, 0, 0.03);
+      /* ─── 預設：中性紫藍（onboarding 前）─── */
+      --primary: #7c6dd8;
+      --primary-dark: #6a5bbf;
+      --accent: #9b8ce8;
+      --gradient-btn: linear-gradient(135deg, #9b8ce8 0%, #7c6dd8 100%);
+      --gradient-text: linear-gradient(135deg, #7c6dd8, #9b8ce8);
+      --btn-shadow: rgba(124, 109, 216, 0.35);
+      --bubble-self-bg: linear-gradient(135deg, #e8e4f8, #ddd6f3);
+      --call-bar-border: #e8e4f8;
+      --call-bar-shadow: rgba(124, 109, 216, 0.08);
+    }
+    /* ─── 女生主題：粉紅 ─── */
+    [data-theme="female"] {
+      --primary: #ff6b9d;
+      --primary-dark: #e65c8a;
+      --accent: #b388ff;
+      --gradient-btn: linear-gradient(135deg, #ff8c8c 0%, #ff6b9d 100%);
+      --gradient-text: linear-gradient(135deg, #ff6b9d, #b388ff);
+      --btn-shadow: rgba(255, 107, 157, 0.35);
+      --bubble-self-bg: linear-gradient(135deg, #ffe0ec, #ffd6e7);
+      --call-bar-border: #ffe8f0;
+      --call-bar-shadow: rgba(255, 107, 157, 0.08);
+    }
+    /* ─── 男生主題：藍 ─── */
+    [data-theme="male"] {
+      --primary: #4a90d9;
+      --primary-dark: #3a7bc8;
+      --accent: #6eb5ff;
+      --gradient-btn: linear-gradient(135deg, #6eb5ff 0%, #4a90d9 100%);
+      --gradient-text: linear-gradient(135deg, #4a90d9, #6eb5ff);
+      --btn-shadow: rgba(74, 144, 217, 0.35);
+      --bubble-self-bg: linear-gradient(135deg, #dce8f5, #d0e0f0);
+      --call-bar-border: #dce8f5;
+      --call-bar-shadow: rgba(74, 144, 217, 0.08);
     }
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
@@ -35,6 +64,7 @@
       color: var(--text);
       min-height: 100vh;
       display: flex;
+      flex-direction: column;
       align-items: center;
       justify-content: center;
       padding: 16px;
@@ -52,8 +82,9 @@
     h1 {
       font-size: 26px;
       margin-bottom: 16px;
-      background: linear-gradient(135deg, #ff6b9d, #b388ff);
+      background: var(--gradient-text);
       -webkit-background-clip: text;
+      background-clip: text;
       -webkit-text-fill-color: transparent;
       font-weight: 800;
     }
@@ -92,10 +123,10 @@
     .peer-card.active { display: block; }
     .call-bar {
       background: #ffffff;
-      border: 1px solid #ffe8f0;
+      border: 1px solid var(--call-bar-border);
       border-radius: 16px;
       padding: 16px;
-      box-shadow: 0 4px 16px rgba(255,107,157,0.08);
+      box-shadow: 0 4px 16px var(--call-bar-shadow);
       position: relative;
     }
     .call-bar-row {
@@ -269,6 +300,275 @@
       cursor: default;
     }
 
+    /* ─── 信件 overlay ─── */
+    .letter-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.7);
+      backdrop-filter: blur(4px);
+      -webkit-backdrop-filter: blur(4px);
+      z-index: 95;
+      padding: 20px;
+      align-items: center;
+      justify-content: center;
+    }
+    .letter-overlay.active { display: flex; }
+    .letter-overlay-content {
+      background: var(--card);
+      border-radius: 20px;
+      padding: 24px;
+      max-width: 400px;
+      width: 100%;
+      max-height: 85vh;
+      overflow-y: auto;
+    }
+    .letter-header h3 {
+      font-size: 16px;
+      font-weight: 700;
+      text-align: center;
+      margin-bottom: 14px;
+    }
+    .letter-messages {
+      max-height: 45vh;
+      overflow-y: auto;
+      margin-bottom: 14px;
+      padding: 4px 0;
+    }
+    .letter-msg { margin-bottom: 10px; }
+    .letter-msg.self { text-align: right; }
+    .letter-msg.peer { text-align: left; }
+    .letter-bubble {
+      display: inline-block;
+      max-width: 85%;
+      padding: 10px 14px;
+      border-radius: 16px;
+      font-size: 14px;
+      line-height: 1.5;
+      text-align: left;
+    }
+    .letter-msg.self .letter-bubble {
+      background: var(--bubble-self-bg);
+      color: var(--text);
+      border-bottom-right-radius: 4px;
+    }
+    .letter-msg.peer .letter-bubble {
+      background: var(--card-2);
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-bottom-left-radius: 4px;
+    }
+    .letter-time {
+      font-size: 10px;
+      color: var(--muted);
+      margin-top: 2px;
+    }
+    .letter-input {
+      width: 100%;
+      padding: 10px 14px;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      background: var(--card-2);
+      font-size: 14px;
+      color: var(--text);
+      resize: none;
+      font-family: inherit;
+      outline: none;
+    }
+    .letter-input:focus { border-color: var(--primary); }
+    .fi-btn-mail {
+      background: var(--card-2);
+      color: var(--primary);
+      border: 1px solid var(--border);
+    }
+
+    /* ─── 安全操作按鈕（封鎖 + 檢舉）─── */
+    .safety-actions {
+      display: flex;
+      gap: 8px;
+      margin-top: 6px;
+      justify-content: center;
+    }
+    .btn-safety {
+      padding: 6px 14px;
+      border-radius: 10px;
+      font-size: 12px;
+      font-weight: 600;
+      border: 1px solid var(--border);
+      background: var(--card-2);
+      color: var(--muted);
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .btn-safety:hover {
+      background: rgba(0,0,0,0.04);
+    }
+    .btn-safety-danger {
+      border-color: rgba(255,59,48,0.2);
+      color: var(--danger);
+    }
+    .btn-safety-danger:hover {
+      background: rgba(255,59,48,0.06);
+    }
+
+    /* ─── 檢舉 overlay ─── */
+    .report-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.6);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      z-index: 110;
+      padding: 24px;
+      align-items: center;
+      justify-content: center;
+    }
+    .report-overlay.active { display: flex; }
+    .report-card {
+      background: var(--card);
+      border-radius: 24px;
+      padding: 28px 24px;
+      max-width: 360px;
+      width: 100%;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.15);
+    }
+    .report-card h3 {
+      font-size: 18px;
+      font-weight: 700;
+      text-align: center;
+      margin-bottom: 8px;
+    }
+    .report-hint {
+      font-size: 12px;
+      color: var(--muted);
+      text-align: center;
+      line-height: 1.5;
+      margin-bottom: 16px;
+    }
+    .report-reasons {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+    .report-reason-btn {
+      padding: 12px 16px;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      background: var(--card-2);
+      color: var(--text);
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      text-align: left;
+      transition: all 0.15s;
+    }
+    .report-reason-btn:hover {
+      background: rgba(255,59,48,0.04);
+      border-color: rgba(255,59,48,0.2);
+    }
+    .report-reason-btn.selected {
+      background: rgba(255,59,48,0.08);
+      border-color: var(--danger);
+      color: var(--danger);
+    }
+    .report-notes {
+      width: 100%;
+      padding: 10px 14px;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      background: var(--card-2);
+      font-size: 13px;
+      color: var(--text);
+      resize: none;
+      font-family: inherit;
+      margin-bottom: 16px;
+      outline: none;
+    }
+    .report-notes:focus {
+      border-color: var(--danger);
+    }
+    .report-actions {
+      display: flex;
+      gap: 10px;
+    }
+    .report-actions .btn-secondary,
+    .report-actions .btn-danger {
+      flex: 1;
+    }
+
+    /* ─── 自訂確認彈窗 ─── */
+    .confirm-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.6);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      z-index: 110;
+      padding: 24px;
+      align-items: center;
+      justify-content: center;
+    }
+    .confirm-overlay.active {
+      display: flex;
+      animation: fadeIn 0.25s ease-out;
+    }
+    .confirm-card {
+      background: var(--card);
+      border-radius: 24px;
+      padding: 32px 28px 24px;
+      max-width: 320px;
+      width: 100%;
+      text-align: center;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.15);
+    }
+    .confirm-icon {
+      font-size: 48px;
+      margin-bottom: 12px;
+    }
+    .confirm-text {
+      font-size: 16px;
+      font-weight: 600;
+      color: var(--text);
+      margin-bottom: 24px;
+      line-height: 1.5;
+    }
+    .confirm-actions {
+      display: flex;
+      gap: 10px;
+    }
+    .confirm-btn {
+      flex: 1;
+      padding: 14px 0;
+      border-radius: 14px;
+      font-size: 15px;
+      font-weight: 700;
+      border: none;
+      cursor: pointer;
+      transition: transform 0.1s, box-shadow 0.15s;
+    }
+    .confirm-btn:active {
+      transform: scale(0.97);
+    }
+    .confirm-btn-cancel {
+      background: var(--card-2);
+      color: var(--text);
+      border: 1px solid var(--border);
+    }
+    .confirm-btn-cancel:hover {
+      background: rgba(179,136,255,0.06);
+    }
+    .confirm-btn-ok {
+      background: var(--danger);
+      color: #fff;
+      box-shadow: 0 4px 16px rgba(255,59,48,0.3);
+    }
+    .confirm-btn-ok:hover {
+      box-shadow: 0 6px 20px rgba(255,59,48,0.4);
+    }
+
     /* ─── 互相想再遇 match overlay（掛斷後彈出）─── */
     .mutual-match-overlay {
       display: none;
@@ -296,8 +596,9 @@
     .mutual-match-card h2 {
       font-size: 24px;
       margin-bottom: 12px;
-      background: linear-gradient(135deg, #ff6b9d, #c084fc);
+      background: var(--gradient-text);
       -webkit-background-clip: text;
+      background-clip: text;
       -webkit-text-fill-color: transparent;
     }
     .mutual-match-card p {
@@ -312,6 +613,84 @@
       color: var(--text);
       margin-bottom: 20px;
     }
+    .reunion-code-box {
+      background: rgba(255,255,255,0.1);
+      border: 1px dashed rgba(255,255,255,0.3);
+      border-radius: 16px;
+      padding: 16px;
+      margin-bottom: 20px;
+    }
+    .reunion-label {
+      font-size: 12px;
+      color: var(--muted);
+      margin-bottom: 8px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+    }
+    .reunion-code {
+      font-size: 36px;
+      font-weight: 800;
+      letter-spacing: 0.3em;
+      font-family: ui-monospace, monospace;
+      background: var(--gradient-text);
+      -webkit-background-clip: text;
+      background-clip: text;
+      -webkit-text-fill-color: transparent;
+      margin-bottom: 8px;
+    }
+    .reunion-hint {
+      font-size: 12px;
+      color: var(--muted);
+      line-height: 1.4;
+    }
+    /* 主畫面重逢碼入口 */
+    .reunion-input-row {
+      display: flex;
+      gap: 8px;
+      margin-top: 12px;
+      align-items: center;
+    }
+    .reunion-input {
+      flex: 1;
+      padding: 12px 16px;
+      border-radius: 14px;
+      border: 1px solid var(--border);
+      background: var(--card-2);
+      font-size: 18px;
+      font-weight: 700;
+      letter-spacing: 0.2em;
+      text-align: center;
+      font-family: ui-monospace, monospace;
+      color: var(--text);
+      outline: none;
+      transition: border-color 0.15s;
+    }
+    .reunion-input:focus {
+      border-color: var(--primary);
+    }
+    .reunion-input::placeholder {
+      font-size: 13px;
+      letter-spacing: 0;
+      font-weight: 400;
+      font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+      color: var(--muted);
+    }
+    .btn-reunion {
+      padding: 12px 18px;
+      border-radius: 14px;
+      border: none;
+      background: var(--gradient-btn);
+      color: #fff;
+      font-size: 14px;
+      font-weight: 700;
+      cursor: pointer;
+      white-space: nowrap;
+      box-shadow: 0 4px 12px var(--btn-shadow);
+      transition: transform 0.1s;
+    }
+    .btn-reunion:active { transform: scale(0.97); }
+    .btn-reunion:disabled { opacity: 0.4; cursor: not-allowed; }
 
     /* 對方的語言徽章（只顯示國旗，未知時顯示「🌐 偵測中」）*/
     .peer-card .peer-lang {
@@ -619,9 +998,9 @@
       font-weight: 800;
     }
     .btn-primary-massive .btn-subtitle-text {
-      font-size: 13px;
-      font-weight: 600;
-      opacity: 0.85;
+      font-size: 16px;
+      font-weight: 700;
+      opacity: 0.9;
     }
 
     /* ─── 次要按鈕列（附近 + 指定 並排）─── */
@@ -697,6 +1076,327 @@
       background: rgba(179,136,255,0.08);
       color: var(--accent);
     }
+    /* ─── Bottom tabs (below card) ─── */
+    .bottom-tabs {
+      max-width: 400px;
+      width: 100%;
+      margin: 16px auto 0;
+    }
+    .tab-bar {
+      display: flex;
+      gap: 0;
+      margin-bottom: 12px;
+      background: var(--card);
+      border-radius: 14px;
+      padding: 4px;
+      box-shadow: var(--card-shadow);
+      border: 1px solid var(--border);
+    }
+    .tab-btn {
+      flex: 1;
+      padding: 10px 0;
+      border: none;
+      background: transparent;
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--muted);
+      cursor: pointer;
+      border-radius: 11px;
+      transition: all 0.2s;
+    }
+    .tab-btn.active {
+      background: var(--primary);
+      color: #fff;
+      box-shadow: 0 2px 8px var(--btn-shadow);
+    }
+    .tab-content {
+      min-height: 40px;
+    }
+    /* 好友項目 */
+    .friend-item {
+      padding: 12px 14px;
+      background: var(--card);
+      border-radius: 16px;
+      margin-bottom: 10px;
+      cursor: pointer;
+      border: 1px solid var(--border);
+      box-shadow: var(--card-shadow);
+      transition: background 0.15s, box-shadow 0.15s;
+    }
+    .friend-item:hover {
+      background: color-mix(in srgb, var(--primary) 4%, transparent);
+    }
+    .fi-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .fi-avatar {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      background: var(--card-2);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      flex-shrink: 0;
+      border: 1px solid var(--border);
+    }
+    .fi-info {
+      flex: 1;
+      min-width: 0;
+    }
+    .fi-name {
+      font-weight: 700;
+      font-size: 14px;
+      color: var(--text);
+      margin-bottom: 2px;
+    }
+    .fi-meta {
+      font-size: 11px;
+      color: var(--muted);
+    }
+    .fi-actions {
+      display: flex;
+      gap: 6px;
+      flex-shrink: 0;
+    }
+    .fi-btn {
+      padding: 6px 12px;
+      border-radius: 10px;
+      border: none;
+      font-size: 11px;
+      font-weight: 700;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+    .fi-btn-call {
+      background: var(--gradient-btn);
+      color: #fff;
+    }
+    .friends-empty {
+      text-align: center;
+      color: var(--muted);
+      padding: 30px 0;
+      font-size: 13px;
+      line-height: 1.6;
+    }
+    .history-item {
+      padding: 12px 14px;
+      background: var(--card);
+      border-radius: 16px;
+      margin-bottom: 10px;
+      cursor: pointer;
+      border: 1px solid var(--border);
+      box-shadow: var(--card-shadow);
+      transition: background 0.15s, box-shadow 0.15s;
+    }
+    .history-item:hover {
+      background: color-mix(in srgb, var(--primary) 4%, transparent);
+      box-shadow: 0 2px 12px color-mix(in srgb, var(--primary) 10%, transparent);
+    }
+    .hi-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .hi-avatar {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      background: var(--card-2);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      flex-shrink: 0;
+      border: 1px solid var(--border);
+    }
+    .hi-info {
+      flex: 1;
+      min-width: 0;
+    }
+    .hi-name {
+      font-weight: 700;
+      font-size: 14px;
+      color: var(--text);
+      margin-bottom: 2px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .hi-tags {
+      display: flex;
+      gap: 4px;
+      flex-wrap: nowrap;
+      overflow: hidden;
+    }
+    .hi-tags .tag {
+      font-size: 10px;
+      padding: 1px 6px;
+      white-space: nowrap;
+    }
+    .hi-right {
+      text-align: right;
+      flex-shrink: 0;
+      white-space: nowrap;
+    }
+    .hi-date {
+      display: block;
+      font-size: 11px;
+      color: var(--muted);
+      font-weight: 600;
+    }
+    .hi-meta {
+      display: block;
+      font-size: 10px;
+      color: var(--muted);
+      margin-top: 1px;
+    }
+    /* ─── History detail overlay ─── */
+    .history-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.7);
+      backdrop-filter: blur(4px);
+      -webkit-backdrop-filter: blur(4px);
+      z-index: 95;
+      padding: 20px;
+      align-items: center;
+      justify-content: center;
+    }
+    .history-overlay.active { display: flex; }
+    .history-overlay-content {
+      background: var(--card);
+      border-radius: 20px;
+      padding: 24px;
+      max-width: 400px;
+      width: 100%;
+      max-height: 85vh;
+      overflow-y: auto;
+    }
+    .hd-header {
+      text-align: center;
+      margin-bottom: 16px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid var(--border);
+    }
+    .hd-avatar {
+      font-size: 32px;
+      display: block;
+      margin-bottom: 6px;
+    }
+    .hd-name {
+      font-size: 18px;
+      font-weight: 800;
+      color: var(--text);
+      display: block;
+      margin-bottom: 4px;
+    }
+    .hd-info {
+      font-size: 13px;
+      color: var(--muted);
+    }
+    .hd-reunion {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 12px 14px;
+      background: var(--card-2);
+      border-radius: 14px;
+      margin-bottom: 14px;
+      border: 1px solid var(--border);
+    }
+    .hd-reunion-label {
+      font-size: 12px;
+      color: var(--muted);
+      font-weight: 600;
+    }
+    .hd-reunion-code {
+      font-size: 20px;
+      font-weight: 800;
+      letter-spacing: 0.2em;
+      font-family: ui-monospace, monospace;
+      color: var(--primary);
+    }
+    .btn-reunion-use {
+      margin-left: auto;
+      padding: 6px 14px;
+      border-radius: 10px;
+      border: none;
+      background: var(--gradient-btn);
+      color: #fff;
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+    .hd-messages {
+      max-height: 55vh;
+      overflow-y: auto;
+      padding: 4px 0;
+    }
+    .hd-msg {
+      margin-bottom: 10px;
+    }
+    .hd-msg.self { text-align: right; }
+    .hd-msg.peer { text-align: left; }
+    .hd-bubble {
+      display: inline-block;
+      max-width: 85%;
+      padding: 10px 14px;
+      border-radius: 16px;
+      font-size: 14px;
+      line-height: 1.5;
+      text-align: left;
+    }
+    .hd-msg.self .hd-bubble {
+      background: var(--bubble-self-bg);
+      color: var(--text);
+      border-bottom-right-radius: 4px;
+    }
+    .hd-msg.peer .hd-bubble {
+      background: var(--card-2);
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-bottom-left-radius: 4px;
+    }
+    .hd-trans {
+      font-size: 12px;
+      color: var(--muted);
+      margin-top: 4px;
+      font-style: italic;
+    }
+    .hd-label {
+      font-size: 11px;
+      color: var(--muted);
+      margin-top: 2px;
+    }
+    .hd-actions {
+      display: flex;
+      gap: 10px;
+      margin-top: 16px;
+    }
+    .hd-actions .btn-secondary {
+      flex: 1;
+    }
+    .btn-danger-small {
+      flex: 1;
+      padding: 12px 0;
+      border-radius: 14px;
+      font-size: 13px;
+      font-weight: 600;
+      border: 1px solid rgba(255,59,48,0.2);
+      background: rgba(255,59,48,0.06);
+      color: var(--danger);
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+    .btn-danger-small:hover {
+      background: rgba(255,59,48,0.12);
+    }
 
     /* ─── Settings overlay (similar to specific-picker) ─── */
     .settings-overlay {
@@ -725,8 +1425,9 @@
       font-size: 18px;
       margin-bottom: 16px;
       text-align: center;
-      background: linear-gradient(135deg, #ff6b9d, #c084fc);
+      background: var(--gradient-text);
       -webkit-background-clip: text;
+      background-clip: text;
       -webkit-text-fill-color: transparent;
     }
     .settings-section {
@@ -854,8 +1555,9 @@
       font-size: 18px;
       margin-bottom: 16px;
       text-align: center;
-      background: linear-gradient(135deg, #ff6b9d, #c084fc);
+      background: var(--gradient-text);
       -webkit-background-clip: text;
+      background-clip: text;
       -webkit-text-fill-color: transparent;
     }
     .specific-picker-content .region-grid {
@@ -988,8 +1690,18 @@
     .stt-status.idle .dot { background: #666; }
     .stt-status.starting { background: rgba(255,167,38,0.15); color: var(--warning); }
     .stt-status.starting .dot { background: var(--warning); animation: pulse 0.8s infinite; }
-    .stt-status.active { background: rgba(76,175,80,0.15); color: var(--success); }
-    .stt-status.active .dot { background: var(--success); animation: pulse 1.5s infinite; }
+    .stt-status.active { background: rgba(76,175,80,0.15); color: #4caf50; padding: 2px 8px; }
+    .stt-status.active .dot { display: none; }
+    .stt-status.active::after {
+      content: '● ● ●';
+      font-size: 6px;
+      letter-spacing: 2px;
+      animation: dots-wave 1.4s infinite ease-in-out;
+    }
+    @keyframes dots-wave {
+      0%, 100% { opacity: 0.4; transform: scale(0.8); }
+      50% { opacity: 1; transform: scale(1.2); }
+    }
     .stt-status.error { background: rgba(231,76,60,0.15); color: var(--danger); }
     .stt-status.error .dot { background: var(--danger); }
     /* ─── LINE 風格對話氣泡 ─── */
@@ -1020,7 +1732,7 @@
       border-radius: 18px 18px 4px 18px;
       padding: 10px 14px;
       max-width: 80%;
-      box-shadow: 0 2px 8px rgba(255,107,157,0.15);
+      box-shadow: 0 2px 8px color-mix(in srgb, var(--primary) 15%, transparent);
     }
     .subtitle-line.self .text {
       font-size: 14px;
@@ -1109,7 +1821,7 @@
     }
     .chat-input:focus {
       border-color: var(--primary);
-      box-shadow: 0 0 0 2px rgba(255,107,157,0.12);
+      box-shadow: 0 0 0 2px color-mix(in srgb, var(--primary) 12%, transparent);
     }
     .btn-chat-send {
       flex-shrink: 0;
@@ -1160,8 +1872,9 @@
     .onboarding h2 {
       font-size: 22px;
       margin-bottom: 8px;
-      background: linear-gradient(135deg, #ff6b9d, #c084fc);
+      background: var(--gradient-text);
       -webkit-background-clip: text;
+      background-clip: text;
       -webkit-text-fill-color: transparent;
     }
     .onboarding .step-hint {
@@ -1418,8 +2131,8 @@
     <!-- ═══ 主配對按鈕（Massive CTA）═══ -->
     <div id="match-modes">
       <button id="btn-start" class="btn-primary-massive" disabled>
-        <div class="btn-title">聊天しよう！</div>
-        <div class="btn-subtitle-text">來聊天吧</div>
+        <div class="btn-title">チャットしよう！</div>
+        <div class="btn-subtitle-text">開聊！</div>
       </button>
       <div class="action-row">
         <button id="btn-nearby" class="btn-secondary-outline" disabled>📍 附近的人</button>
@@ -1433,6 +2146,10 @@
     <div id="call-actions" class="call-actions" style="display:none">
       <button id="btn-meet-again" class="btn-meet-again">💚 想再遇</button>
       <button id="btn-hangup" class="btn-danger">📞 掛斷</button>
+    </div>
+    <div id="safety-actions" class="safety-actions" style="display:none">
+      <button id="btn-block" class="btn-safety">🚫 封鎖</button>
+      <button id="btn-report" class="btn-safety btn-safety-danger">🚨 檢舉</button>
     </div>
 
     <!-- overlays (kept in card for z-index) -->
@@ -1468,6 +2185,25 @@
     <div id="log" class="log"></div>
   </div>
 
+  <!-- 對話 / 好友 tab（主畫面下方）-->
+  <div id="bottom-tabs" class="bottom-tabs" style="display:none">
+    <div class="tab-bar">
+      <button class="tab-btn active" data-tab="history">💬 對話</button>
+      <button class="tab-btn" data-tab="friends">👥 好友</button>
+    </div>
+    <div class="tab-content" id="tab-history">
+      <div id="history-list"></div>
+    </div>
+    <div class="tab-content" id="tab-friends" style="display:none">
+      <div id="friends-list"></div>
+    </div>
+  </div>
+
+  <!-- 歷史對話詳細 overlay -->
+  <div id="history-overlay" class="history-overlay">
+    <div class="history-overlay-content"></div>
+  </div>
+
   <!-- 設定 overlay -->
   <div id="settings-overlay" class="settings-overlay">
     <div class="settings-overlay-content">
@@ -1477,10 +2213,14 @@
       <div class="settings-section">
         <h4>虛擬頭像</h4>
         <div class="avatar-grid" id="settings-avatar-grid">
-          <div class="avatar-option" data-avatar="avatar_mature.png"><img src="/avatar_mature.png"></div>
-          <div class="avatar-option" data-avatar="avatar_sporty.png"><img src="/avatar_sporty.png" style="transform: scale(1.28) translateY(6%);"></div>
-          <div class="avatar-option" data-avatar="avatar_elegant.png"><img src="/avatar_elegant.png" style="transform: scale(1.15) translateY(4%);"></div>
-          <div class="avatar-option" data-avatar="avatar_shorthair.png"><img src="/avatar_shorthair.png"></div>
+          <div class="avatar-option" data-avatar="avatar_mature.png"><img src="/avatar_mature.png" style="transform: scale(1.1) translateY(2%);"></div>
+          <div class="avatar-option" data-avatar="avatar_sporty.png"><img src="/avatar_sporty.png" style="transform: scale(1.4) translateY(10%);"></div>
+          <div class="avatar-option" data-avatar="avatar_elegant.png"><img src="/avatar_elegant.png" style="transform: scale(1.2) translateY(5%);"></div>
+          <div class="avatar-option" data-avatar="avatar_shorthair.png"><img src="/avatar_shorthair.png" style="transform: scale(1.1) translateY(3%);"></div>
+          <div class="avatar-option" data-avatar="avatar_older_m.png"><img src="/avatar_older_m.png" style="transform: scale(1.15) translateY(3%);"></div>
+          <div class="avatar-option" data-avatar="avatar_older_f.png"><img src="/avatar_older_f.png" style="transform: scale(1.2) translateY(5%);"></div>
+          <div class="avatar-option" data-avatar="avatar_idol_m.png"><img src="/avatar_idol_m.png" style="transform: scale(1.0) translateY(0);"></div>
+          <div class="avatar-option" data-avatar="avatar_idol_f.png"><img src="/avatar_idol_f.png" style="transform: scale(1.15) translateY(4%);"></div>
         </div>
       </div>
 
@@ -1532,8 +2272,58 @@
         </div>
       </div>
 
+      <!-- 想找講什麼語言的人（可多選） -->
+      <div class="settings-section">
+        <h4>想找講什麼語言的人</h4>
+        <p style="font-size:11px;color:var(--muted);margin-bottom:8px;">可多選，不選 = 所有語言</p>
+        <div class="lang-grid">
+          <button class="grid-btn settings-target-lang-btn" data-tlang="zh-TW">🇹🇼 中文（繁）</button>
+          <button class="grid-btn settings-target-lang-btn" data-tlang="ja-JP">🇯🇵 日本語</button>
+          <button class="grid-btn settings-target-lang-btn" data-tlang="en-US">🇺🇸 English</button>
+          <button class="grid-btn settings-target-lang-btn" data-tlang="ko-KR">🇰🇷 한국어</button>
+          <button class="grid-btn settings-target-lang-btn" data-tlang="zh-CN">🇨🇳 简中</button>
+        </div>
+      </div>
+
       <button id="btn-settings-save" class="btn-primary">儲存</button>
       <button id="btn-settings-cancel" class="btn-secondary">取消</button>
+    </div>
+  </div>
+
+  <!-- 信件 overlay -->
+  <div id="letter-overlay" class="letter-overlay">
+    <div class="letter-overlay-content"></div>
+  </div>
+
+  <!-- 檢舉 overlay -->
+  <div id="report-overlay" class="report-overlay">
+    <div class="report-card">
+      <h3>🚨 檢舉用戶</h3>
+      <p class="report-hint">選擇檢舉原因，對話紀錄會作為證據一併提交。<br>檢舉後將自動封鎖對方並掛斷。</p>
+      <div class="report-reasons">
+        <button class="report-reason-btn" data-reason="harassment">🗣️ 言語騷擾</button>
+        <button class="report-reason-btn" data-reason="inappropriate">🔞 不當內容</button>
+        <button class="report-reason-btn" data-reason="spam">📢 垃圾訊息/廣告</button>
+        <button class="report-reason-btn" data-reason="underage">👶 疑似未成年</button>
+        <button class="report-reason-btn" data-reason="other">❓ 其他</button>
+      </div>
+      <textarea id="report-notes" class="report-notes" placeholder="補充說明（選填）" maxlength="500" rows="2"></textarea>
+      <div class="report-actions">
+        <button id="btn-report-cancel" class="btn-secondary">取消</button>
+        <button id="btn-report-submit" class="btn-danger" disabled>提交檢舉</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 自訂確認彈窗 -->
+  <div id="confirm-overlay" class="confirm-overlay">
+    <div class="confirm-card">
+      <div class="confirm-icon" id="confirm-icon">📞</div>
+      <p class="confirm-text" id="confirm-text">確定要結束通話嗎？</p>
+      <div class="confirm-actions">
+        <button id="btn-confirm-cancel" class="confirm-btn confirm-btn-cancel">繼續聊</button>
+        <button id="btn-confirm-ok" class="confirm-btn confirm-btn-ok">結束通話</button>
+      </div>
     </div>
   </div>
 
@@ -1543,7 +2333,11 @@
       <div class="emoji">🎉</div>
       <h2>你們互相想再遇！</h2>
       <div class="peer-name-big" id="mutual-match-name">—</div>
-      <p>下次配對會優先配給你們。<br>期待下次的對話！</p>
+      <div class="reunion-code-box" id="reunion-code-box" style="display:none">
+        <p class="reunion-label">你們的重逢碼</p>
+        <div class="reunion-code" id="reunion-code-display">------</div>
+        <p class="reunion-hint">下次輸入這組碼，就能再找到對方</p>
+      </div>
       <button id="btn-mutual-ok" class="btn-primary">太棒了！</button>
     </div>
   </div>
