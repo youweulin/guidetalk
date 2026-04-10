@@ -405,13 +405,12 @@ const showButtons = (state) => {
   const matchModes = document.getElementById('match-modes');
   if (matchModes) matchModes.style.display = state === 'idle' ? 'block' : 'none';
 
-  // user-bar（暱稱+地區+語言）只在 idle 顯示
+  // user card（暱稱+地區+想找）只在 idle 顯示
   const ub = document.getElementById('user-bar');
-  if (ub) ub.style.display = state === 'idle' ? 'flex' : 'none';
+  if (ub) ub.style.display = state === 'idle' ? 'block' : 'none';
 
-  // target-lang-bar（想找講語言）也只在 idle 顯示
-  const tlb = document.getElementById('target-lang-bar');
-  if (tlb) tlb.style.display = state === 'idle' ? 'flex' : 'none';
+  // status 只在 matching 時顯示（idle 隱藏，in-call 也隱藏）
+  statusEl.style.display = state === 'matching' ? 'block' : 'none';
 
   btnCancel.style.display = state === 'matching' ? 'block' : 'none';
 
@@ -432,8 +431,6 @@ const showButtons = (state) => {
   //   - 喇叭按鈕（一般用戶用不到，只有單機測試需要）
   //   - status 列（peer card 已經顯示「與你配對的是 X」）
   btnMute.style.display = 'none';
-  // nameInput 永遠 hidden（HTML 已 set display:none），不再用 showButtons 控制
-  statusEl.style.display = state === 'in-call' ? 'none' : 'block';
 };
 
 const showPeerCard = (name, room, role, peerVerified, peerGender) => {
@@ -1695,6 +1692,23 @@ function renderUserBar() {
   const gender = localStorage.getItem(ONB_GENDER_KEY);
   const gIcon = GENDER_ICONS[gender] || '👤';
   if (userBarNameEl) userBarNameEl.textContent = `${gIcon} ${name}`;
+
+  // 「想找」行
+  const targetG = localStorage.getItem(ONB_TARGET_GENDER_KEY) || 'any';
+  const tgLabels = { male: '👨 男生', female: '👩 女生', any: '😊 都可以' };
+  const targetEl = document.getElementById('user-bar-target');
+  if (targetEl) targetEl.textContent = `想找：${tgLabels[targetG] || '😊 都可以'}`;
+
+  // 想找語言（移到 card 內）
+  const tLangs = getTargetLangs();
+  const tlEl = document.getElementById('target-lang-value');
+  if (tlEl) {
+    if (tLangs.length === 0) {
+      tlEl.textContent = '· 所有語言';
+    } else {
+      tlEl.textContent = '· ' + tLangs.map(c => langInfo(c).flag).join(' ');
+    }
+  }
 
   // 地區
   const regionId = localStorage.getItem(ONB_BIG_REGION_KEY);

@@ -438,42 +438,40 @@
       line-height: 1.5;
     }
 
-    /* ─── User bar（暱稱 + 地區 + 語言，整列可點開設定）─── */
-    .user-bar {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 10px;
-      padding: 12px 14px;
-      margin-bottom: 10px;
+    /* ─── User card v2（名片式，3 行 layout）─── */
+    .user-card-v2 {
       background: var(--card-2);
       border: 1px solid rgba(155,152,176,0.12);
-      border-radius: 18px;
+      border-radius: 20px;
+      padding: 16px 20px;
+      margin-bottom: 20px;
       cursor: pointer;
-      transition: background 0.15s, border-color 0.15s, box-shadow 0.15s;
-      box-shadow: 0 2px 8px rgba(45,43,61,0.04);
+      transition: background 0.15s, border-color 0.15s, box-shadow 0.2s;
+      box-shadow: var(--card-shadow);
+      text-align: left;
     }
-    .user-bar:hover {
-      background: rgba(179,136,255,0.06);
+    .user-card-v2:hover {
+      background: rgba(179,136,255,0.04);
       border-color: rgba(179,136,255,0.2);
-      box-shadow: 0 4px 12px rgba(179,136,255,0.1);
+      box-shadow: 0 6px 24px rgba(179,136,255,0.12);
     }
-    .user-bar:active { transform: scale(0.99); }
-    .user-bar-name {
-      font-size: 14px;
-      font-weight: 700;
+    .user-card-v2:active { transform: scale(0.99); }
+    .uc-row {
+      margin-bottom: 8px;
+    }
+    .uc-row:last-child { margin-bottom: 0; }
+    .uc-icon {
+      font-size: 18px;
+      font-weight: 800;
       color: var(--text);
-      flex-shrink: 1;
-      min-width: 0;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
     }
-    .user-bar-meta {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      flex-shrink: 0;
+    .uc-row-small {
+      font-size: 12px;
+      color: var(--muted);
+    }
+    .uc-target, .uc-target-lang {
+      font-size: 12px;
+      color: var(--muted);
     }
     .user-bar-region,
     .user-bar-lang {
@@ -485,6 +483,7 @@
       color: var(--accent);
       border: 1px solid rgba(179,136,255,0.2);
       white-space: nowrap;
+      display: inline-block;
     }
     .user-bar-region.unset {
       background: rgba(255,167,38,0.08);
@@ -531,7 +530,48 @@
 
     /* ─── Match modes (3 buttons) ─── */
     #match-modes { display: block; }
-    #match-modes .btn-primary { margin-bottom: 10px; }
+    #match-modes .btn-primary { margin-bottom: 14px; }
+    /* CTA 雙行 */
+    .btn-cta {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 2px;
+      padding: 18px 24px;
+    }
+    .cta-ja {
+      font-size: 18px;
+      font-weight: 800;
+    }
+    .cta-zh {
+      font-size: 13px;
+      font-weight: 600;
+      opacity: 0.85;
+    }
+    /* 底部按鈕列（附近 + 指定 並排）*/
+    .bottom-actions {
+      display: flex;
+      gap: 10px;
+    }
+    .btn-bottom {
+      flex: 1;
+      background: var(--card-2);
+      color: var(--muted);
+      border: 1px solid rgba(155,152,176,0.15);
+      font-size: 13px;
+      font-weight: 600;
+      padding: 12px 8px;
+      border-radius: 16px;
+      cursor: pointer;
+      transition: background 0.15s, color 0.15s, box-shadow 0.2s;
+      margin: 0;
+      width: auto;
+    }
+    .btn-bottom:hover:not(:disabled) {
+      background: rgba(179,136,255,0.06);
+      color: var(--accent);
+    }
+    .btn-bottom:disabled { opacity: 0.4; cursor: not-allowed; }
     .btn-mode-secondary {
       background: var(--card-2);
       color: var(--accent);
@@ -1116,11 +1156,11 @@
   <div class="card">
     <button id="btn-settings" class="settings-btn" title="設定">⚙️</button>
     <h1>kaitalk</h1>
-    <!-- subtitle 拿掉：畫面太複雜，配對卡片+豆知識+meter 已經夠資訊了 -->
 
-    <div id="status" class="status">準備中...</div>
+    <!-- status: 只在 matching / connecting 時顯示，idle 時隱藏 -->
+    <div id="status" class="status" style="display:none">準備中...</div>
 
-    <!-- 配對成功後的對方資訊卡 -->
+    <!-- ═══ 配對成功後才顯示的區域 ═══ -->
     <div id="peer-card" class="peer-card">
       <div class="label">與你配對的是</div>
       <div class="name"><span id="peer-name">—</span> <span id="peer-gender-icon"></span></div>
@@ -1132,86 +1172,83 @@
       </div>
     </div>
 
-    <!-- 豆知識破冰卡片（配對成功時顯示）-->
     <div id="trivia-card" class="trivia-card">
       <div class="trivia-header">💡 今日話題</div>
       <div class="trivia-text" id="trivia-text-zh">—</div>
       <div class="trivia-text-ja" id="trivia-text-ja">—</div>
     </div>
 
-    <!-- 音量 meter（通話中才顯示，左半 meter / 右半 widget） -->
     <div id="meters" class="meters">
       <div class="meter-row">
         <div class="meter-content">
-          <div class="meter-label">
-            <span>🎤 你的麥克風</span>
-            <span class="level" id="local-level">0%</span>
-          </div>
-          <div class="meter">
-            <div class="meter-fill" id="local-meter"></div>
-          </div>
+          <div class="meter-label"><span>🎤 你</span><span class="level" id="local-level">0%</span></div>
+          <div class="meter"><div class="meter-fill" id="local-meter"></div></div>
         </div>
-        <div class="meter-side">
-          <span id="user-display" class="user-display">👤 —</span>
-        </div>
+        <div class="meter-side"><span id="user-display" class="user-display">👤 —</span></div>
       </div>
       <div class="meter-row">
         <div class="meter-content">
-          <div class="meter-label">
-            <span>🔊 對方的聲音</span>
-            <span class="level" id="remote-level">0%</span>
-          </div>
-          <div class="meter">
-            <div class="meter-fill" id="remote-meter"></div>
-          </div>
+          <div class="meter-label"><span>🔊 對方</span><span class="level" id="remote-level">0%</span></div>
+          <div class="meter"><div class="meter-fill" id="remote-meter"></div></div>
         </div>
-        <div class="meter-side">
-          <button id="btn-subtitle" class="btn-subtitle">💬 字幕：開</button>
-        </div>
+        <div class="meter-side"><button id="btn-subtitle" class="btn-subtitle">💬</button></div>
       </div>
     </div>
 
-    <!-- 語言 + STT 狀態（固定，不跟著字幕滑掉） -->
     <div id="lang-bar" class="lang-bar">
       <span class="label">💬 我講的語言</span>
       <span class="right">
-        <span id="stt-status" class="stt-status idle"><span class="dot"></span>未啟動</span>
+        <span id="stt-status" class="stt-status idle"><span class="dot"></span></span>
         <button id="lang-btn" class="lang-btn">中文</button>
       </span>
     </div>
 
-    <!-- 字幕（通話中才顯示）-->
     <div id="subtitles" class="subtitles">
       <div id="subtitles-list">
         <div class="subtitles-empty">等待字幕辨識啟動...</div>
       </div>
     </div>
 
-    <!-- 暱稱 input 仍保留在 DOM（給 onboarding callback / 既有邏輯用），但主畫面隱藏 -->
-    <input id="name" class="input" placeholder="暱稱（必填）" maxlength="12" style="display:none">
+    <!-- ═══ Idle 主畫面（配對前）═══ -->
 
-    <!-- 主畫面身分列：點任何地方都開設定 -->
-    <div id="user-bar" class="user-bar" role="button" tabindex="0">
-      <span class="user-bar-name" id="user-bar-name">👤 —</span>
-      <span class="user-bar-meta">
-        <span class="user-bar-region" id="user-bar-region">📍 點此設定</span>
-        <span class="user-bar-lang" id="user-bar-lang">🇹🇼 中文</span>
-      </span>
+    <!-- 隱藏 input (onboarding 用) -->
+    <input id="name" class="input" placeholder="暱稱" maxlength="12" style="display:none">
+
+    <!-- 用戶名片卡（點整張開設定）-->
+    <div id="user-bar" class="user-card-v2" role="button" tabindex="0">
+      <div class="uc-row"><span class="uc-icon" id="user-bar-name">👨 —</span></div>
+      <div class="uc-row"><span class="user-bar-region" id="user-bar-region">📍 點此設定</span> <span class="user-bar-lang" id="user-bar-lang">🇹🇼 中文</span></div>
+      <div class="uc-row uc-row-small">
+        <span class="uc-target" id="user-bar-target">想找：😊 都可以</span>
+        <span class="uc-target-lang" id="target-lang-value">· 所有語言</span>
+      </div>
     </div>
 
-    <!-- 「想找講」徽章列：點開語言多選 picker -->
-    <div id="target-lang-bar" class="target-lang-bar" role="button" tabindex="0" title="想跟講什麼語言的人聊？">
-      <span class="tlb-label">💬 想找講</span>
-      <span class="tlb-value" id="target-lang-value">所有語言</span>
+    <!-- CTA 雙行按鈕 -->
+    <div id="match-modes">
+      <button id="btn-start" class="btn-primary btn-cta" disabled>
+        <span class="cta-ja">聊天しよう！</span>
+        <span class="cta-zh">來聊天吧</span>
+      </button>
+      <div class="bottom-actions">
+        <button id="btn-nearby" class="btn-bottom" disabled>📍 附近的人</button>
+        <button id="btn-specific" class="btn-bottom" disabled>🌏 指定地方</button>
+      </div>
     </div>
 
-    <!-- 「想找講語言」picker overlay -->
+    <button id="btn-cancel" class="btn-secondary" style="display:none">取消配對</button>
+    <button id="btn-mute" class="btn-mute" style="display:none">🔊 喇叭：開</button>
+
+    <div id="call-actions" class="call-actions" style="display:none">
+      <button id="btn-meet-again" class="btn-meet-again">💚 想再遇</button>
+      <button id="btn-hangup" class="btn-danger">📞 掛斷</button>
+    </div>
+
+    <!-- overlays (kept in card for z-index) -->
     <div id="target-lang-picker" class="specific-picker">
       <div class="specific-picker-content">
         <h3>想跟講什麼語言的人聊？</h3>
-        <p style="text-align:center;color:var(--muted);font-size:12px;margin-bottom:16px;">
-          可多選。預設「所有語言」= 不過濾。
-        </p>
+        <p style="text-align:center;color:var(--muted);font-size:12px;margin-bottom:16px;">可多選。預設「所有語言」= 不過濾。</p>
         <div class="lang-grid" id="target-lang-grid">
           <button class="grid-btn target-lang-btn" data-lang="zh-TW">🇹🇼 中文（繁）</button>
           <button class="grid-btn target-lang-btn" data-lang="ja-JP">🇯🇵 日本語</button>
@@ -1219,29 +1256,12 @@
           <button class="grid-btn target-lang-btn" data-lang="ko-KR">🇰🇷 한국어</button>
           <button class="grid-btn target-lang-btn" data-lang="zh-CN">🇨🇳 简中</button>
         </div>
-        <button id="btn-target-lang-clear" class="btn-secondary" style="margin-top:8px;">清除選擇（變回所有語言）</button>
+        <button id="btn-target-lang-clear" class="btn-secondary" style="margin-top:8px;">清除（所有語言）</button>
         <button id="btn-target-lang-save" class="btn-primary">儲存</button>
         <button id="btn-target-lang-cancel" class="btn-secondary">取消</button>
       </div>
     </div>
 
-    <!-- 3 種配對模式按鈕（idle 時顯示）-->
-    <div id="match-modes">
-      <button id="btn-start" class="btn-primary" disabled>🎤 聊天しよう！來聊天吧</button>
-      <button id="btn-nearby" class="btn-mode-secondary" disabled>📍 附近的人</button>
-      <button id="btn-specific" class="btn-mode-secondary" disabled>🌏 指定地方</button>
-    </div>
-
-    <button id="btn-cancel" class="btn-secondary" style="display:none">取消配對</button>
-    <button id="btn-mute" class="btn-mute" style="display:none">🔊 喇叭：開（單機測試請按靜音）</button>
-
-    <!-- 想再遇 + 掛斷同一行 -->
-    <div id="call-actions" class="call-actions" style="display:none">
-      <button id="btn-meet-again" class="btn-meet-again">💚 想再遇</button>
-      <button id="btn-hangup" class="btn-danger">📞 掛斷</button>
-    </div>
-
-    <!-- 「指定地方」picker overlay -->
     <div id="specific-picker" class="specific-picker">
       <div class="specific-picker-content">
         <h3>選一個地方找人聊</h3>
@@ -1251,7 +1271,8 @@
       </div>
     </div>
 
-    <!-- hint 拿掉：正式用戶不需要看到測試說明 -->
+    <!-- target-lang-bar 拿掉了（功能移到 user card 裡） -->
+    <div id="target-lang-bar" style="display:none"></div>
 
     <div id="log" class="log"></div>
   </div>
