@@ -407,7 +407,7 @@ const showButtons = (state) => {
 
   // user card（暱稱+地區+想找）只在 idle 顯示
   const ub = document.getElementById('user-bar');
-  if (ub) ub.style.display = state === 'idle' ? 'block' : 'none';
+  if (ub) ub.style.display = state === 'idle' ? 'flex' : 'none';
 
   // status 只在 matching 時顯示（idle 隱藏，in-call 也隱藏）
   statusEl.style.display = state === 'matching' ? 'block' : 'none';
@@ -1301,6 +1301,7 @@ const ONB_GENDER_KEY = 'kaitalk.gender';
 const ONB_TARGET_GENDER_KEY = 'kaitalk.targetGender';
 const ONB_BIG_REGION_KEY = 'kaitalk.bigRegion';
 const ONB_DONE_KEY = 'kaitalk.onboardingDone';
+const ONB_AVATAR_KEY = 'kaitalk.avatar';
 
 const GENDER_ICONS = { male: '👨', female: '👩', other: '😊' };
 
@@ -1567,6 +1568,7 @@ let settingsTempRegion = null;
 let settingsTempLang = null;
 let settingsTempGender = null;
 let settingsTempTargetGender = null;
+let settingsTempAvatar = null;
 
 function buildSettingsRegionGrid() {
   if (!settingsRegionGrid) return;
@@ -1594,6 +1596,17 @@ function wireSettingsLangButtons() {
 }
 wireSettingsLangButtons();
 
+function wireSettingsAvatarButtons() {
+  document.querySelectorAll('.avatar-option').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.avatar-option').forEach(b => b.classList.remove('selected'));
+      btn.classList.add('selected');
+      settingsTempAvatar = btn.dataset.avatar;
+    });
+  });
+}
+wireSettingsAvatarButtons();
+
 // Wire settings gender buttons
 document.querySelectorAll('.settings-gender-btn').forEach(btn => {
   btn.addEventListener('click', () => {
@@ -1617,6 +1630,13 @@ function openSettings() {
   if (settingsNicknameDisplay) {
     settingsNicknameDisplay.textContent = localStorage.getItem(ONB_NICKNAME_KEY) || '（未設定）';
   }
+
+  // 預選當前頭像
+  const curAvatar = localStorage.getItem(ONB_AVATAR_KEY) || 'avatar_mature.png';
+  settingsTempAvatar = curAvatar;
+  document.querySelectorAll('.avatar-option').forEach(b => {
+    b.classList.toggle('selected', b.dataset.avatar === curAvatar);
+  });
 
   // 預選當前性別
   const curGender = localStorage.getItem(ONB_GENDER_KEY);
@@ -1654,6 +1674,9 @@ function saveSettings() {
   // 儲存性別
   if (settingsTempGender) localStorage.setItem(ONB_GENDER_KEY, settingsTempGender);
   if (settingsTempTargetGender) localStorage.setItem(ONB_TARGET_GENDER_KEY, settingsTempTargetGender);
+
+  // 儲存頭像
+  if (settingsTempAvatar) localStorage.setItem(ONB_AVATAR_KEY, settingsTempAvatar);
 
   // 儲存地區
   if (settingsTempRegion) localStorage.setItem(ONB_BIG_REGION_KEY, settingsTempRegion);
@@ -1693,9 +1716,19 @@ function renderUserBar() {
   const gIcon = GENDER_ICONS[gender] || '👤';
   if (userBarNameEl) userBarNameEl.textContent = name;
 
-  // Avatar emoji
-  const avatarEl = document.getElementById('avatar-emoji');
-  if (avatarEl) avatarEl.textContent = gIcon;
+  // Avatar image
+  const avatarImgEl = document.getElementById('avatar-img');
+  if (avatarImgEl) {
+    const chosenAvatar = localStorage.getItem(ONB_AVATAR_KEY) || 'avatar_mature.png';
+    avatarImgEl.src = '/' + chosenAvatar;
+    if (chosenAvatar === 'avatar_sporty.png') {
+      avatarImgEl.style.transform = 'scale(1.28) translateY(6%)';
+    } else if (chosenAvatar === 'avatar_elegant.png') {
+      avatarImgEl.style.transform = 'scale(1.15) translateY(4%)';
+    } else {
+      avatarImgEl.style.transform = 'scale(1) translateY(0)';
+    }
+  }
 
   // 地區
   const regionId = localStorage.getItem(ONB_BIG_REGION_KEY);

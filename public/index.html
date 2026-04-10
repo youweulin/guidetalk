@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-  <title>kaitalk — 兩人語音盲盒</title>
+  <title>KaiTalk — 兩人語音盲盒</title>
   <style>
     :root {
       /* ─── 蘋果體系高質感淺色主題（依照設計藍圖）─── */
@@ -141,11 +141,11 @@
     /* ─── 豆知識破冰卡片 ─── */
     .trivia-card {
       display: none;
-      background: linear-gradient(135deg, rgba(255,235,59,0.08), rgba(255,167,38,0.08));
-      border: 1px solid rgba(255,235,59,0.2);
-      border-radius: 12px;
-      padding: 10px 14px;
-      margin-bottom: 10px;
+      background: linear-gradient(135deg, #fffde7, #fff8e1);
+      border: 1px solid rgba(255,193,7,0.2);
+      border-radius: 16px;
+      padding: 12px 16px;
+      margin-bottom: 12px;
       animation: fadeIn 0.3s ease-out;
     }
     .trivia-card.active { display: block; }
@@ -182,27 +182,25 @@
 
     /* ─── 想再遇按鈕 ─── */
     .btn-meet-again {
-      background: rgba(102,187,106,0.1);
+      background: var(--card);
       color: var(--success);
-      border: 1px solid rgba(102,187,106,0.25);
+      border: 2px solid var(--success);
       font-size: 14px;
-      padding: 13px;
+      padding: 14px;
       width: 100%;
       margin-bottom: 8px;
       border-radius: 20px;
       font-weight: 700;
       cursor: pointer;
-      transition: background 0.15s, transform 0.1s, box-shadow 0.2s;
-      box-shadow: 0 3px 12px rgba(102,187,106,0.1);
+      transition: background 0.15s, transform 0.1s;
     }
     .btn-meet-again:hover:not(:disabled) {
-      background: rgba(102,187,106,0.15);
-      box-shadow: 0 4px 16px rgba(102,187,106,0.2);
+      background: rgba(52,199,89,0.08);
     }
     .btn-meet-again:active { transform: scale(0.96); }
     .btn-meet-again.pressed {
-      background: rgba(102,187,106,0.2);
-      color: var(--success);
+      background: var(--success);
+      color: white;
       border-color: var(--success);
       cursor: default;
     }
@@ -272,68 +270,36 @@
       font-weight: 500;
     }
 
-    /* ─── Volume Meters（左半 meter + 右半 widget）─── */
+    /* ─── Volume Meters（精簡數字版）─── */
     .meters {
       display: none;
-      margin-bottom: 16px;
-    }
-    .meters.active { display: block; }
-    .meter-row {
-      display: flex;
-      align-items: stretch;
-      gap: 12px;
       margin-bottom: 12px;
     }
-    .meter-row:last-child { margin-bottom: 0; }
-    .meter-content {
-      flex: 1;
-      min-width: 0;
-      text-align: left;
-    }
-    .meter-side {
-      flex-shrink: 0;
-      width: 130px;
+    .meters.active {
       display: flex;
-      align-items: flex-end;
-      justify-content: flex-start;  /* 靠左對齊 */
-    }
-    .user-display {
-      display: inline-flex;
       align-items: center;
-      gap: 5px;
-      padding: 4px 10px;
-      border-radius: 10px;
-      background: rgba(96,205,255,0.12);
-      color: #60cdff;
-      border: 1px solid rgba(96,205,255,0.25);
-      font-size: 12px;
-      font-weight: 600;
-      max-width: 130px;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
+      justify-content: center;
+      gap: 16px;
     }
-    .meter-label {
+    .meter-compact {
       display: flex;
-      justify-content: space-between;
+      align-items: center;
+      gap: 6px;
       font-size: 12px;
       color: var(--muted);
-      margin-bottom: 6px;
     }
-    .meter-label .level { font-family: ui-monospace, monospace; }
-    .meter {
-      height: 14px;
-      background: rgba(255,255,255,0.06);
-      border-radius: 7px;
-      overflow: hidden;
-      position: relative;
+    .meter-compact .level {
+      font-family: ui-monospace, monospace;
+      font-size: 14px;
+      font-weight: 700;
+      min-width: 32px;
+      text-align: right;
     }
-    .meter-fill {
-      height: 100%;
-      width: 0%;
-      background: linear-gradient(90deg, #4caf50 0%, #ffeb3b 60%, #f44336 100%);
-      border-radius: 7px;
-      transition: width 0.05s linear;
+    .meter-compact .level.active-mic { color: var(--success); }
+    .meter-compact .level.active-spk { color: var(--primary); }
+    /* 隱藏舊版 meter 條 (JS 還在寫 width%，但我們不顯示了) */
+    .meter-row, .meter-content, .meter-side, .meter-label, .meter, .meter-fill, .user-display {
+      display: none !important;
     }
     .meter.active::after {
       content: '';
@@ -460,8 +426,8 @@
     .profile-section:active { transform: scale(0.99); }
     .avatar-container {
       flex-shrink: 0;
-      width: 72px;
-      height: 72px;
+      width: 100px;
+      height: 100px;
       border-radius: 50%;
       background: linear-gradient(135deg, #f0edf5, #e8e5f0);
       display: flex;
@@ -469,9 +435,11 @@
       justify-content: center;
       box-shadow: 0 4px 16px rgba(0,0,0,0.06);
     }
-    .avatar-placeholder {
-      font-size: 36px;
-      line-height: 1;
+    .avatar-img {
+      width: 100%;
+      height: 100%;
+      border-radius: 50%;
+      object-fit: cover;
     }
     .profile-info {
       flex: 1;
@@ -769,6 +737,32 @@
       color: #60cdff;
     }
 
+    .avatar-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px;
+      margin-top: 8px;
+    }
+    .avatar-option {
+      width: 100%;
+      aspect-ratio: 1;
+      border-radius: 50%;
+      overflow: hidden;
+      cursor: pointer;
+      border: 3px solid transparent;
+      transition: all 0.2s;
+    }
+    .avatar-option.selected {
+      border-color: var(--primary);
+      transform: scale(1.08);
+      box-shadow: 0 4px 12px var(--btn-shadow);
+    }
+    .avatar-option img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
     /* ─── Specific picker (overlay) ─── */
     .specific-picker {
       display: none;
@@ -833,16 +827,16 @@
       color: #60cdff;
     }
 
-    /* ─── Subtitles ─── */
+    /* ─── Subtitles（LINE 風格對話氣泡）─── */
     .subtitles {
       display: none;
-      background: rgba(0,0,0,0.35);
-      border-radius: 0 0 14px 14px;
-      padding: 14px;
-      margin-bottom: 14px;
-      /* 字幕區最重要 — 讓它佔滿視窗高度減去其他元素 */
-      max-height: calc(100vh - 380px);
-      min-height: 200px;
+      background: var(--card-2);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 16px;
+      margin-bottom: 12px;
+      max-height: calc(100vh - 360px);
+      min-height: 180px;
       overflow-y: auto;
       text-align: left;
       scroll-behavior: smooth;
@@ -871,17 +865,18 @@
     }
     .subtitles-header .lang-btn:hover { color: var(--text); }
 
-    /* ─── Lang bar：固定在字幕上方，永遠不會被滑掉 ─── */
+    /* ─── Lang bar（字幕上方固定列）─── */
     .lang-bar {
       display: none;
       align-items: center;
       justify-content: space-between;
       gap: 8px;
-      padding: 8px 12px;
-      background: rgba(255,255,255,0.04);
-      border-radius: 12px 12px 0 0;
-      border-bottom: 1px solid rgba(255,255,255,0.06);
-      margin-bottom: -14px;  /* 跟下面的 subtitles 視覺上連起來 */
+      padding: 8px 14px;
+      background: var(--card);
+      border-radius: 16px 16px 0 0;
+      border: 1px solid var(--border);
+      border-bottom: none;
+      margin-bottom: -1px;
       font-size: 11px;
       color: var(--muted);
     }
@@ -896,11 +891,11 @@
       gap: 6px;
     }
     .lang-bar .lang-btn {
-      background: rgba(96,205,255,0.12);
-      border: 1px solid rgba(96,205,255,0.25);
-      color: #60cdff;
+      background: var(--tag-red-bg);
+      border: 1px solid rgba(230,92,92,0.15);
+      color: var(--tag-red-text);
       padding: 5px 12px;
-      border-radius: 8px;
+      border-radius: 12px;
       font-size: 12px;
       font-weight: 600;
       cursor: pointer;
@@ -908,7 +903,7 @@
       margin: 0;
       transition: background 0.15s;
     }
-    .lang-bar .lang-btn:hover { background: rgba(96,205,255,0.2); }
+    .lang-bar .lang-btn:hover { background: rgba(230,92,92,0.12); }
     .stt-status {
       display: inline-flex;
       align-items: center;
@@ -932,59 +927,93 @@
     .stt-status.active .dot { background: var(--success); animation: pulse 1.5s infinite; }
     .stt-status.error { background: rgba(231,76,60,0.15); color: var(--danger); }
     .stt-status.error .dot { background: var(--danger); }
+    /* ─── LINE 風格對話氣泡 ─── */
     .subtitle-line {
       display: flex;
-      gap: 8px;
-      margin-bottom: 8px;
+      flex-direction: column;
+      margin-bottom: 10px;
       animation: fadeIn 0.2s ease-out;
     }
     .subtitle-line:last-child { margin-bottom: 0; }
     @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
-    .subtitle-line .speaker {
-      flex-shrink: 0;
-      font-size: 11px;
-      font-weight: 700;
-      padding: 2px 8px;
-      border-radius: 8px;
-      height: fit-content;
-      white-space: nowrap;
+
+    /* 自己的訊息：靠右 */
+    .subtitle-line.self {
+      align-items: flex-end;
     }
     .subtitle-line.self .speaker {
-      background: rgba(96,205,255,0.18);
-      color: #60cdff;
+      font-size: 10px;
+      font-weight: 600;
+      color: var(--muted);
+      margin-bottom: 3px;
+      padding: 0;
+      background: none;
+    }
+    .subtitle-line.self .text-wrap {
+      background: var(--primary);
+      color: white;
+      border-radius: 18px 18px 4px 18px;
+      padding: 10px 14px;
+      max-width: 80%;
+      box-shadow: 0 2px 8px rgba(255,107,157,0.15);
+    }
+    .subtitle-line.self .text {
+      font-size: 14px;
+      line-height: 1.45;
+      color: white;
+      word-break: break-word;
+    }
+
+    /* 對方的訊息：靠左 */
+    .subtitle-line.peer {
+      align-items: flex-start;
     }
     .subtitle-line.peer .speaker {
-      background: rgba(255,107,157,0.2);
-      color: var(--primary);
+      font-size: 10px;
+      font-weight: 600;
+      color: var(--muted);
+      margin-bottom: 3px;
+      padding: 0;
+      background: none;
     }
-    .subtitle-line .text-wrap {
-      flex: 1;
-      min-width: 0;
+    .subtitle-line.peer .text-wrap {
+      background: #e8e8ed;
+      color: var(--text);
+      border-radius: 18px 18px 18px 4px;
+      padding: 10px 14px;
+      max-width: 80%;
     }
-    .subtitle-line .text {
+    .subtitle-line.peer .text {
       font-size: 14px;
       line-height: 1.45;
       color: var(--text);
       word-break: break-word;
     }
+
+    /* 翻譯行（氣泡內，小字） */
     .subtitle-line .translation {
-      font-size: 13px;
-      line-height: 1.4;
-      color: #c084fc;
+      font-size: 12px;
+      line-height: 1.3;
+      color: rgba(0,0,0,0.45);
       word-break: break-word;
-      margin-top: 2px;
-      padding-left: 2px;
-      animation: fadeIn 0.25s ease-out;
+      margin-top: 4px;
+      padding-top: 4px;
+      border-top: 1px solid rgba(0,0,0,0.08);
     }
+    .subtitle-line.self .translation {
+      color: rgba(255,255,255,0.7);
+      border-top-color: rgba(255,255,255,0.2);
+    }
+
     .subtitle-line.interim .text {
-      color: var(--muted);
+      opacity: 0.6;
       font-style: italic;
     }
     .subtitles-empty {
       text-align: center;
       color: var(--muted);
-      font-size: 12px;
-      padding: 12px;
+      font-size: 13px;
+      padding: 24px 12px;
     }
 
     /* ─── Onboarding overlay ─── */
@@ -1138,7 +1167,7 @@
 
       <!-- Step 1: 暱稱 -->
       <div class="onboarding-step" id="step-1">
-        <h2>歡迎來 kaitalk 👋</h2>
+        <h2>歡迎來 KaiTalk 👋</h2>
         <p class="step-hint">先取個暱稱，讓對方知道怎麼稱呼你。</p>
         <input id="onb-name" class="input" placeholder="你的暱稱（12 字內）" maxlength="12">
         <p class="step-warning">⚠️ 暱稱設定後不能修改（除非升級會員）</p>
@@ -1199,7 +1228,7 @@
 
   <div class="card">
     <button id="btn-settings" class="settings-btn" title="設定">⚙️</button>
-    <h1>kaitalk</h1>
+    <h1>KaiTalk</h1>
 
     <!-- status: 只在 matching / connecting 時顯示，idle 時隱藏 -->
     <div id="status" class="status" style="display:none">準備中...</div>
@@ -1223,19 +1252,15 @@
     </div>
 
     <div id="meters" class="meters">
-      <div class="meter-row">
-        <div class="meter-content">
-          <div class="meter-label"><span>🎤 你</span><span class="level" id="local-level">0%</span></div>
-          <div class="meter"><div class="meter-fill" id="local-meter"></div></div>
-        </div>
-        <div class="meter-side"><span id="user-display" class="user-display">👤 —</span></div>
-      </div>
-      <div class="meter-row">
-        <div class="meter-content">
-          <div class="meter-label"><span>🔊 對方</span><span class="level" id="remote-level">0%</span></div>
-          <div class="meter"><div class="meter-fill" id="remote-meter"></div></div>
-        </div>
-        <div class="meter-side"><button id="btn-subtitle" class="btn-subtitle">💬</button></div>
+      <!-- 精簡版：只顯示數字百分比 -->
+      <div class="meter-compact">🎤 你 <span class="level active-mic" id="local-level">0%</span></div>
+      <div class="meter-compact">🔊 對方 <span class="level active-spk" id="remote-level">0%</span></div>
+      <button id="btn-subtitle" class="btn-subtitle">💬</button>
+      <!-- 隱藏但保留舊 id 給 JS（meter-fill 的 width 仍在被 JS 寫）-->
+      <div style="display:none">
+        <span id="user-display">—</span>
+        <div id="local-meter" style="width:0%"></div>
+        <div id="remote-meter" style="width:0%"></div>
       </div>
     </div>
 
@@ -1261,7 +1286,7 @@
     <!-- ═══ Profile Section（個人檔案區）═══ -->
     <div id="user-bar" class="profile-section" role="button" tabindex="0">
       <div class="avatar-container">
-        <div class="avatar-placeholder" id="avatar-emoji">👨</div>
+        <img id="avatar-img" class="avatar-img" src="/avatar_mature.png" alt="avatar">
       </div>
       <div class="profile-info">
         <h2 class="profile-name" id="user-bar-name">—</h2>
@@ -1333,6 +1358,17 @@
   <div id="settings-overlay" class="settings-overlay">
     <div class="settings-overlay-content">
       <h3>⚙️ 設定</h3>
+
+      <!-- 選擇頭像 -->
+      <div class="settings-section">
+        <h4>虛擬頭像</h4>
+        <div class="avatar-grid" id="settings-avatar-grid">
+          <div class="avatar-option" data-avatar="avatar_mature.png"><img src="/avatar_mature.png"></div>
+          <div class="avatar-option" data-avatar="avatar_sporty.png"><img src="/avatar_sporty.png" style="transform: scale(1.28) translateY(6%);"></div>
+          <div class="avatar-option" data-avatar="avatar_elegant.png"><img src="/avatar_elegant.png" style="transform: scale(1.15) translateY(4%);"></div>
+          <div class="avatar-option" data-avatar="avatar_shorthair.png"><img src="/avatar_shorthair.png"></div>
+        </div>
+      </div>
 
       <!-- 暱稱（鎖死） -->
       <div class="settings-section">
