@@ -123,6 +123,36 @@
       margin-left: 4px;
     }
 
+    /* ─── 豆知識破冰卡片 ─── */
+    .trivia-card {
+      display: none;
+      background: linear-gradient(135deg, rgba(255,235,59,0.1), rgba(255,167,38,0.1));
+      border: 1px solid rgba(255,235,59,0.25);
+      border-radius: 14px;
+      padding: 14px 16px;
+      margin-bottom: 14px;
+      animation: fadeIn 0.3s ease-out;
+    }
+    .trivia-card.active { display: block; }
+    .trivia-card .trivia-header {
+      font-size: 11px;
+      color: var(--warning);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      margin-bottom: 8px;
+    }
+    .trivia-card .trivia-text {
+      font-size: 14px;
+      line-height: 1.5;
+      color: var(--text);
+      margin-bottom: 6px;
+    }
+    .trivia-card .trivia-text-ja {
+      font-size: 13px;
+      line-height: 1.5;
+      color: var(--muted);
+    }
+
     /* 對方的語言徽章（只顯示國旗，未知時顯示「🌐 偵測中」）*/
     .peer-card .peer-lang {
       display: inline-block;
@@ -956,6 +986,13 @@
         <span class="peer-lang detecting" id="peer-lang-badge">🌐 偵測中</span>
         <span id="peer-verified-badge" class="verified-badge" style="display:none">✓</span>
       </div>
+    </div>
+
+    <!-- 豆知識破冰卡片（配對成功時顯示）-->
+    <div id="trivia-card" class="trivia-card">
+      <div class="trivia-header">💡 今日話題</div>
+      <div class="trivia-text" id="trivia-text-zh">—</div>
+      <div class="trivia-text-ja" id="trivia-text-ja">—</div>
     </div>
 
     <!-- 音量 meter（通話中才顯示，左半 meter / 右半 widget） -->

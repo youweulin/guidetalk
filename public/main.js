@@ -921,6 +921,7 @@ function connectSocket() {
     setStatus(`🎉 已配對到 ${peer.name}，建立連線中...`, true);
     showPeerCard(peer.name, roomCode, isHost ? 'host' : 'guest', peerVerified);
     setPeerLangBadge(null); // 對方語言一開始未知
+    showRandomTrivia(); // 豆知識破冰
     showButtons('in-call');
     showMeters();
     if (subtitlesEnabled) showSubtitles();
@@ -964,6 +965,7 @@ function connectSocket() {
     setStatus(`${oldName || '對方'} 掛斷了`);
     hidePeerCard();
     hideMeters();
+    hideTrivia();
     hideSubtitles();
     showButtons('idle');
   });
@@ -1756,6 +1758,39 @@ updateStartBtnState();
 // 主畫面初始化：渲染 user bar + target lang bar
 renderUserBar();
 renderTargetLangBar();
+
+// ─── 豆知識破冰 ────────────────────────────────────
+// 配對成功時顯示隨機一張，給兩個陌生人一個話題開頭
+let triviaData = [];
+
+async function loadTrivia() {
+  try {
+    const r = await fetch('/content/trivia.json');
+    triviaData = await r.json();
+    log(`📚 載入 ${triviaData.length} 條豆知識`);
+  } catch (err) {
+    log(`豆知識載入失敗: ${err.message}`);
+  }
+}
+
+function showRandomTrivia() {
+  const cardEl = document.getElementById('trivia-card');
+  const zhEl = document.getElementById('trivia-text-zh');
+  const jaEl = document.getElementById('trivia-text-ja');
+  if (!cardEl || !zhEl || !jaEl || triviaData.length === 0) return;
+
+  const item = triviaData[Math.floor(Math.random() * triviaData.length)];
+  zhEl.textContent = item.zh;
+  jaEl.textContent = item.ja;
+  cardEl.classList.add('active');
+}
+
+function hideTrivia() {
+  const cardEl = document.getElementById('trivia-card');
+  if (cardEl) cardEl.classList.remove('active');
+}
+
+loadTrivia();
 
 // 沒做過 onboarding → 顯示
 if (!onboardingDone) {
