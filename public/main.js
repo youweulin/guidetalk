@@ -21,6 +21,14 @@ const ICE_SERVERS = [
   { urls: 'stun:stun1.l.google.com:19302' },
 ];
 
+// ─── Cloudflare Images CDN ───────────────────────────
+const CF_IMG = 'https://imagedelivery.net/8vYNanmJriUCfsABJIN-Gw';
+function avatarUrl(name) {
+  // name = 'avatar_mature.png' → CDN URL
+  const id = name.replace('.png', '');
+  return `${CF_IMG}/${id}/public`;
+}
+
 // ─── DOM ─────────────────────────────────────────────
 const $ = (id) => document.getElementById(id);
 const statusEl = $('status');
@@ -1710,7 +1718,7 @@ const BIG_REGIONS = [
 ];
 
 const onboardingEl = $('onboarding');
-const ONB_TOTAL_STEPS = 5;
+const ONB_TOTAL_STEPS = 6;
 const onbStepEls = Array.from({ length: ONB_TOTAL_STEPS }, (_, i) => $(`step-${i + 1}`));
 const onbDotEls = Array.from({ length: ONB_TOTAL_STEPS }, (_, i) => $(`dot-${i + 1}`));
 const onbNameInput = $('onb-name');
@@ -1866,7 +1874,23 @@ onbStep1Next?.addEventListener('click', () => onbShowStep(2));
 onbStep2Next?.addEventListener('click', () => onbShowStep(3));
 onbStep3Next?.addEventListener('click', () => onbShowStep(4));
 onbStep4Next?.addEventListener('click', () => onbShowStep(5));
-onbStep5Next?.addEventListener('click', onbFinish);
+onbStep5Next?.addEventListener('click', () => onbShowStep(6));
+
+// Step 6: avatar selection
+const onbStep6Next = $('onb-step6-next');
+let onbSelectedAvatar = 'avatar_mature.png'; // 預設
+
+document.querySelectorAll('#step-6 .avatar-option').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('#step-6 .avatar-option').forEach(b => b.classList.remove('selected'));
+    btn.classList.add('selected');
+    onbSelectedAvatar = btn.dataset.avatar;
+  });
+});
+onbStep6Next?.addEventListener('click', () => {
+  localStorage.setItem(ONB_AVATAR_KEY, onbSelectedAvatar);
+  onbFinish();
+});
 
 // ─── Wire up ─────────────────────────────────────────
 btnStart.addEventListener('click', () => startMatching({ mode: 'quick' }));
@@ -2570,7 +2594,7 @@ function renderUserBar() {
   const avatarImgEl = document.getElementById('avatar-img');
   if (avatarImgEl) {
     const chosenAvatar = localStorage.getItem(ONB_AVATAR_KEY) || 'avatar_mature.png';
-    avatarImgEl.src = '/' + chosenAvatar;
+    avatarImgEl.src = avatarUrl(chosenAvatar);
     const avatarTransforms = {
       'avatar_mature.png':   'scale(1.1) translateY(2%)',
       'avatar_sporty.png':   'scale(1.4) translateY(10%)',

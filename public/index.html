@@ -2003,6 +2003,7 @@
         <span class="progress-dot" id="dot-3"></span>
         <span class="progress-dot" id="dot-4"></span>
         <span class="progress-dot" id="dot-5"></span>
+        <span class="progress-dot" id="dot-6"></span>
       </div>
 
       <!-- Step 1: 暱稱 -->
@@ -2061,7 +2062,24 @@
           <button class="grid-btn" data-lang="ko-KR">🇰🇷 한국어</button>
           <button class="grid-btn" data-lang="zh-CN">🇨🇳 简中</button>
         </div>
-        <button id="onb-step5-next" class="btn-primary" disabled>開始使用 🚀</button>
+        <button id="onb-step5-next" class="btn-primary" disabled>下一步</button>
+      </div>
+
+      <!-- Step 6: 頭像 -->
+      <div class="onboarding-step" id="step-6">
+        <h2>選一個虛擬頭像 🎭</h2>
+        <p class="step-hint">對方會看到這個頭像。<br>之後可以在設定裡更換。</p>
+        <div class="avatar-grid">
+          <div class="avatar-option selected" data-avatar="avatar_mature.png"><img src="https://imagedelivery.net/8vYNanmJriUCfsABJIN-Gw/avatar_mature/public" style="transform: scale(1.1) translateY(2%);"></div>
+          <div class="avatar-option" data-avatar="avatar_sporty.png"><img src="https://imagedelivery.net/8vYNanmJriUCfsABJIN-Gw/avatar_sporty/public" style="transform: scale(1.4) translateY(10%);"></div>
+          <div class="avatar-option" data-avatar="avatar_elegant.png"><img src="https://imagedelivery.net/8vYNanmJriUCfsABJIN-Gw/avatar_elegant/public" style="transform: scale(1.2) translateY(5%);"></div>
+          <div class="avatar-option" data-avatar="avatar_shorthair.png"><img src="https://imagedelivery.net/8vYNanmJriUCfsABJIN-Gw/avatar_shorthair/public" style="transform: scale(1.1) translateY(3%);"></div>
+          <div class="avatar-option" data-avatar="avatar_older_m.png"><img src="https://imagedelivery.net/8vYNanmJriUCfsABJIN-Gw/avatar_older_m/public" style="transform: scale(1.15) translateY(3%);"></div>
+          <div class="avatar-option" data-avatar="avatar_older_f.png"><img src="https://imagedelivery.net/8vYNanmJriUCfsABJIN-Gw/avatar_older_f/public" style="transform: scale(1.2) translateY(5%);"></div>
+          <div class="avatar-option" data-avatar="avatar_idol_m.png"><img src="https://imagedelivery.net/8vYNanmJriUCfsABJIN-Gw/avatar_idol_m/public" style="transform: scale(1.0) translateY(0);"></div>
+          <div class="avatar-option" data-avatar="avatar_idol_f.png"><img src="https://imagedelivery.net/8vYNanmJriUCfsABJIN-Gw/avatar_idol_f/public" style="transform: scale(1.15) translateY(4%);"></div>
+        </div>
+        <button id="onb-step6-next" class="btn-primary">開始使用 🚀</button>
       </div>
     </div>
   </div>
@@ -2129,7 +2147,7 @@
     <!-- ═══ Profile Section（個人檔案區）═══ -->
     <div id="user-bar" class="profile-section" role="button" tabindex="0">
       <div class="avatar-container">
-        <img id="avatar-img" class="avatar-img" src="/avatar_mature.png" alt="avatar">
+        <img id="avatar-img" class="avatar-img" src="https://imagedelivery.net/8vYNanmJriUCfsABJIN-Gw/avatar_mature/public" alt="avatar">
       </div>
       <div class="profile-info">
         <h2 class="profile-name" id="user-bar-name">—</h2>
@@ -2230,14 +2248,14 @@
       <div class="settings-section">
         <h4>虛擬頭像</h4>
         <div class="avatar-grid" id="settings-avatar-grid">
-          <div class="avatar-option" data-avatar="avatar_mature.png"><img src="/avatar_mature.png" style="transform: scale(1.1) translateY(2%);"></div>
-          <div class="avatar-option" data-avatar="avatar_sporty.png"><img src="/avatar_sporty.png" style="transform: scale(1.4) translateY(10%);"></div>
-          <div class="avatar-option" data-avatar="avatar_elegant.png"><img src="/avatar_elegant.png" style="transform: scale(1.2) translateY(5%);"></div>
-          <div class="avatar-option" data-avatar="avatar_shorthair.png"><img src="/avatar_shorthair.png" style="transform: scale(1.1) translateY(3%);"></div>
-          <div class="avatar-option" data-avatar="avatar_older_m.png"><img src="/avatar_older_m.png" style="transform: scale(1.15) translateY(3%);"></div>
-          <div class="avatar-option" data-avatar="avatar_older_f.png"><img src="/avatar_older_f.png" style="transform: scale(1.2) translateY(5%);"></div>
-          <div class="avatar-option" data-avatar="avatar_idol_m.png"><img src="/avatar_idol_m.png" style="transform: scale(1.0) translateY(0);"></div>
-          <div class="avatar-option" data-avatar="avatar_idol_f.png"><img src="/avatar_idol_f.png" style="transform: scale(1.15) translateY(4%);"></div>
+          <div class="avatar-option" data-avatar="avatar_mature.png"><img src="https://imagedelivery.net/8vYNanmJriUCfsABJIN-Gw/avatar_mature/public" style="transform: scale(1.1) translateY(2%);"></div>
+          <div class="avatar-option" data-avatar="avatar_sporty.png"><img src="https://imagedelivery.net/8vYNanmJriUCfsABJIN-Gw/avatar_sporty/public" style="transform: scale(1.4) translateY(10%);"></div>
+          <div class="avatar-option" data-avatar="avatar_elegant.png"><img src="https://imagedelivery.net/8vYNanmJriUCfsABJIN-Gw/avatar_elegant/public" style="transform: scale(1.2) translateY(5%);"></div>
+          <div class="avatar-option" data-avatar="avatar_shorthair.png"><img src="https://imagedelivery.net/8vYNanmJriUCfsABJIN-Gw/avatar_shorthair/public" style="transform: scale(1.1) translateY(3%);"></div>
+          <div class="avatar-option" data-avatar="avatar_older_m.png"><img src="https://imagedelivery.net/8vYNanmJriUCfsABJIN-Gw/avatar_older_m/public" style="transform: scale(1.15) translateY(3%);"></div>
+          <div class="avatar-option" data-avatar="avatar_older_f.png"><img src="https://imagedelivery.net/8vYNanmJriUCfsABJIN-Gw/avatar_older_f/public" style="transform: scale(1.2) translateY(5%);"></div>
+          <div class="avatar-option" data-avatar="avatar_idol_m.png"><img src="https://imagedelivery.net/8vYNanmJriUCfsABJIN-Gw/avatar_idol_m/public" style="transform: scale(1.0) translateY(0);"></div>
+          <div class="avatar-option" data-avatar="avatar_idol_f.png"><img src="https://imagedelivery.net/8vYNanmJriUCfsABJIN-Gw/avatar_idol_f/public" style="transform: scale(1.15) translateY(4%);"></div>
         </div>
       </div>
 
