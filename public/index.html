@@ -885,7 +885,7 @@
       color: #60cdff;
     }
 
-    /* ─── Subtitles（LINE 風格對話氣泡）─── */
+    /* ─── Subtitles（LINE 風格，佔滿剩餘空間）─── */
     .subtitles {
       display: none;
       background: var(--card-2);
@@ -893,12 +893,11 @@
       border-radius: 20px;
       padding: 14px;
       margin-bottom: 10px;
-      max-height: calc(100vh - 300px);
-      min-height: 220px;
+      height: calc(100vh - 280px);
+      min-height: 300px;
       overflow-y: auto;
       text-align: left;
       scroll-behavior: smooth;
-      flex: 1;
     }
     .subtitles.active { display: block; }
     .subtitles-header {
