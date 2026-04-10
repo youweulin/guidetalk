@@ -1129,8 +1129,10 @@ async function startMatching(opts = {}) {
       setStatus('請先輸入暱稱');
       return;
     }
-    // 寫進右邊的 user-display + localStorage
-    if (userDisplayEl) userDisplayEl.textContent = `👤 ${name}`;
+    // 寫進通話畫面右半「自己」的名字
+    const myGender = localStorage.getItem(ONB_GENDER_KEY);
+    const myGIcon = GENDER_ICONS[myGender] || '👤';
+    if (userDisplayEl) userDisplayEl.textContent = `${name} ${myGIcon}`;
 
     // 我自己的大區（onboarding 存的）
     const myBigRegion = localStorage.getItem(ONB_BIG_REGION_KEY) || null;
@@ -1292,7 +1294,7 @@ function cleanup() {
   peerLang = null;
   isHost = false;
   pendingCandidates = [];
-  if (userDisplayEl) userDisplayEl.textContent = '👤 —';
+  if (userDisplayEl) userDisplayEl.textContent = '—';
 }
 
 // ─── Onboarding（新用戶第一次開時的 5 步驟引導）────

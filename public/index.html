@@ -84,17 +84,57 @@
     }
     @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
 
-    /* ─── 配對中卡片 ─── */
+    /* ─── 通話中卡片（對方 + 自己 並排）─── */
     .peer-card {
       display: none;
-      background: linear-gradient(135deg, rgba(255,126,179,0.08), rgba(179,136,255,0.08));
-      border: 1px solid rgba(255,126,179,0.2);
-      border-radius: 20px;
-      padding: 18px;
-      margin-bottom: 14px;
-      box-shadow: 0 4px 16px rgba(255,126,179,0.1);
+      margin-bottom: 12px;
     }
-    .peer-card.active { display: block; }
+    .peer-card.active { display: flex; gap: 10px; }
+    .call-half {
+      flex: 1;
+      background: var(--card-2);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      padding: 14px;
+      text-align: center;
+    }
+    .call-peer {
+      border-left: 3px solid var(--primary);
+    }
+    .call-self {
+      border-left: 3px solid var(--success);
+    }
+    .call-half-label {
+      font-size: 10px;
+      font-weight: 700;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      margin-bottom: 6px;
+    }
+    .call-half-name {
+      font-size: 16px;
+      font-weight: 800;
+      color: var(--text);
+      margin-bottom: 6px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .call-half-meta {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      margin-bottom: 6px;
+    }
+    .call-half-vol {
+      font-size: 13px;
+      color: var(--muted);
+      font-family: ui-monospace, monospace;
+    }
+    .call-half-vol .active-mic { color: var(--success); font-weight: 700; }
+    .call-half-vol .active-spk { color: var(--primary); font-weight: 700; }
     .peer-card .label {
       font-size: 11px;
       color: var(--muted);
@@ -1234,47 +1274,55 @@
     <div id="status" class="status" style="display:none">準備中...</div>
 
     <!-- ═══ 配對成功後才顯示的區域 ═══ -->
-    <div id="peer-card" class="peer-card">
-      <div class="label">與你配對的是</div>
-      <div class="name"><span id="peer-name">—</span> <span id="peer-gender-icon"></span></div>
-      <div class="meta">
-        房號 <span id="room-code">—</span>
-        <span class="role" id="my-role">—</span>
-        <span class="peer-lang detecting" id="peer-lang-badge">🌐 偵測中</span>
-        <span id="peer-verified-badge" class="verified-badge" style="display:none">✓</span>
-      </div>
-    </div>
 
+    <!-- 豆知識（保留在最上面）-->
     <div id="trivia-card" class="trivia-card">
       <div class="trivia-header">💡 今日話題</div>
       <div class="trivia-text" id="trivia-text-zh">—</div>
       <div class="trivia-text-ja" id="trivia-text-ja">—</div>
     </div>
 
-    <div id="meters" class="meters">
-      <!-- 精簡版：只顯示數字百分比 -->
-      <div class="meter-compact">🎤 你 <span class="level active-mic" id="local-level">0%</span></div>
-      <div class="meter-compact">🔊 對方 <span class="level active-spk" id="remote-level">0%</span></div>
-      <button id="btn-subtitle" class="btn-subtitle">💬</button>
-      <!-- 隱藏但保留舊 id 給 JS（meter-fill 的 width 仍在被 JS 寫）-->
+    <!-- 對方 + 自己 並排卡片 -->
+    <div id="peer-card" class="peer-card call-split">
+      <div class="call-half call-peer">
+        <div class="call-half-label">對方</div>
+        <div class="call-half-name"><span id="peer-name">—</span> <span id="peer-gender-icon"></span></div>
+        <div class="call-half-meta">
+          <span class="peer-lang detecting" id="peer-lang-badge">🌐</span>
+          <span id="peer-verified-badge" class="verified-badge" style="display:none">✓</span>
+        </div>
+        <div class="call-half-vol">🔊 <span id="remote-level" class="level active-spk">0%</span></div>
+        <!-- 隱藏舊 id -->
+        <span id="room-code" style="display:none">—</span>
+        <span id="my-role" style="display:none">—</span>
+      </div>
+      <div class="call-half call-self">
+        <div class="call-half-label">你</div>
+        <div class="call-half-name" id="user-display">—</div>
+        <div class="call-half-meta">
+          <span id="stt-status" class="stt-status idle"><span class="dot"></span></span>
+          <button id="lang-btn" class="lang-btn">中文</button>
+        </div>
+        <div class="call-half-vol">🎤 <span id="local-level" class="level active-mic">0%</span></div>
+      </div>
+      <!-- 隱藏舊 meter id -->
       <div style="display:none">
-        <span id="user-display">—</span>
         <div id="local-meter" style="width:0%"></div>
         <div id="remote-meter" style="width:0%"></div>
+        <button id="btn-subtitle" class="btn-subtitle">💬</button>
       </div>
     </div>
 
-    <div id="lang-bar" class="lang-bar">
-      <span class="label">💬 我講的語言</span>
-      <span class="right">
-        <span id="stt-status" class="stt-status idle"><span class="dot"></span></span>
-        <button id="lang-btn" class="lang-btn">中文</button>
-      </span>
-    </div>
+    <!-- meters 容器保留（showMeters 用），但內容已移到 call-split -->
+    <div id="meters" class="meters" style="display:none !important"></div>
 
+    <!-- lang-bar 功能已整合到 call-split，隱藏原本的 -->
+    <div id="lang-bar" class="lang-bar" style="display:none !important"></div>
+
+    <!-- 字幕對話區（LINE 風格） -->
     <div id="subtitles" class="subtitles">
       <div id="subtitles-list">
-        <div class="subtitles-empty">等待字幕辨識啟動...</div>
+        <div class="subtitles-empty">開始說話，字幕會出現在這裡...</div>
       </div>
     </div>
 
