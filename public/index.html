@@ -87,14 +87,16 @@
     /* ─── 通話中 bar（兩行：名字 | 名字 + 音量/語言）─── */
     .peer-card {
       display: none;
-      margin-bottom: 12px;
+      margin-bottom: 8px;
     }
     .peer-card.active { display: block; }
     .call-bar {
-      background: var(--card-2);
-      border: 1px solid var(--border);
+      background: #ffffff;
+      border: 1px solid #ffe8f0;
       border-radius: 16px;
-      padding: 12px 16px;
+      padding: 16px;
+      box-shadow: 0 4px 16px rgba(255,107,157,0.08);
+      position: relative;
     }
     .call-bar-row {
       display: flex;
@@ -155,34 +157,38 @@
     }
     .peer-card .label {
       font-size: 11px;
-      color: var(--muted);
+      color: #8e8e93;
       text-transform: uppercase;
       letter-spacing: 0.1em;
       margin-bottom: 6px;
+      text-align: center;
     }
     .peer-card .name {
-      font-size: 22px;
-      font-weight: 700;
-      background: linear-gradient(135deg, #ff6b9d, #c084fc);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      margin-bottom: 4px;
+      font-size: 26px;
+      font-weight: 800;
+      color: var(--primary);
+      text-align: center;
+      margin-bottom: 8px;
     }
     .peer-card .meta {
       font-size: 11px;
-      color: var(--muted);
+      color: #8e8e93;
       font-family: ui-monospace, monospace;
+      text-align: center;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
     }
     .peer-card .role {
       display: inline-block;
       padding: 2px 8px;
       border-radius: 10px;
       font-size: 10px;
-      font-weight: 600;
-      margin-top: 8px;
+      font-weight: 700;
     }
-    .role.host { background: rgba(76,175,80,0.2); color: #81c784; }
-    .role.guest { background: rgba(192,132,252,0.2); color: #c084fc; }
+    .role.host { background: #e8f5e9; color: #4caf50; }
+    .role.guest { background: #f3e8ff; color: #a855f7; }
 
     /* 位置驗證綠勾（IP 跟 declared 同國）*/
     .verified-badge {
@@ -191,25 +197,27 @@
       border-radius: 10px;
       font-size: 11px;
       font-weight: 700;
-      background: rgba(76,175,80,0.2);
-      color: #81c784;
+      background: #e8f5e9;
+      color: #4caf50;
       margin-left: 4px;
     }
 
     /* ─── 豆知識破冰卡片 ─── */
     .trivia-card {
       display: none;
-      background: linear-gradient(135deg, #fffde7, #fff8e1);
-      border: 1px solid rgba(255,193,7,0.2);
+      background: #fffcf2;
+      border: 1px solid #ffe6ac;
       border-radius: 14px;
-      padding: 8px 12px;
-      margin-bottom: 8px;
+      padding: 10px 14px;
+      margin-bottom: 12px;
+      text-align: center;
       animation: fadeIn 0.3s ease-out;
     }
     .trivia-card.active { display: block; }
     .trivia-card .trivia-header {
       font-size: 10px;
-      color: var(--warning);
+      color: #d97706;
+      font-weight: 700;
       text-transform: uppercase;
       letter-spacing: 0.08em;
       margin-bottom: 6px;
@@ -229,37 +237,35 @@
     /* ─── 通話中按鈕列（想再遇 + 掛斷同一行）─── */
     .call-actions {
       display: flex;
-      gap: 10px;
+      gap: 12px;
       margin-bottom: 10px;
     }
     .call-actions .btn-meet-again,
     .call-actions .btn-danger {
       flex: 1;
       margin-bottom: 0;
+      border-radius: 24px;
     }
 
     /* ─── 想再遇按鈕 ─── */
     .btn-meet-again {
-      background: var(--card);
-      color: var(--success);
-      border: 2px solid var(--success);
-      font-size: 14px;
+      background: #f0fdf4;
+      color: #22c55e;
+      border: 1px solid #bbf7d0;
+      font-size: 15px;
       padding: 14px;
-      width: 100%;
-      margin-bottom: 8px;
-      border-radius: 20px;
       font-weight: 700;
       cursor: pointer;
-      transition: background 0.15s, transform 0.1s;
+      transition: all 0.15s;
     }
     .btn-meet-again:hover:not(:disabled) {
-      background: rgba(52,199,89,0.08);
+      background: #dcfce7;
     }
     .btn-meet-again:active { transform: scale(0.96); }
     .btn-meet-again.pressed {
-      background: var(--success);
+      background: #22c55e;
       color: white;
-      border-color: var(--success);
+      border-color: #22c55e;
       cursor: default;
     }
 
@@ -972,10 +978,11 @@
       margin-left: 6px;
     }
     .stt-status .dot {
-      width: 6px;
-      height: 6px;
+      width: 12px;
+      height: 12px;
       border-radius: 50%;
       background: #666;
+      box-shadow: 0 0 6px currentColor;
     }
     .stt-status.idle { background: rgba(255,255,255,0.05); color: var(--muted); }
     .stt-status.idle .dot { background: #666; }
