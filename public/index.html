@@ -201,9 +201,9 @@
       display: none;
       background: linear-gradient(135deg, #fffde7, #fff8e1);
       border: 1px solid rgba(255,193,7,0.2);
-      border-radius: 16px;
-      padding: 12px 16px;
-      margin-bottom: 12px;
+      border-radius: 14px;
+      padding: 8px 12px;
+      margin-bottom: 8px;
       animation: fadeIn 0.3s ease-out;
     }
     .trivia-card.active { display: block; }
@@ -891,13 +891,14 @@
       background: var(--card-2);
       border: 1px solid var(--border);
       border-radius: 20px;
-      padding: 16px;
-      margin-bottom: 12px;
-      max-height: calc(100vh - 360px);
-      min-height: 180px;
+      padding: 14px;
+      margin-bottom: 10px;
+      max-height: calc(100vh - 300px);
+      min-height: 220px;
       overflow-y: auto;
       text-align: left;
       scroll-behavior: smooth;
+      flex: 1;
     }
     .subtitles.active { display: block; }
     .subtitles-header {
