@@ -896,11 +896,11 @@
       display: none;
       background: var(--card-2);
       border: 1px solid var(--border);
-      border-radius: 20px;
+      border-radius: 20px 20px 0 0;
       padding: 14px;
-      margin-bottom: 10px;
-      max-height: calc(100vh - 340px);
-      min-height: 250px;
+      margin-bottom: 0;
+      max-height: calc(100vh - 380px);
+      min-height: 200px;
       overflow-y: auto;
       text-align: left;
       scroll-behavior: smooth;
@@ -1080,6 +1080,52 @@
       font-size: 13px;
       padding: 24px 12px;
     }
+
+    /* ─── Chat input bar（字幕區底部打字欄）─── */
+    .chat-container {
+      display: flex;
+      flex-direction: column;
+      margin-bottom: 10px;
+    }
+    .chat-input-bar {
+      display: flex;
+      gap: 8px;
+      padding: 10px 14px;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-top: none;
+      border-radius: 0 0 20px 20px;
+      margin-top: -1px;
+    }
+    .chat-input {
+      flex: 1;
+      border: 1px solid var(--border);
+      background: var(--card-2);
+      color: var(--text);
+      padding: 10px 14px;
+      border-radius: 20px;
+      font-size: 14px;
+      outline: none;
+    }
+    .chat-input:focus {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 2px rgba(255,107,157,0.12);
+    }
+    .btn-chat-send {
+      flex-shrink: 0;
+      background: var(--gradient-btn);
+      color: white;
+      border: none;
+      padding: 10px 18px;
+      border-radius: 20px;
+      font-size: 14px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: transform 0.1s;
+      width: auto;
+      margin: 0;
+    }
+    .btn-chat-send:active { transform: scale(0.95); }
 
     /* ─── Onboarding overlay ─── */
     .onboarding {
@@ -1333,10 +1379,16 @@
     <div id="meters" class="meters" style="display:none !important"></div>
     <div id="lang-bar" class="lang-bar" style="display:none !important"></div>
 
-    <!-- 字幕對話區（LINE 風格） -->
-    <div id="subtitles" class="subtitles">
-      <div id="subtitles-list">
-        <div class="subtitles-empty">開始說話，字幕會出現在這裡...</div>
+    <!-- 字幕 + 文字對話區（LINE 風格） -->
+    <div class="chat-container">
+      <div id="subtitles" class="subtitles">
+        <div id="subtitles-list">
+          <div class="subtitles-empty">開始說話或打字...</div>
+        </div>
+      </div>
+      <div id="chat-input-bar" class="chat-input-bar" style="display:none">
+        <input id="chat-input" class="chat-input" type="text" placeholder="輸入訊息..." maxlength="200" autocomplete="off">
+        <button id="btn-chat-send" class="btn-chat-send">送出</button>
       </div>
     </div>
 

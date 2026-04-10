@@ -419,6 +419,9 @@ const showButtons = (state) => {
   if (callActions) {
     callActions.style.display = state === 'in-call' ? 'flex' : 'none';
   }
+  // 打字輸入框（通話中才顯示）
+  const cib = document.getElementById('chat-input-bar');
+  if (cib) cib.style.display = state === 'in-call' ? 'flex' : 'none';
   // reset 想再遇按鈕狀態
   const btnMeetAgainEl = document.getElementById('btn-meet-again');
   if (btnMeetAgainEl && state === 'in-call') {
@@ -809,18 +812,29 @@ function setupSubtitleDC(dc) {
     log(`字幕 DataChannel open（雙向字幕通道已建立）`);
   };
   dc.onmessage = (e) => {
-    if (!subtitlesEnabled) return; // 用戶關掉字幕就不顯示對方的
     try {
       const msg = JSON.parse(e.data);
+
+      // 語音字幕
       if (msg.type === 'subtitle' && msg.data) {
+        if (!subtitlesEnabled) return;
         const { text, lang, interim } = msg.data;
-        // 第一次收到對方字幕 → 記住對方的語言、更新徽章
         if (!peerLang && lang) {
           peerLang = lang;
           log(`對方語言: ${lang}`);
           setPeerLangBadge(lang);
         }
         addSubtitle('peer', text, lang, interim);
+      }
+
+      // 文字訊息（打字）
+      if (msg.type === 'chat' && msg.data) {
+        const { text, lang } = msg.data;
+        if (!peerLang && lang) {
+          peerLang = lang;
+          setPeerLangBadge(lang);
+        }
+        addSubtitle('peer', text, lang, false);
       }
     } catch (err) {
       log(`DC parse error: ${err.message}`);
@@ -1539,6 +1553,41 @@ btnSpecificConfirm?.addEventListener('click', () => {
   if (!specificSelectedRegion) return;
   specificPicker?.classList.remove('active');
   startMatching({ mode: 'specific', targetRegion: specificSelectedRegion });
+});
+
+// ── 文字訊息（打字送出）──
+const chatInputBar = document.getElementById('chat-input-bar');
+const chatInput = document.getElementById('chat-input');
+const btnChatSend = document.getElementById('btn-chat-send');
+
+function sendChatMessage() {
+  if (!chatInput || !chatInput.value.trim()) return;
+  const text = chatInput.value.trim();
+  chatInput.value = '';
+
+  // 顯示在自己這邊
+  addSubtitle('self', text, sttLang, false);
+
+  // 透過 DataChannel 傳給對方
+  if (subtitleDC && subtitleDC.readyState === 'open') {
+    try {
+      subtitleDC.send(JSON.stringify({
+        type: 'chat',
+        v: 1,
+        data: { text, lang: sttLang, ts: Date.now() },
+      }));
+    } catch (err) {
+      log(`文字送出失敗: ${err.message}`);
+    }
+  }
+}
+
+btnChatSend?.addEventListener('click', sendChatMessage);
+chatInput?.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault();
+    sendChatMessage();
+  }
 });
 
 // ── 想再遇按鈕 ──
