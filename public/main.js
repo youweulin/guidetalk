@@ -436,8 +436,11 @@ const showButtons = (state) => {
   statusEl.style.display = state === 'in-call' ? 'none' : 'block';
 };
 
-const showPeerCard = (name, room, role, peerVerified) => {
+const showPeerCard = (name, room, role, peerVerified, peerGender) => {
   peerNameEl.textContent = name;
+  // 顯示對方性別 icon
+  const pgIcon = document.getElementById('peer-gender-icon');
+  if (pgIcon) pgIcon.textContent = GENDER_ICONS[peerGender] || '';
   roomCodeEl.textContent = room;
   myRoleEl.textContent = role === 'host' ? 'HOST' : 'GUEST';
   myRoleEl.className = `role ${role}`;
@@ -923,15 +926,15 @@ function connectSocket() {
     startMatchTimeoutTimer();
   });
 
-  socket.on('match_found', async ({ roomCode, isHost: hostFlag, peer, peerVerified, peerRegion }) => {
+  socket.on('match_found', async ({ roomCode, isHost: hostFlag, peer, peerVerified, peerRegion, peerGender }) => {
     // 配對成功，停掉等待逾時
     stopMatchTimeoutTimer();
     peerId = peer.id;
     peerName = peer.name;
     isHost = hostFlag;
-    log(`配對成功！房號 ${roomCode}, 對方 ${peer.name}, 我是 ${isHost ? 'host' : 'guest'}, 對方位置驗證=${peerVerified}, 對方地區=${peerRegion}`);
+    log(`配對成功！房號 ${roomCode}, 對方 ${peer.name} ${peerGender || '?'}, 我是 ${isHost ? 'host' : 'guest'}`);
     setStatus(`🎉 已配對到 ${peer.name}，建立連線中...`, true);
-    showPeerCard(peer.name, roomCode, isHost ? 'host' : 'guest', peerVerified);
+    showPeerCard(peer.name, roomCode, isHost ? 'host' : 'guest', peerVerified, peerGender);
     setPeerLangBadge(null); // 對方語言一開始未知
     // 在地化豆知識：根據雙方地區選
     const myRegion = localStorage.getItem(ONB_BIG_REGION_KEY) || null;
@@ -1139,10 +1142,12 @@ async function startMatching(opts = {}) {
     const matchPayload = {
       name,
       lang: sttLang,
-      mode,                      // 'quick' | 'nearby' | 'specific'
-      myBigRegion,               // 我自己在哪
-      targetRegion,              // 我想去哪 (specific 才用)
-      targetLangs: getTargetLangs(), // 我想找講什麼語言的人 (空 = 不過濾)
+      mode,
+      myBigRegion,
+      targetRegion,
+      targetLangs: getTargetLangs(),
+      gender: localStorage.getItem(ONB_GENDER_KEY) || null,
+      targetGender: localStorage.getItem(ONB_TARGET_GENDER_KEY) || 'any',
     };
 
     log(`📡 開始配對 (mode=${mode}${targetRegion ? ', target=' + targetRegion : ''})`);
@@ -1293,10 +1298,14 @@ function cleanup() {
   if (userDisplayEl) userDisplayEl.textContent = '👤 —';
 }
 
-// ─── Onboarding（新用戶第一次開時的 3 步驟引導）────
+// ─── Onboarding（新用戶第一次開時的 5 步驟引導）────
 const ONB_NICKNAME_KEY = 'kaitalk.nickname';
+const ONB_GENDER_KEY = 'kaitalk.gender';
+const ONB_TARGET_GENDER_KEY = 'kaitalk.targetGender';
 const ONB_BIG_REGION_KEY = 'kaitalk.bigRegion';
 const ONB_DONE_KEY = 'kaitalk.onboardingDone';
+
+const GENDER_ICONS = { male: '👨', female: '👩', other: '😊' };
 
 const BIG_REGIONS = [
   { id: 'tw-north',    flag: '🇹🇼', name: '北部' },
@@ -1315,28 +1324,29 @@ const BIG_REGIONS = [
 ];
 
 const onboardingEl = $('onboarding');
-const onbStep1El = $('step-1');
-const onbStep2El = $('step-2');
-const onbStep3El = $('step-3');
-const onbDot1 = $('dot-1');
-const onbDot2 = $('dot-2');
-const onbDot3 = $('dot-3');
+const ONB_TOTAL_STEPS = 5;
+const onbStepEls = Array.from({ length: ONB_TOTAL_STEPS }, (_, i) => $(`step-${i + 1}`));
+const onbDotEls = Array.from({ length: ONB_TOTAL_STEPS }, (_, i) => $(`dot-${i + 1}`));
 const onbNameInput = $('onb-name');
 const onbStep1Next = $('onb-step1-next');
 const onbStep2Next = $('onb-step2-next');
 const onbStep3Next = $('onb-step3-next');
+const onbStep4Next = $('onb-step4-next');
+const onbStep5Next = $('onb-step5-next');
 const onbRegionGrid = $('onb-region-grid');
 const onbDetectedRegion = $('onb-detected-region');
 const onbDetectedRegionValue = $('onb-detected-region-value');
 
 let onbSelectedRegion = null;
 let onbSelectedLang = null;
+let onbSelectedGender = null;
+let onbSelectedTargetGender = null;
 
 function onbShowStep(n) {
-  [onbStep1El, onbStep2El, onbStep3El].forEach((el, i) => {
+  onbStepEls.forEach((el, i) => {
     if (el) el.classList.toggle('active', i === n - 1);
   });
-  [onbDot1, onbDot2, onbDot3].forEach((dot, i) => {
+  onbDotEls.forEach((dot, i) => {
     if (!dot) return;
     dot.classList.remove('active', 'done');
     if (i < n - 1) dot.classList.add('done');
@@ -1354,7 +1364,7 @@ function onbBuildRegionGrid() {
       onbRegionGrid.querySelectorAll('.grid-btn').forEach(b => b.classList.remove('selected'));
       btn.classList.add('selected');
       onbSelectedRegion = btn.dataset.region;
-      onbStep2Next.disabled = false;
+      onbStep4Next.disabled = false;
     });
   });
 }
@@ -1372,7 +1382,7 @@ async function onbDetectRegion() {
         if (btn) {
           btn.classList.add('selected');
           onbSelectedRegion = data.bigRegion;
-          onbStep2Next.disabled = false;
+          onbStep4Next.disabled = false;
         }
       }
     }
@@ -1382,28 +1392,50 @@ async function onbDetectRegion() {
 }
 
 function onbBuildLangGrid() {
-  document.querySelectorAll('.lang-grid .grid-btn').forEach(btn => {
+  // Step 5 lang grid (only onboarding step-5 lang-grid buttons)
+  document.querySelectorAll('#step-5 .lang-grid .grid-btn').forEach(btn => {
     btn.addEventListener('click', () => {
-      document.querySelectorAll('.lang-grid .grid-btn').forEach(b => b.classList.remove('selected'));
+      document.querySelectorAll('#step-5 .lang-grid .grid-btn').forEach(b => b.classList.remove('selected'));
       btn.classList.add('selected');
       onbSelectedLang = btn.dataset.lang;
-      onbStep3Next.disabled = false;
+      onbStep5Next.disabled = false;
     });
   });
-  // 預選使用者瀏覽器語言
   const detected = detectInitialLang();
-  const btn = document.querySelector(`.lang-grid .grid-btn[data-lang="${detected}"]`);
+  const btn = document.querySelector(`#step-5 .lang-grid .grid-btn[data-lang="${detected}"]`);
   if (btn) {
     btn.classList.add('selected');
     onbSelectedLang = detected;
-    onbStep3Next.disabled = false;
+    onbStep5Next.disabled = false;
   }
+}
+
+function onbWireGenderGrid() {
+  // Step 2: gender
+  document.querySelectorAll('.onb-gender-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.onb-gender-btn').forEach(b => b.classList.remove('selected'));
+      btn.classList.add('selected');
+      onbSelectedGender = btn.dataset.gender;
+      onbStep2Next.disabled = false;
+    });
+  });
+  // Step 3: target gender
+  document.querySelectorAll('.onb-target-gender-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.onb-target-gender-btn').forEach(b => b.classList.remove('selected'));
+      btn.classList.add('selected');
+      onbSelectedTargetGender = btn.dataset.tgender;
+      onbStep3Next.disabled = false;
+    });
+  });
 }
 
 function onbStart() {
   if (!onboardingEl) return;
   onbBuildRegionGrid();
   onbBuildLangGrid();
+  onbWireGenderGrid();
   onbShowStep(1);
   onboardingEl.classList.add('active');
   onbDetectRegion();
@@ -1413,27 +1445,27 @@ function onbFinish() {
   const name = onbNameInput.value.trim();
   if (!name) return;
   localStorage.setItem(ONB_NICKNAME_KEY, name);
+  if (onbSelectedGender) localStorage.setItem(ONB_GENDER_KEY, onbSelectedGender);
+  if (onbSelectedTargetGender) localStorage.setItem(ONB_TARGET_GENDER_KEY, onbSelectedTargetGender);
   localStorage.setItem(ONB_BIG_REGION_KEY, onbSelectedRegion);
   if (onbSelectedLang) localStorage.setItem('kaitalk.lang', onbSelectedLang);
   localStorage.setItem(ONB_DONE_KEY, 'true');
 
   onboardingEl.classList.remove('active');
 
-  // 同步把名字也填回隱藏的 input（既有 code 還會讀 nameInput.value）
   if (nameInput) {
     nameInput.value = name;
     nameInput.disabled = true;
     nameInput.title = '暱稱已鎖定（升級會員可修改）';
   }
 
-  // 套用新語言
   if (onbSelectedLang) {
     sttLang = onbSelectedLang;
     updateLangBtn();
   }
 
   updateStartBtnState();
-  renderUserBar(); // 更新主畫面 user bar
+  renderUserBar();
 }
 
 if (onbNameInput) {
@@ -1443,7 +1475,9 @@ if (onbNameInput) {
 }
 onbStep1Next?.addEventListener('click', () => onbShowStep(2));
 onbStep2Next?.addEventListener('click', () => onbShowStep(3));
-onbStep3Next?.addEventListener('click', onbFinish);
+onbStep3Next?.addEventListener('click', () => onbShowStep(4));
+onbStep4Next?.addEventListener('click', () => onbShowStep(5));
+onbStep5Next?.addEventListener('click', onbFinish);
 
 // ─── Wire up ─────────────────────────────────────────
 btnStart.addEventListener('click', () => startMatching({ mode: 'quick' }));
@@ -1534,6 +1568,8 @@ const btnSettingsCancel = document.getElementById('btn-settings-cancel');
 
 let settingsTempRegion = null;
 let settingsTempLang = null;
+let settingsTempGender = null;
+let settingsTempTargetGender = null;
 
 function buildSettingsRegionGrid() {
   if (!settingsRegionGrid) return;
@@ -1561,6 +1597,22 @@ function wireSettingsLangButtons() {
 }
 wireSettingsLangButtons();
 
+// Wire settings gender buttons
+document.querySelectorAll('.settings-gender-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.settings-gender-btn').forEach(b => b.classList.remove('selected'));
+    btn.classList.add('selected');
+    settingsTempGender = btn.dataset.gender;
+  });
+});
+document.querySelectorAll('.settings-tgender-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.settings-tgender-btn').forEach(b => b.classList.remove('selected'));
+    btn.classList.add('selected');
+    settingsTempTargetGender = btn.dataset.tgender;
+  });
+});
+
 function openSettings() {
   if (!settingsOverlay) return;
 
@@ -1568,6 +1620,18 @@ function openSettings() {
   if (settingsNicknameDisplay) {
     settingsNicknameDisplay.textContent = localStorage.getItem(ONB_NICKNAME_KEY) || '（未設定）';
   }
+
+  // 預選當前性別
+  const curGender = localStorage.getItem(ONB_GENDER_KEY);
+  settingsTempGender = curGender;
+  document.querySelectorAll('.settings-gender-btn').forEach(b => {
+    b.classList.toggle('selected', b.dataset.gender === curGender);
+  });
+  const curTGender = localStorage.getItem(ONB_TARGET_GENDER_KEY);
+  settingsTempTargetGender = curTGender;
+  document.querySelectorAll('.settings-tgender-btn').forEach(b => {
+    b.classList.toggle('selected', b.dataset.tgender === curTGender);
+  });
 
   // 預選當前地區
   const currentRegion = localStorage.getItem(ONB_BIG_REGION_KEY);
@@ -1590,10 +1654,12 @@ function closeSettings() {
 }
 
 function saveSettings() {
+  // 儲存性別
+  if (settingsTempGender) localStorage.setItem(ONB_GENDER_KEY, settingsTempGender);
+  if (settingsTempTargetGender) localStorage.setItem(ONB_TARGET_GENDER_KEY, settingsTempTargetGender);
+
   // 儲存地區
-  if (settingsTempRegion) {
-    localStorage.setItem(ONB_BIG_REGION_KEY, settingsTempRegion);
-  }
+  if (settingsTempRegion) localStorage.setItem(ONB_BIG_REGION_KEY, settingsTempRegion);
 
   // 儲存語言並重啟 STT 套用
   if (settingsTempLang && settingsTempLang !== sttLang) {
@@ -1606,9 +1672,9 @@ function saveSettings() {
     }
   }
 
-  log(`設定已儲存：region=${settingsTempRegion}, lang=${settingsTempLang}`);
+  log(`設定已儲存`);
   closeSettings();
-  renderUserBar(); // 更新主畫面 user bar
+  renderUserBar();
 }
 
 btnSettings?.addEventListener('click', openSettings);
@@ -1624,9 +1690,11 @@ const userBarLangEl = document.getElementById('user-bar-lang');
 function renderUserBar() {
   if (!userBarEl) return;
 
-  // 暱稱
+  // 暱稱 + 性別 icon
   const name = localStorage.getItem(ONB_NICKNAME_KEY) || '—';
-  if (userBarNameEl) userBarNameEl.textContent = `👤 ${name}`;
+  const gender = localStorage.getItem(ONB_GENDER_KEY);
+  const gIcon = GENDER_ICONS[gender] || '👤';
+  if (userBarNameEl) userBarNameEl.textContent = `${gIcon} ${name}`;
 
   // 地區
   const regionId = localStorage.getItem(ONB_BIG_REGION_KEY);

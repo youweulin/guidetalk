@@ -201,8 +201,16 @@ function aWillingToB(a, b) {
 
   // 2. 想找講語言過濾（空陣列 = 不過濾）
   if (Array.isArray(a.targetLangs) && a.targetLangs.length > 0) {
-    if (!b.lang) return false; // 對方沒講語言 = 沒辦法判斷
+    if (!b.lang) return false;
     if (!a.targetLangs.includes(b.lang)) return false;
+  }
+
+  // 3. 性別過濾
+  // targetGender: 'male' | 'female' | 'any' | null/undefined
+  // 'any' 或空 = 不過濾
+  if (a.targetGender && a.targetGender !== 'any') {
+    if (!b.gender) return false; // 對方沒填性別 → 不配
+    if (b.gender !== a.targetGender) return false;
   }
 
   return true;
@@ -347,10 +355,10 @@ io.on('connection', (socket) => {
             id: players[peerIdx].socket.id,
             name: players[peerIdx].name,
           },
-          // 告訴這一端：對方的位置驗證結果
+          // 告訴這一端：對方資訊
           peerVerified: verifyResults[peerIdx],
-          // 告訴這一端：對方選的大區（用在地化豆知識用）
           peerRegion: players[peerIdx].myBigRegion || null,
+          peerGender: players[peerIdx].gender || null,
           matchedMode: me.mode === other.mode ? me.mode : 'mixed',
         });
       });
