@@ -24,6 +24,8 @@ import { dirname, join } from 'path';
 import { verifySupabaseJwt, authConfigured } from './lib/auth.js';
 import { upsertUser, dbConfigured, startCall, endCall, getDbClient } from './lib/db.js';
 import { lookupIp, extractClientIp } from './lib/geo.js';
+import { MsEdgeTTS, OUTPUT_FORMAT } from 'msedge-tts';
+import { readFileSync, unlinkSync, mkdirSync, existsSync } from 'fs';
 import { onReport, onBlock, onCallEnd, isBanned } from './lib/karma.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -414,6 +416,54 @@ app.get('/api/friends', async (req, res) => {
   } catch (err) {
     console.error(`[👥] Friends list failed: ${err.message}`);
     res.status(500).json({ error: 'internal' });
+  }
+});
+
+// ─── Edge TTS API ─────────────────────────────────────
+//
+// POST /api/tts — 文字轉語音（Edge TTS，好聽的聲音）
+// 回傳 mp3 audio buffer
+
+// 語音對照表（男女各語言最自然的聲音）
+const EDGE_VOICES = {
+  'zh-TW': { female: 'zh-TW-HsiaoChenNeural', male: 'zh-TW-YunJheNeural' },
+  'zh-CN': { female: 'zh-CN-XiaoxiaoNeural',  male: 'zh-CN-YunxiNeural' },
+  'ja-JP': { female: 'ja-JP-NanamiNeural',     male: 'ja-JP-KeitaNeural' },
+  'en-US': { female: 'en-US-JennyNeural',      male: 'en-US-GuyNeural' },
+  'ko-KR': { female: 'ko-KR-SunHiNeural',      male: 'ko-KR-InJoonNeural' },
+};
+
+// TTS 暫存目錄
+const TTS_TMP_DIR = '/tmp/kaitalk-tts';
+if (!existsSync(TTS_TMP_DIR)) mkdirSync(TTS_TMP_DIR, { recursive: true });
+
+app.post('/api/tts', express.json(), async (req, res) => {
+  const { text, lang, gender } = req.body;
+  if (!text || !lang) return res.status(400).json({ error: 'missing text or lang' });
+
+  try {
+    const voiceMap = EDGE_VOICES[lang] || EDGE_VOICES['en-US'];
+    const voiceName = gender === 'male' ? voiceMap.male : voiceMap.female;
+
+    const tts = new MsEdgeTTS();
+    await tts.setMetadata(voiceName, OUTPUT_FORMAT.AUDIO_24KHZ_48KBITRATE_MONO_MP3);
+
+    const result = await tts.toFile(TTS_TMP_DIR, text.slice(0, 500));
+    const audioPath = result.audioFilePath;
+
+    const buffer = readFileSync(audioPath);
+    // 清掉暫存檔
+    try { unlinkSync(audioPath); } catch {}
+
+    res.set({
+      'Content-Type': 'audio/mpeg',
+      'Content-Length': buffer.length,
+      'Cache-Control': 'public, max-age=86400',
+    });
+    res.send(buffer);
+  } catch (err) {
+    console.error(`[🔊] Edge TTS error: ${err.message}`);
+    res.status(500).json({ error: 'tts failed' });
   }
 });
 

@@ -724,46 +724,81 @@ function ttsProcessQueue() {
   }
   ttsSpeaking = true;
   const { text, lang } = ttsQueue.shift();
+  const remoteAudio = document.getElementById('remote-audio');
 
+  // 用 Edge TTS（server 端生成，音質好）
+  edgeTtsSpeak(text, lang, remoteAudio);
+}
+
+async function edgeTtsSpeak(text, lang, remoteAudio) {
+  try {
+    // 壓低對方音量
+    if (remoteAudio) remoteAudio.volume = 0.15;
+
+    const resp = await fetch('/api/tts', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        text,
+        lang: lang || sttLang,
+        gender: peerGenderStored || 'female', // 用對方性別決定聲音
+      }),
+    });
+
+    if (!resp.ok) {
+      // Edge TTS 失敗，fallback 到瀏覽器 TTS
+      fallbackBrowserTts(text, lang, remoteAudio);
+      return;
+    }
+
+    const blob = await resp.blob();
+    const url = URL.createObjectURL(blob);
+    const audio = new Audio(url);
+    audio.volume = 1.0;
+
+    audio.onended = () => {
+      URL.revokeObjectURL(url);
+      if (remoteAudio) remoteAudio.volume = 1.0;
+      setTimeout(() => ttsProcessQueue(), 200);
+    };
+
+    audio.onerror = () => {
+      URL.revokeObjectURL(url);
+      if (remoteAudio) remoteAudio.volume = 1.0;
+      setTimeout(() => ttsProcessQueue(), 200);
+    };
+
+    audio.play().catch(() => {
+      // autoplay 被擋，fallback
+      URL.revokeObjectURL(url);
+      fallbackBrowserTts(text, lang, remoteAudio);
+    });
+  } catch {
+    fallbackBrowserTts(text, lang, remoteAudio);
+  }
+}
+
+function fallbackBrowserTts(text, lang, remoteAudio) {
   const utter = new SpeechSynthesisUtterance(text);
   utter.lang = lang || sttLang;
   utter.rate = 1.05;
-  utter.pitch = 1.0;
   utter.volume = 1.0;
-
-  // 選最好的語音
   const voice = getBestVoice(utter.lang);
   if (voice) utter.voice = voice;
 
-  // 壓低對方音量
-  const remoteAudio = document.getElementById('remote-audio');
   if (remoteAudio) remoteAudio.volume = 0.15;
 
   utter.onend = () => {
-    // 恢復對方音量
     if (remoteAudio) remoteAudio.volume = 1.0;
-    // 處理下一個
     setTimeout(() => ttsProcessQueue(), 200);
   };
-
   utter.onerror = () => {
     if (remoteAudio) remoteAudio.volume = 1.0;
     setTimeout(() => ttsProcessQueue(), 200);
   };
 
-  // iOS Safari bug: speechSynthesis 會自動暫停，需要 resume
-  speechSynthesis.cancel(); // 清掉卡住的
+  speechSynthesis.cancel();
   speechSynthesis.speak(utter);
-
-  // iOS 15 秒 timeout workaround
-  const iosResumeInterval = setInterval(() => {
-    if (!speechSynthesis.speaking) {
-      clearInterval(iosResumeInterval);
-    } else {
-      speechSynthesis.pause();
-      speechSynthesis.resume();
-    }
-  }, 5000);
 }
 
 function ttsStop() {
