@@ -626,6 +626,11 @@
       grid-template-columns: repeat(2, 1fr);
       gap: 8px;
     }
+    .settings-overlay-content .gender-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+    }
     .settings-overlay-content .region-grid .grid-btn {
       padding: 10px 4px;
       font-size: 12px;
@@ -943,6 +948,13 @@
       font-weight: 700;
       color: #60cdff;
     }
+    .gender-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+      margin-bottom: 16px;
+    }
+
     .onboarding .lang-grid {
       display: grid;
       grid-template-columns: repeat(2, 1fr);
@@ -1026,7 +1038,7 @@
       <div class="onboarding-step" id="step-2">
         <h2>你的性別</h2>
         <p class="step-hint">讓對方知道你是誰。</p>
-        <div class="lang-grid">
+        <div class="gender-grid">
           <button class="grid-btn onb-gender-btn" data-gender="male">👨 男生</button>
           <button class="grid-btn onb-gender-btn" data-gender="female">👩 女生</button>
           <button class="grid-btn onb-gender-btn" data-gender="other">😊 其他</button>
@@ -1038,7 +1050,7 @@
       <div class="onboarding-step" id="step-3">
         <h2>想跟誰聊？</h2>
         <p class="step-hint">配對時會優先配給你想要的對象。</p>
-        <div class="lang-grid">
+        <div class="gender-grid">
           <button class="grid-btn onb-target-gender-btn" data-tgender="male">👨 男生</button>
           <button class="grid-btn onb-target-gender-btn" data-tgender="female">👩 女生</button>
           <button class="grid-btn onb-target-gender-btn" data-tgender="any">😊 都可以</button>
@@ -1235,7 +1247,7 @@
       <!-- 我的性別（可改） -->
       <div class="settings-section">
         <h4>我的性別</h4>
-        <div class="lang-grid">
+        <div class="gender-grid">
           <button class="grid-btn settings-gender-btn" data-gender="male">👨 男生</button>
           <button class="grid-btn settings-gender-btn" data-gender="female">👩 女生</button>
           <button class="grid-btn settings-gender-btn" data-gender="other">😊 其他</button>
@@ -1245,7 +1257,7 @@
       <!-- 想跟誰聊（可改） -->
       <div class="settings-section">
         <h4>想跟誰聊</h4>
-        <div class="lang-grid">
+        <div class="gender-grid">
           <button class="grid-btn settings-tgender-btn" data-tgender="male">👨 男生</button>
           <button class="grid-btn settings-tgender-btn" data-tgender="female">👩 女生</button>
           <button class="grid-btn settings-tgender-btn" data-tgender="any">😊 都可以</button>
