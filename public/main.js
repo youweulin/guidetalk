@@ -409,6 +409,10 @@ const showButtons = (state) => {
   const ub = document.getElementById('user-bar');
   if (ub) ub.style.display = state === 'idle' ? 'flex' : 'none';
 
+  // target-lang-bar（想找講語言）也只在 idle 顯示
+  const tlb = document.getElementById('target-lang-bar');
+  if (tlb) tlb.style.display = state === 'idle' ? 'flex' : 'none';
+
   btnCancel.style.display = state === 'matching' ? 'block' : 'none';
   btnHangup.style.display = state === 'in-call' ? 'block' : 'none';
   // 通話中拿掉這些（讓字幕區可以更大）：
@@ -1100,6 +1104,7 @@ async function startMatching(opts = {}) {
       mode,                      // 'quick' | 'nearby' | 'specific'
       myBigRegion,               // 我自己在哪
       targetRegion,              // 我想去哪 (specific 才用)
+      targetLangs: getTargetLangs(), // 我想找講什麼語言的人 (空 = 不過濾)
     };
 
     log(`📡 開始配對 (mode=${mode}${targetRegion ? ', target=' + targetRegion : ''})`);
@@ -1598,6 +1603,113 @@ userBarEl?.addEventListener('keydown', (e) => {
   }
 });
 
+// ─── 「想找講語言」過濾 ─────────────────────────────
+//
+// 用戶選的目標語言陣列存在 localStorage。
+// 配對時送進 server，server 在 isCompatible 多檢查一條：
+//   「對方的 lang 必須在我的 targetLangs 內」（或我的 targetLangs 是空 = 不過濾）
+//
+// 預設空陣列 = 不過濾 = 跟現在行為一樣（不破壞既有用戶）
+
+const TARGET_LANGS_KEY = 'kaitalk.targetLangs';
+
+function getTargetLangs() {
+  try {
+    const raw = localStorage.getItem(TARGET_LANGS_KEY);
+    if (!raw) return [];
+    const arr = JSON.parse(raw);
+    return Array.isArray(arr) ? arr : [];
+  } catch {
+    return [];
+  }
+}
+
+function setTargetLangs(arr) {
+  if (!Array.isArray(arr) || arr.length === 0) {
+    localStorage.removeItem(TARGET_LANGS_KEY);
+  } else {
+    localStorage.setItem(TARGET_LANGS_KEY, JSON.stringify(arr));
+  }
+}
+
+const targetLangBarEl = document.getElementById('target-lang-bar');
+const targetLangValueEl = document.getElementById('target-lang-value');
+const targetLangPicker = document.getElementById('target-lang-picker');
+const targetLangGrid = document.getElementById('target-lang-grid');
+const btnTargetLangSave = document.getElementById('btn-target-lang-save');
+const btnTargetLangCancel = document.getElementById('btn-target-lang-cancel');
+const btnTargetLangClear = document.getElementById('btn-target-lang-clear');
+
+let pickerSelectedLangs = [];
+
+function renderTargetLangBar() {
+  if (!targetLangValueEl) return;
+  const langs = getTargetLangs();
+  if (langs.length === 0) {
+    targetLangValueEl.textContent = '所有語言';
+  } else {
+    // 列出國旗
+    const flags = langs.map(code => langInfo(code).flag).join(' ');
+    targetLangValueEl.textContent = flags;
+  }
+}
+
+function applyPickerSelection() {
+  if (!targetLangGrid) return;
+  targetLangGrid.querySelectorAll('.target-lang-btn').forEach(btn => {
+    const selected = pickerSelectedLangs.includes(btn.dataset.lang);
+    btn.classList.toggle('selected', selected);
+  });
+}
+
+function openTargetLangPicker() {
+  if (!targetLangPicker) return;
+  // 預載當前選擇
+  pickerSelectedLangs = [...getTargetLangs()];
+  applyPickerSelection();
+  targetLangPicker.classList.add('active');
+}
+
+function closeTargetLangPicker() {
+  targetLangPicker?.classList.remove('active');
+}
+
+function saveTargetLangs() {
+  setTargetLangs(pickerSelectedLangs);
+  renderTargetLangBar();
+  closeTargetLangPicker();
+  log(`想找講語言: ${pickerSelectedLangs.length === 0 ? '所有語言' : pickerSelectedLangs.join(', ')}`);
+}
+
+// Wire 上 picker 的按鈕 click 行為（支援多選 toggle）
+targetLangGrid?.querySelectorAll('.target-lang-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const code = btn.dataset.lang;
+    const idx = pickerSelectedLangs.indexOf(code);
+    if (idx >= 0) {
+      pickerSelectedLangs.splice(idx, 1);
+    } else {
+      pickerSelectedLangs.push(code);
+    }
+    applyPickerSelection();
+  });
+});
+
+targetLangBarEl?.addEventListener('click', openTargetLangPicker);
+targetLangBarEl?.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter' || e.key === ' ') {
+    e.preventDefault();
+    openTargetLangPicker();
+  }
+});
+
+btnTargetLangSave?.addEventListener('click', saveTargetLangs);
+btnTargetLangCancel?.addEventListener('click', closeTargetLangPicker);
+btnTargetLangClear?.addEventListener('click', () => {
+  pickerSelectedLangs = [];
+  applyPickerSelection();
+});
+
 // 暱稱：強迫輸入 + localStorage 持久化（onboarding 完成後 disable）
 const NICKNAME_KEY = ONB_NICKNAME_KEY; // 同 key
 const savedNickname = localStorage.getItem(NICKNAME_KEY) || '';
@@ -1630,8 +1742,9 @@ nameInput.addEventListener('input', () => {
 });
 updateStartBtnState();
 
-// 主畫面初始化：渲染 user bar
+// 主畫面初始化：渲染 user bar + target lang bar
 renderUserBar();
+renderTargetLangBar();
 
 // 沒做過 onboarding → 顯示
 if (!onboardingDone) {

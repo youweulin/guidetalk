@@ -134,6 +134,74 @@ async function test5_specific_mismatch() {
   return ok;
 }
 
+async function test6_targetLang_match() {
+  console.log('\n▶ Test 6: targetLangs=[ja-JP] + 對方講 ja-JP → 應該配上');
+  const a = await makeClient('A');
+  const b = await makeClient('B');
+
+  const ra = findMatch(a, { name: 'A6', mode: 'quick', lang: 'zh-TW', targetLangs: ['ja-JP'] });
+  await new Promise(r => setTimeout(r, 50));
+  const rb = findMatch(b, { name: 'B6', mode: 'quick', lang: 'ja-JP', targetLangs: [] });
+
+  const [ra_, rb_] = await Promise.all([ra, rb]);
+  console.log(`  A: ${ra_}, B: ${rb_}`);
+  const ok = ra_ === 'matched' || rb_ === 'matched';
+  console.log(`  ${ok ? '✅' : '❌'} 配上`);
+  a.sock.disconnect(); b.sock.disconnect();
+  return ok;
+}
+
+async function test7_targetLang_block() {
+  console.log('\n▶ Test 7: targetLangs=[ja-JP] + 對方講 zh-TW → 不應該配');
+  const a = await makeClient('A');
+  const b = await makeClient('B');
+
+  const ra = findMatch(a, { name: 'A7', mode: 'quick', lang: 'zh-TW', targetLangs: ['ja-JP'] });
+  await new Promise(r => setTimeout(r, 50));
+  const rb = findMatch(b, { name: 'B7', mode: 'quick', lang: 'zh-TW', targetLangs: [] });
+
+  const [ra_, rb_] = await Promise.all([ra, rb]);
+  console.log(`  A: ${ra_}, B: ${rb_}`);
+  const ok = ra_ !== 'matched' && rb_ !== 'matched';
+  console.log(`  ${ok ? '✅' : '❌'} 不配對（正確）`);
+  a.sock.disconnect(); b.sock.disconnect();
+  return ok;
+}
+
+async function test8_targetLang_multi() {
+  console.log('\n▶ Test 8: targetLangs=[ja-JP, en-US] + 對方講 en-US → 應該配上');
+  const a = await makeClient('A');
+  const b = await makeClient('B');
+
+  const ra = findMatch(a, { name: 'A8', mode: 'quick', lang: 'zh-TW', targetLangs: ['ja-JP', 'en-US'] });
+  await new Promise(r => setTimeout(r, 50));
+  const rb = findMatch(b, { name: 'B8', mode: 'quick', lang: 'en-US', targetLangs: [] });
+
+  const [ra_, rb_] = await Promise.all([ra, rb]);
+  console.log(`  A: ${ra_}, B: ${rb_}`);
+  const ok = ra_ === 'matched' || rb_ === 'matched';
+  console.log(`  ${ok ? '✅' : '❌'} 多選命中`);
+  a.sock.disconnect(); b.sock.disconnect();
+  return ok;
+}
+
+async function test9_targetLang_empty_passthrough() {
+  console.log('\n▶ Test 9: targetLangs=[] (不過濾) + 任何對方 → 應該配上 (跟之前行為一樣)');
+  const a = await makeClient('A');
+  const b = await makeClient('B');
+
+  const ra = findMatch(a, { name: 'A9', mode: 'quick', lang: 'zh-TW', targetLangs: [] });
+  await new Promise(r => setTimeout(r, 50));
+  const rb = findMatch(b, { name: 'B9', mode: 'quick', lang: 'ja-JP', targetLangs: [] });
+
+  const [ra_, rb_] = await Promise.all([ra, rb]);
+  console.log(`  A: ${ra_}, B: ${rb_}`);
+  const ok = ra_ === 'matched' || rb_ === 'matched';
+  console.log(`  ${ok ? '✅' : '❌'} 不過濾 = 預設行為`);
+  a.sock.disconnect(); b.sock.disconnect();
+  return ok;
+}
+
 // ─── Run all ───
 console.log('🧪 kaitalk 三模式配對測試\n   ─────────────────────');
 
@@ -147,6 +215,14 @@ await reset();
 results.push(await test4_specific_targets_other_nearby());
 await reset();
 results.push(await test5_specific_mismatch());
+await reset();
+results.push(await test6_targetLang_match());
+await reset();
+results.push(await test7_targetLang_block());
+await reset();
+results.push(await test8_targetLang_multi());
+await reset();
+results.push(await test9_targetLang_empty_passthrough());
 
 const passed = results.filter(Boolean).length;
 console.log(`\n──────────────────────`);

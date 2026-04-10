@@ -170,24 +170,38 @@ const generateRoomCode = () => {
 // 真正配對成功 = a 願意 b 且 b 願意 a
 //
 // 三種模式：
-//   quick    = 任何人都行（無條件）
+//   quick    = 任何人都行（無條件，但仍受 targetLangs 過濾）
 //   nearby   = 只接受跟我同 bigRegion 的
 //   specific = 只接受 myBigRegion === my targetRegion 的
+//
+// 加上「想找講語言」過濾：
+//   targetLangs (空陣列 = 不過濾) → 對方的 lang 必須在我 targetLangs 內
 //
 // 配對矩陣（行=我、列=對方）：
 //                對方 quick   對方 nearby   對方 specific
 //   我 quick     ✅           ✅(if 同區)    ✅(if 對方目標=我區)
 //   我 nearby   ✅(if 同區)   ✅(if 同區)    ✅(if 雙方都符合)
 //   我 specific  ✅(if 對方在我目標)  ✅(雙方相符)  ✅(雙方相符)
+//   * 上面所有 ✅ 都還要再過 targetLangs 檢查
 function aWillingToB(a, b) {
-  if (a.mode === 'quick') return true;
-  if (a.mode === 'nearby') {
-    return !!a.myBigRegion && a.myBigRegion === b.myBigRegion;
+  // 1. 模式條件
+  let modeOk = false;
+  if (a.mode === 'quick') {
+    modeOk = true;
+  } else if (a.mode === 'nearby') {
+    modeOk = !!a.myBigRegion && a.myBigRegion === b.myBigRegion;
+  } else if (a.mode === 'specific') {
+    modeOk = !!a.targetRegion && a.targetRegion === b.myBigRegion;
   }
-  if (a.mode === 'specific') {
-    return !!a.targetRegion && a.targetRegion === b.myBigRegion;
+  if (!modeOk) return false;
+
+  // 2. 想找講語言過濾（空陣列 = 不過濾）
+  if (Array.isArray(a.targetLangs) && a.targetLangs.length > 0) {
+    if (!b.lang) return false; // 對方沒講語言 = 沒辦法判斷
+    if (!a.targetLangs.includes(b.lang)) return false;
   }
-  return false;
+
+  return true;
 }
 
 function isCompatible(a, b) {
@@ -256,7 +270,7 @@ io.on('connection', (socket) => {
   //   - 用「**雙向相容**」演算法：A 願意跟 B + B 願意跟 A 才配
   //   - 走 queue 找第一個 compatible 的對手
   //   - 找不到就留在 queue 裡等
-  socket.on('find_match', ({ name, gender, targetGender, lang, mode, myBigRegion, targetRegion } = {}) => {
+  socket.on('find_match', ({ name, gender, targetGender, lang, mode, myBigRegion, targetRegion, targetLangs } = {}) => {
     const game = 'voice';
     const q = getQueue(game);
 
@@ -271,6 +285,7 @@ io.on('connection', (socket) => {
       mode: mode || 'quick',
       myBigRegion: myBigRegion || null,
       targetRegion: targetRegion || null,
+      targetLangs: Array.isArray(targetLangs) ? targetLangs : [],
     };
 
     // 嘗試在 queue 裡找一個 compatible 的對手
