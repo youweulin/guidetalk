@@ -1237,6 +1237,7 @@ function handleMatchTimeout() {
 }
 
 function hangup() {
+  if (!confirm('確定要結束通話嗎？')) return;
   if (peerId) socket.emit('hangup', { target: peerId });
   cleanup();
   setStatus('已掛斷');
