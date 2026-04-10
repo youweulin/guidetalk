@@ -126,34 +126,46 @@
     /* ─── 豆知識破冰卡片 ─── */
     .trivia-card {
       display: none;
-      background: linear-gradient(135deg, rgba(255,235,59,0.1), rgba(255,167,38,0.1));
-      border: 1px solid rgba(255,235,59,0.25);
-      border-radius: 14px;
-      padding: 14px 16px;
-      margin-bottom: 14px;
+      background: linear-gradient(135deg, rgba(255,235,59,0.08), rgba(255,167,38,0.08));
+      border: 1px solid rgba(255,235,59,0.2);
+      border-radius: 12px;
+      padding: 10px 14px;
+      margin-bottom: 10px;
       animation: fadeIn 0.3s ease-out;
     }
     .trivia-card.active { display: block; }
     .trivia-card .trivia-header {
-      font-size: 11px;
+      font-size: 10px;
       color: var(--warning);
       text-transform: uppercase;
       letter-spacing: 0.08em;
-      margin-bottom: 8px;
-    }
-    .trivia-card .trivia-text {
-      font-size: 14px;
-      line-height: 1.5;
-      color: var(--text);
       margin-bottom: 6px;
     }
+    .trivia-card .trivia-text {
+      font-size: 12px;
+      line-height: 1.4;
+      color: var(--text);
+      margin-bottom: 4px;
+    }
     .trivia-card .trivia-text-ja {
-      font-size: 13px;
-      line-height: 1.5;
+      font-size: 11px;
+      line-height: 1.4;
       color: var(--muted);
     }
 
-    /* ─── 想再遇按鈕（通話中，掛斷旁邊）─── */
+    /* ─── 通話中按鈕列（想再遇 + 掛斷同一行）─── */
+    .call-actions {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+    .call-actions .btn-meet-again,
+    .call-actions .btn-danger {
+      flex: 1;
+      margin-bottom: 0;
+    }
+
+    /* ─── 想再遇按鈕 ─── */
     .btn-meet-again {
       background: rgba(76,175,80,0.15);
       color: #81c784;
@@ -1041,7 +1053,7 @@
   <div class="card">
     <button id="btn-settings" class="settings-btn" title="設定">⚙️</button>
     <h1>kaitalk</h1>
-    <p class="subtitle">兩人隨機語音盲盒 · Phase 0</p>
+    <!-- subtitle 拿掉：畫面太複雜，配對卡片+豆知識+meter 已經夠資訊了 -->
 
     <div id="status" class="status">準備中...</div>
 
@@ -1158,9 +1170,13 @@
     </div>
 
     <button id="btn-cancel" class="btn-secondary" style="display:none">取消配對</button>
-    <button id="btn-meet-again" class="btn-meet-again" style="display:none">💚 想再遇</button>
     <button id="btn-mute" class="btn-mute" style="display:none">🔊 喇叭：開（單機測試請按靜音）</button>
-    <button id="btn-hangup" class="btn-danger" style="display:none">📞 掛斷</button>
+
+    <!-- 想再遇 + 掛斷同一行 -->
+    <div id="call-actions" class="call-actions" style="display:none">
+      <button id="btn-meet-again" class="btn-meet-again">💚 想再遇</button>
+      <button id="btn-hangup" class="btn-danger">📞 掛斷</button>
+    </div>
 
     <!-- 「指定地方」picker overlay -->
     <div id="specific-picker" class="specific-picker">
@@ -1172,10 +1188,7 @@
       </div>
     </div>
 
-    <p class="hint">
-      <strong>同一台電腦測試：</strong>開兩個分頁，按「開始配對」配上後，<br>
-      把兩邊的喇叭都靜音 → 對著一邊講話 → 另一邊的「對方聲音」meter 會跳動 = 成功
-    </p>
+    <!-- hint 拿掉：正式用戶不需要看到測試說明 -->
 
     <div id="log" class="log"></div>
   </div>

@@ -415,18 +415,18 @@ const showButtons = (state) => {
 
   btnCancel.style.display = state === 'matching' ? 'block' : 'none';
 
-  // 想再遇按鈕：通話中才顯示，reset 為未按狀態
-  const btnMeetAgain = document.getElementById('btn-meet-again');
-  if (btnMeetAgain) {
-    btnMeetAgain.style.display = state === 'in-call' ? 'block' : 'none';
-    if (state === 'in-call') {
-      btnMeetAgain.textContent = '💚 想再遇';
-      btnMeetAgain.classList.remove('pressed');
-      btnMeetAgain.disabled = false;
-    }
+  // 想再遇 + 掛斷（包在 #call-actions 一行裡）
+  const callActions = document.getElementById('call-actions');
+  if (callActions) {
+    callActions.style.display = state === 'in-call' ? 'flex' : 'none';
   }
-
-  btnHangup.style.display = state === 'in-call' ? 'block' : 'none';
+  // reset 想再遇按鈕狀態
+  const btnMeetAgainEl = document.getElementById('btn-meet-again');
+  if (btnMeetAgainEl && state === 'in-call') {
+    btnMeetAgainEl.textContent = '💚 想再遇';
+    btnMeetAgainEl.classList.remove('pressed');
+    btnMeetAgainEl.disabled = false;
+  }
   // 通話中拿掉這些（讓字幕區可以更大）：
   //   - 暱稱輸入框（已顯示在 user-bar）
   //   - 喇叭按鈕（一般用戶用不到，只有單機測試需要）
