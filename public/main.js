@@ -414,6 +414,18 @@ const showButtons = (state) => {
   if (tlb) tlb.style.display = state === 'idle' ? 'flex' : 'none';
 
   btnCancel.style.display = state === 'matching' ? 'block' : 'none';
+
+  // 想再遇按鈕：通話中才顯示，reset 為未按狀態
+  const btnMeetAgain = document.getElementById('btn-meet-again');
+  if (btnMeetAgain) {
+    btnMeetAgain.style.display = state === 'in-call' ? 'block' : 'none';
+    if (state === 'in-call') {
+      btnMeetAgain.textContent = '💚 想再遇';
+      btnMeetAgain.classList.remove('pressed');
+      btnMeetAgain.disabled = false;
+    }
+  }
+
   btnHangup.style.display = state === 'in-call' ? 'block' : 'none';
   // 通話中拿掉這些（讓字幕區可以更大）：
   //   - 暱稱輸入框（已顯示在 user-bar）
@@ -970,6 +982,17 @@ function connectSocket() {
     showButtons('idle');
   });
 
+  // ── 互相想再遇通知（掛斷後才收到）──
+  socket.on('meet_again_mutual', ({ peerName: mutualName }) => {
+    log(`🎉 互相想再遇！對方: ${mutualName}`);
+    const overlay = document.getElementById('mutual-match-overlay');
+    const nameEl = document.getElementById('mutual-match-name');
+    if (overlay && nameEl) {
+      nameEl.textContent = mutualName || '—';
+      overlay.classList.add('active');
+    }
+  });
+
   socket.on('match_cancelled', () => {
     stopMatchTimeoutTimer();
     log(`配對已取消`);
@@ -1476,6 +1499,22 @@ btnSpecificConfirm?.addEventListener('click', () => {
   if (!specificSelectedRegion) return;
   specificPicker?.classList.remove('active');
   startMatching({ mode: 'specific', targetRegion: specificSelectedRegion });
+});
+
+// ── 想再遇按鈕 ──
+const btnMeetAgain = document.getElementById('btn-meet-again');
+btnMeetAgain?.addEventListener('click', () => {
+  if (btnMeetAgain.classList.contains('pressed')) return; // 只能按一次
+  socket.emit('meet_again');
+  btnMeetAgain.textContent = '💚 已標記想再遇';
+  btnMeetAgain.classList.add('pressed');
+  btnMeetAgain.disabled = true;
+  log(`💚 已送出想再遇`);
+});
+
+// ── 互相想再遇 overlay 關閉 ──
+document.getElementById('btn-mutual-ok')?.addEventListener('click', () => {
+  document.getElementById('mutual-match-overlay')?.classList.remove('active');
 });
 
 // ─── Settings overlay ─────────────────────────────────

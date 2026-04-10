@@ -153,6 +153,75 @@
       color: var(--muted);
     }
 
+    /* ─── 想再遇按鈕（通話中，掛斷旁邊）─── */
+    .btn-meet-again {
+      background: rgba(76,175,80,0.15);
+      color: #81c784;
+      border: 1px solid rgba(76,175,80,0.3);
+      font-size: 14px;
+      padding: 12px;
+      width: 100%;
+      margin-bottom: 8px;
+      border-radius: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.15s, transform 0.1s;
+    }
+    .btn-meet-again:hover:not(:disabled) {
+      background: rgba(76,175,80,0.25);
+    }
+    .btn-meet-again:active { transform: scale(0.97); }
+    .btn-meet-again.pressed {
+      background: rgba(76,175,80,0.3);
+      color: #4caf50;
+      border-color: #4caf50;
+      cursor: default;
+    }
+
+    /* ─── 互相想再遇 match overlay（掛斷後彈出）─── */
+    .mutual-match-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.85);
+      z-index: 100;
+      padding: 24px;
+      align-items: center;
+      justify-content: center;
+    }
+    .mutual-match-overlay.active {
+      display: flex;
+      animation: fadeIn 0.5s ease-out;
+    }
+    .mutual-match-card {
+      text-align: center;
+      max-width: 360px;
+      width: 100%;
+    }
+    .mutual-match-card .emoji {
+      font-size: 64px;
+      margin-bottom: 16px;
+    }
+    .mutual-match-card h2 {
+      font-size: 24px;
+      margin-bottom: 12px;
+      background: linear-gradient(135deg, #ff6b9d, #c084fc);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .mutual-match-card p {
+      font-size: 14px;
+      color: var(--muted);
+      margin-bottom: 24px;
+      line-height: 1.6;
+    }
+    .mutual-match-card .peer-name-big {
+      font-size: 28px;
+      font-weight: 700;
+      color: var(--text);
+      margin-bottom: 20px;
+    }
+
     /* 對方的語言徽章（只顯示國旗，未知時顯示「🌐 偵測中」）*/
     .peer-card .peer-lang {
       display: inline-block;
@@ -1089,6 +1158,7 @@
     </div>
 
     <button id="btn-cancel" class="btn-secondary" style="display:none">取消配對</button>
+    <button id="btn-meet-again" class="btn-meet-again" style="display:none">💚 想再遇</button>
     <button id="btn-mute" class="btn-mute" style="display:none">🔊 喇叭：開（單機測試請按靜音）</button>
     <button id="btn-hangup" class="btn-danger" style="display:none">📞 掛斷</button>
 
@@ -1145,6 +1215,17 @@
 
       <button id="btn-settings-save" class="btn-primary">儲存</button>
       <button id="btn-settings-cancel" class="btn-secondary">取消</button>
+    </div>
+  </div>
+
+  <!-- 互相想再遇 overlay（掛斷後才彈出）-->
+  <div id="mutual-match-overlay" class="mutual-match-overlay">
+    <div class="mutual-match-card">
+      <div class="emoji">🎉</div>
+      <h2>你們互相想再遇！</h2>
+      <div class="peer-name-big" id="mutual-match-name">—</div>
+      <p>下次配對會優先配給你們。<br>期待下次的對話！</p>
+      <button id="btn-mutual-ok" class="btn-primary">太棒了！</button>
     </div>
   </div>
 

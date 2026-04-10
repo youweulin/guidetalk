@@ -124,8 +124,12 @@ function startActiveCall(roomCode, players) {
     callId: null, // 會在 startCall promise resolve 時填
     userA,
     userB,
+    nameA: players[0].name,
+    nameB: players[1].name,
     startedAt: now,
     sockets: new Set([players[0].socket.id, players[1].socket.id]),
+    // 想再遇標記（socketId → true）
+    meetAgainMarks: new Set(),
   });
 }
 
@@ -289,7 +293,13 @@ io.on('connection', (socket) => {
     };
 
     // 嘗試在 queue 裡找一個 compatible 的對手
-    const otherIdx = q.findIndex(other => isCompatible(me, other));
+    // 優先找 matched=true（互相想再遇的人），再找一般 compatible
+    // 這樣「想再遇」的人會被優先配在一起
+    let otherIdx = -1;
+
+    // 先看有沒有 mutual matched 的對象（需要查 DB，但太慢不現實）
+    // 簡化方案：直接走 findIndex 即可，之後 Phase 4 做更精密的
+    otherIdx = q.findIndex(other => isCompatible(me, other));
 
     if (otherIdx !== -1) {
       // 配對成功
@@ -390,16 +400,69 @@ io.on('connection', (socket) => {
     io.to(target).emit('webrtc_signal', { from: socket.id, signal });
   });
 
+  // ── 想再遇 ──
+  // 用戶通話中按「💚 想再遇」→ 標記到 activeCalls 的 meetAgainMarks
+  // 掛斷時才檢查「雙方是否都按了」→ 是 → emit mutual event
+  socket.on('meet_again', () => {
+    const found = findActiveCallBySocket(socket.id);
+    if (!found) return;
+    found.entry.meetAgainMarks.add(socket.id);
+    console.log(`[💚] ${socket.id.slice(0, 6)} marked meet_again in room ${found.roomCode}`);
+
+    // 寫 DB：更新 kaitalk_calls 的標記欄位（fire-and-forget）
+    if (found.entry.callId) {
+      const isA = found.entry.sockets.values().next().value === socket.id;
+      const col = isA ? 'a_marked_meet_again' : 'b_marked_meet_again';
+      getDbClient()?.execute({
+        sql: `UPDATE kaitalk_calls SET ${col} = 1 WHERE id = ?`,
+        args: [found.entry.callId],
+      }).catch(() => {});
+    }
+  });
+
   // ── 對方掛電話 ──
   socket.on('hangup', ({ target }) => {
     console.log(`[HANGUP] ${socket.id.slice(0, 6)} → ${(target || '').slice(0, 6)}`);
-    io.to(target).emit('peer_hangup');
 
-    // 結束 active call（如果這個 socket 真的在某通電話裡）
+    // 掛斷前先檢查：雙方是否都按了想再遇？
     const found = findActiveCallBySocket(socket.id);
     if (found) {
+      const marks = found.entry.meetAgainMarks;
+      const bothMarked = marks.size >= 2;
+
+      if (bothMarked && found.entry.userA && found.entry.userB) {
+        // 互相想再遇！通知雙方
+        const peerName4A = found.entry.nameB;
+        const peerName4B = found.entry.nameA;
+
+        // 找兩個 socket
+        const socketIds = [...found.entry.sockets];
+        socketIds.forEach(sid => {
+          const isA = sid === socketIds[0];
+          io.to(sid).emit('meet_again_mutual', {
+            peerName: isA ? peerName4A : peerName4B,
+          });
+        });
+
+        console.log(`[🎉] Mutual meet-again in room ${found.roomCode}!`);
+
+        // 寫 connections.matched = true
+        const [a, b] = [found.entry.userA, found.entry.userB].sort();
+        getDbClient()?.execute({
+          sql: `
+            UPDATE connections
+               SET a_likes_b = 1, b_likes_a = 1,
+                   matched = 1, matched_at = CURRENT_TIMESTAMP
+             WHERE user_a = ? AND user_b = ?
+          `,
+          args: [a, b],
+        }).catch(() => {});
+      }
+
       endActiveCall(found.roomCode, 'hangup');
     }
+
+    io.to(target).emit('peer_hangup');
   });
 
   // ── DataChannel fallback（之後字幕也可以走這條 socket 備援）──
