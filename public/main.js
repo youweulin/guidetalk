@@ -717,6 +717,9 @@ function ttsSpeak(text, lang) {
   if (!ttsSpeaking) ttsProcessQueue();
 }
 
+// 偵測是否 iOS（Safari / Capacitor WebView）
+const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+
 function ttsProcessQueue() {
   if (ttsQueue.length === 0) {
     ttsSpeaking = false;
@@ -726,8 +729,13 @@ function ttsProcessQueue() {
   const { text, lang } = ttsQueue.shift();
   const remoteAudio = document.getElementById('remote-audio');
 
-  // 用 Edge TTS（server 端生成，音質好）
-  edgeTtsSpeak(text, lang, remoteAudio);
+  if (isIOS) {
+    // iOS: 用 Edge TTS（server 生成，音質好）
+    edgeTtsSpeak(text, lang, remoteAudio);
+  } else {
+    // Android / Chrome: 用瀏覽器內建 TTS（Google 語音，免費零流量）
+    fallbackBrowserTts(text, lang, remoteAudio);
+  }
 }
 
 async function edgeTtsSpeak(text, lang, remoteAudio) {
