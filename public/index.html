@@ -6,25 +6,32 @@
   <title>kaitalk — 兩人語音盲盒</title>
   <style>
     :root {
-      /* ─── 日系柔和色系 ─── */
-      --bg: #f0eff5;
+      /* ─── 蘋果體系高質感淺色主題（依照設計藍圖）─── */
+      --bg: #f2f2f7;
       --card: #ffffff;
-      --card-2: #f8f7fc;
-      --text: #2d2b3d;
-      --muted: #9b98b0;
-      --primary: #ff7eb3;
-      --primary-dark: #e6649a;
+      --card-2: #f8f8fa;
+      --text: #1d1d1f;
+      --muted: #86868b;
+      --primary: #ff6b9d;
+      --primary-dark: #e65c8a;
       --accent: #b388ff;
-      --success: #66bb6a;
-      --danger: #ef5350;
-      --warning: #ffa726;
-      --soft-shadow: 0 8px 32px rgba(45, 43, 61, 0.1);
-      --card-shadow: 0 4px 24px rgba(45, 43, 61, 0.08);
+      --success: #34c759;
+      --danger: #ff3b30;
+      --warning: #ff9500;
+      --gradient-btn: linear-gradient(135deg, #ff8c8c 0%, #ff6b9d 100%);
+      --btn-shadow: rgba(255, 107, 157, 0.35);
+      --tag-blue-bg: #eaf2ff;
+      --tag-blue-text: #4b89ff;
+      --tag-red-bg: #ffeaea;
+      --tag-red-text: #e65c5c;
+      --border: #f0f0f0;
+      --soft-shadow: 0 16px 40px rgba(0, 0, 0, 0.04), 0 4px 12px rgba(0, 0, 0, 0.02);
+      --card-shadow: 0 4px 16px rgba(0, 0, 0, 0.03);
     }
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
       font-family: -apple-system, BlinkMacSystemFont, 'Hiragino Sans', 'Noto Sans JP', 'Segoe UI', sans-serif;
-      background: linear-gradient(160deg, #f0eff5 0%, #e8e5f0 50%, #f5f0f8 100%);
+      background: var(--bg);
       color: var(--text);
       min-height: 100vh;
       display: flex;
@@ -34,7 +41,7 @@
     }
     .card {
       background: var(--card);
-      border-radius: 28px;
+      border-radius: 32px;
       padding: 28px 24px;
       max-width: 400px;
       width: 100%;
@@ -44,8 +51,8 @@
     }
     h1 {
       font-size: 26px;
-      margin-bottom: 4px;
-      background: linear-gradient(135deg, #ff7eb3, #b388ff);
+      margin-bottom: 16px;
+      background: linear-gradient(135deg, #ff6b9d, #b388ff);
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
       font-weight: 800;
@@ -438,57 +445,77 @@
       line-height: 1.5;
     }
 
-    /* ─── User card v2（名片式，3 行 layout）─── */
-    .user-card-v2 {
-      background: var(--card-2);
-      border: 1px solid rgba(155,152,176,0.12);
-      border-radius: 20px;
-      padding: 16px 20px;
-      margin-bottom: 20px;
-      cursor: pointer;
-      transition: background 0.15s, border-color 0.15s, box-shadow 0.2s;
-      box-shadow: var(--card-shadow);
+    /* ─── Profile Section（個人檔案區）─── */
+    .profile-section {
+      display: flex;
+      align-items: flex-start;
+      gap: 16px;
       text-align: left;
+      margin-bottom: 24px;
+      padding: 4px;
+      cursor: pointer;
+      transition: opacity 0.15s;
     }
-    .user-card-v2:hover {
-      background: rgba(179,136,255,0.04);
-      border-color: rgba(179,136,255,0.2);
-      box-shadow: 0 6px 24px rgba(179,136,255,0.12);
+    .profile-section:hover { opacity: 0.85; }
+    .profile-section:active { transform: scale(0.99); }
+    .avatar-container {
+      flex-shrink: 0;
+      width: 72px;
+      height: 72px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #f0edf5, #e8e5f0);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.06);
     }
-    .user-card-v2:active { transform: scale(0.99); }
-    .uc-row {
-      margin-bottom: 8px;
+    .avatar-placeholder {
+      font-size: 36px;
+      line-height: 1;
     }
-    .uc-row:last-child { margin-bottom: 0; }
-    .uc-icon {
-      font-size: 18px;
+    .profile-info {
+      flex: 1;
+      min-width: 0;
+    }
+    .profile-name {
+      font-size: 22px;
       font-weight: 800;
       color: var(--text);
+      margin-bottom: 8px;
+      background: none;
+      -webkit-text-fill-color: var(--text);
     }
-    .uc-row-small {
-      font-size: 12px;
-      color: var(--muted);
+    .profile-tags {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 8px;
+      flex-wrap: wrap;
     }
-    .uc-target, .uc-target-lang {
-      font-size: 12px;
-      color: var(--muted);
-    }
-    .user-bar-region,
-    .user-bar-lang {
-      font-size: 11px;
-      font-weight: 600;
-      padding: 4px 10px;
-      border-radius: 12px;
-      background: rgba(179,136,255,0.1);
-      color: var(--accent);
-      border: 1px solid rgba(179,136,255,0.2);
-      white-space: nowrap;
+    .tag {
       display: inline-block;
+      padding: 4px 12px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 600;
+    }
+    .tag-blue {
+      background: var(--tag-blue-bg);
+      color: var(--tag-blue-text);
+    }
+    .tag-red {
+      background: var(--tag-red-bg);
+      color: var(--tag-red-text);
+    }
+    .profile-pref {
+      font-size: 13px;
+      color: var(--muted);
+    }
+    .pref-lang {
+      margin-left: 4px;
     }
     .user-bar-region.unset {
-      background: rgba(255,167,38,0.08);
+      background: rgba(255,149,0,0.1);
       color: var(--warning);
-      border-color: rgba(255,167,38,0.2);
     }
 
     /* ─── 想找講語言 bar ─── */
@@ -530,48 +557,66 @@
 
     /* ─── Match modes (3 buttons) ─── */
     #match-modes { display: block; }
-    #match-modes .btn-primary { margin-bottom: 14px; }
-    /* CTA 雙行 */
-    .btn-cta {
+
+    /* ─── Massive CTA 按鈕（依照藍圖）─── */
+    .btn-primary-massive {
+      width: 100%;
+      height: 80px;
+      border: none;
+      border-radius: 20px;
+      background: var(--gradient-btn);
+      color: white;
+      cursor: pointer;
+      margin-bottom: 14px;
+      box-shadow: 0 12px 24px var(--btn-shadow);
+      transition: transform 0.12s, box-shadow 0.2s;
       display: flex;
       flex-direction: column;
       align-items: center;
+      justify-content: center;
       gap: 2px;
-      padding: 18px 24px;
     }
-    .cta-ja {
-      font-size: 18px;
+    .btn-primary-massive:hover:not(:disabled) {
+      transform: translateY(-2px);
+      box-shadow: 0 16px 32px var(--btn-shadow);
+    }
+    .btn-primary-massive:active { transform: scale(0.97); }
+    .btn-primary-massive:disabled { opacity: 0.45; cursor: not-allowed; }
+    .btn-primary-massive .btn-title {
+      font-size: 20px;
       font-weight: 800;
     }
-    .cta-zh {
+    .btn-primary-massive .btn-subtitle-text {
       font-size: 13px;
       font-weight: 600;
       opacity: 0.85;
     }
-    /* 底部按鈕列（附近 + 指定 並排）*/
-    .bottom-actions {
+
+    /* ─── 次要按鈕列（附近 + 指定 並排）─── */
+    .action-row {
       display: flex;
       gap: 10px;
     }
-    .btn-bottom {
+    .btn-secondary-outline {
       flex: 1;
-      background: var(--card-2);
-      color: var(--muted);
-      border: 1px solid rgba(155,152,176,0.15);
-      font-size: 13px;
+      background: var(--card);
+      color: var(--text);
+      border: 1.5px solid var(--border);
+      font-size: 14px;
       font-weight: 600;
-      padding: 12px 8px;
+      padding: 14px 8px;
       border-radius: 16px;
       cursor: pointer;
-      transition: background 0.15s, color 0.15s, box-shadow 0.2s;
+      transition: background 0.15s, border-color 0.2s, box-shadow 0.2s;
       margin: 0;
       width: auto;
     }
-    .btn-bottom:hover:not(:disabled) {
-      background: rgba(179,136,255,0.06);
-      color: var(--accent);
+    .btn-secondary-outline:hover:not(:disabled) {
+      border-color: rgba(179,136,255,0.3);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.04);
     }
-    .btn-bottom:disabled { opacity: 0.4; cursor: not-allowed; }
+    .btn-secondary-outline:active { transform: scale(0.97); }
+    .btn-secondary-outline:disabled { opacity: 0.4; cursor: not-allowed; }
     .btn-mode-secondary {
       background: var(--card-2);
       color: var(--accent);
@@ -598,11 +643,11 @@
     /* ─── Settings button (top right of card) ─── */
     .settings-btn {
       position: absolute;
-      top: 16px;
-      right: 16px;
+      top: 20px;
+      right: 20px;
       background: var(--card-2);
       color: var(--muted);
-      border: 1px solid rgba(155,152,176,0.15);
+      border: 1px solid var(--border);
       width: 36px;
       height: 36px;
       border-radius: 50%;
@@ -614,12 +659,11 @@
       padding: 0;
       margin: 0;
       transition: background 0.15s, color 0.15s, box-shadow 0.15s;
-      box-shadow: 0 2px 8px rgba(45,43,61,0.06);
+      box-shadow: 0 2px 8px rgba(0,0,0,0.04);
     }
     .settings-btn:hover {
-      background: rgba(179,136,255,0.1);
+      background: rgba(179,136,255,0.08);
       color: var(--accent);
-      box-shadow: 0 4px 12px rgba(179,136,255,0.15);
     }
 
     /* ─── Settings overlay (similar to specific-picker) ─── */
@@ -1214,25 +1258,33 @@
     <!-- 隱藏 input (onboarding 用) -->
     <input id="name" class="input" placeholder="暱稱" maxlength="12" style="display:none">
 
-    <!-- 用戶名片卡（點整張開設定）-->
-    <div id="user-bar" class="user-card-v2" role="button" tabindex="0">
-      <div class="uc-row"><span class="uc-icon" id="user-bar-name">👨 —</span></div>
-      <div class="uc-row"><span class="user-bar-region" id="user-bar-region">📍 點此設定</span> <span class="user-bar-lang" id="user-bar-lang">🇹🇼 中文</span></div>
-      <div class="uc-row uc-row-small">
-        <span class="uc-target" id="user-bar-target">想找：😊 都可以</span>
-        <span class="uc-target-lang" id="target-lang-value">· 所有語言</span>
+    <!-- ═══ Profile Section（個人檔案區）═══ -->
+    <div id="user-bar" class="profile-section" role="button" tabindex="0">
+      <div class="avatar-container">
+        <div class="avatar-placeholder" id="avatar-emoji">👨</div>
+      </div>
+      <div class="profile-info">
+        <h2 class="profile-name" id="user-bar-name">—</h2>
+        <div class="profile-tags">
+          <span class="tag tag-blue" id="user-bar-region">🇹🇼 中部</span>
+          <span class="tag tag-red" id="user-bar-lang">🇯🇵 日本語</span>
+        </div>
+        <div class="profile-pref">
+          <span id="user-bar-target">想找：👩 女生</span>
+          <span id="target-lang-value" class="pref-lang">所有語言</span>
+        </div>
       </div>
     </div>
 
-    <!-- CTA 雙行按鈕 -->
+    <!-- ═══ 主配對按鈕（Massive CTA）═══ -->
     <div id="match-modes">
-      <button id="btn-start" class="btn-primary btn-cta" disabled>
-        <span class="cta-ja">聊天しよう！</span>
-        <span class="cta-zh">來聊天吧</span>
+      <button id="btn-start" class="btn-primary-massive" disabled>
+        <div class="btn-title">聊天しよう！</div>
+        <div class="btn-subtitle-text">來聊天吧</div>
       </button>
-      <div class="bottom-actions">
-        <button id="btn-nearby" class="btn-bottom" disabled>📍 附近的人</button>
-        <button id="btn-specific" class="btn-bottom" disabled>🌏 指定地方</button>
+      <div class="action-row">
+        <button id="btn-nearby" class="btn-secondary-outline" disabled>📍 附近的人</button>
+        <button id="btn-specific" class="btn-secondary-outline" disabled>🌏 指定地方</button>
       </div>
     </div>
 

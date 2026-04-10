@@ -1687,28 +1687,15 @@ const userBarLangEl = document.getElementById('user-bar-lang');
 function renderUserBar() {
   if (!userBarEl) return;
 
-  // 暱稱 + 性別 icon
+  // 暱稱（純名字，不帶性別 icon — icon 在 avatar 圈裡）
   const name = localStorage.getItem(ONB_NICKNAME_KEY) || '—';
   const gender = localStorage.getItem(ONB_GENDER_KEY);
   const gIcon = GENDER_ICONS[gender] || '👤';
-  if (userBarNameEl) userBarNameEl.textContent = `${gIcon} ${name}`;
+  if (userBarNameEl) userBarNameEl.textContent = name;
 
-  // 「想找」行
-  const targetG = localStorage.getItem(ONB_TARGET_GENDER_KEY) || 'any';
-  const tgLabels = { male: '👨 男生', female: '👩 女生', any: '😊 都可以' };
-  const targetEl = document.getElementById('user-bar-target');
-  if (targetEl) targetEl.textContent = `想找：${tgLabels[targetG] || '😊 都可以'}`;
-
-  // 想找語言（移到 card 內）
-  const tLangs = getTargetLangs();
-  const tlEl = document.getElementById('target-lang-value');
-  if (tlEl) {
-    if (tLangs.length === 0) {
-      tlEl.textContent = '· 所有語言';
-    } else {
-      tlEl.textContent = '· ' + tLangs.map(c => langInfo(c).flag).join(' ');
-    }
-  }
+  // Avatar emoji
+  const avatarEl = document.getElementById('avatar-emoji');
+  if (avatarEl) avatarEl.textContent = gIcon;
 
   // 地區
   const regionId = localStorage.getItem(ONB_BIG_REGION_KEY);
