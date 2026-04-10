@@ -720,6 +720,11 @@ function ttsSpeak(text, lang) {
 // 偵測是否 iOS（Safari / Capacitor WebView）
 const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 
+// 付費用戶判斷（之後接訂閱系統，目前先用 localStorage 模擬）
+function isPremiumUser() {
+  return localStorage.getItem('kaitalk.premium') === 'true';
+}
+
 function ttsProcessQueue() {
   if (ttsQueue.length === 0) {
     ttsSpeaking = false;
@@ -729,11 +734,11 @@ function ttsProcessQueue() {
   const { text, lang } = ttsQueue.shift();
   const remoteAudio = document.getElementById('remote-audio');
 
-  if (isIOS) {
-    // iOS: 用 Edge TTS（server 生成，音質好）
+  if (isPremiumUser()) {
+    // 付費用戶：Edge TTS 自然人聲（所有平台）
     edgeTtsSpeak(text, lang, remoteAudio);
   } else {
-    // Android / Chrome: 用瀏覽器內建 TTS（Google 語音，免費零流量）
+    // 免費用戶：瀏覽器內建 TTS
     fallbackBrowserTts(text, lang, remoteAudio);
   }
 }
