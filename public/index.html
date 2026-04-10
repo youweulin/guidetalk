@@ -789,6 +789,22 @@
       color: var(--text);
       border: 1px solid rgba(155, 152, 176, 0.2);
     }
+    .btn-tts {
+      background: rgba(96,205,255,0.1);
+      color: #60cdff;
+      border: 1px solid rgba(96,205,255,0.2);
+      font-size: 13px;
+      padding: 10px;
+      border-radius: 12px;
+      cursor: pointer;
+      width: 100%;
+      margin-bottom: 6px;
+    }
+    .btn-tts.active {
+      background: rgba(52,199,89,0.1);
+      color: var(--success);
+      border-color: rgba(52,199,89,0.3);
+    }
     .btn-mute {
       background: rgba(255,167,38,0.1);
       color: var(--warning);
@@ -2141,6 +2157,7 @@
     </div>
 
     <button id="btn-cancel" class="btn-secondary" style="display:none">取消配對</button>
+    <button id="btn-tts" class="btn-tts" style="display:none">🔇 語音翻譯：關</button>
     <button id="btn-mute" class="btn-mute" style="display:none">🔊 喇叭：開</button>
 
     <div id="call-actions" class="call-actions" style="display:none">

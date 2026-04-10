@@ -84,6 +84,11 @@ let subtitlesEnabled = localStorage.getItem('kaitalk.subtitles') !== 'false'; //
 const subtitleBuffer = [];      // event log: [{ id, speaker, text, lang, interim, ts }]
 const MAX_BUFFER = 50;          // in-memory buffer 上限
 
+// ─── TTS 語音翻譯模式 ───
+let ttsMode = localStorage.getItem('kaitalk.ttsMode') === 'true';
+const ttsQueue = [];            // 待朗讀的翻譯文字佇列
+let ttsSpeaking = false;        // 是否正在朗讀
+
 // 支援的語言（之後加翻譯時，只要每個都能對應到翻譯 API 的 code 即可）
 const LANGS = [
   { code: 'zh-TW', flag: '🇹🇼', label: '中文' },
@@ -452,6 +457,13 @@ const showButtons = (state) => {
   //   - 喇叭按鈕（一般用戶用不到，只有單機測試需要）
   //   - status 列（peer card 已經顯示「與你配對的是 X」）
   btnMute.style.display = 'none';
+
+  // TTS 按鈕：通話中才顯示
+  const btnTts = document.getElementById('btn-tts');
+  if (btnTts) {
+    btnTts.style.display = state === 'in-call' ? 'block' : 'none';
+    if (state === 'in-call') updateTtsBtn();
+  }
 };
 
 const showPeerCard = (name, room, role, peerVerified, peerGender) => {
@@ -629,6 +641,8 @@ function addSubtitle(speaker, text, lang, interim) {
         entry.translated = translated;
         entry.translatedTo = sttLang;
         renderSubtitles();
+        // TTS 模式：朗讀翻譯
+        ttsSpeak(translated, sttLang);
       }
     });
   }
@@ -666,6 +680,121 @@ function renderSubtitles() {
 function clearSubtitles() {
   subtitleBuffer.length = 0;
   renderSubtitles();
+}
+
+// ─── TTS 語音翻譯（模式 B）─────────────────────────────
+//
+// 對方說話 → STT → 翻譯 → SpeechSynthesis 朗讀翻譯
+// 朗讀時壓低對方音量，朗讀完恢復
+
+// 找最好的 TTS 語音（優先選高品質 / 非預設的）
+let ttsVoiceCache = {};
+function getBestVoice(lang) {
+  if (ttsVoiceCache[lang]) return ttsVoiceCache[lang];
+  const voices = speechSynthesis.getVoices();
+  if (voices.length === 0) return null;
+
+  const langPrefix = lang.split('-')[0]; // 'zh', 'ja', 'en', 'ko'
+  // 找匹配語言的語音，優先選名字含 "Premium", "Enhanced", "Natural" 的
+  const matches = voices.filter(v => v.lang.startsWith(langPrefix) || v.lang.startsWith(lang));
+  if (matches.length === 0) return null;
+
+  const premium = matches.find(v =>
+    /premium|enhanced|natural|samantha|kyoko|meijia|yuna/i.test(v.name)
+  );
+  const nonDefault = matches.find(v => !v.default) || matches[0];
+  const best = premium || nonDefault;
+  ttsVoiceCache[lang] = best;
+  return best;
+}
+
+// 瀏覽器語音列表是異步載入的
+speechSynthesis.onvoiceschanged = () => { ttsVoiceCache = {}; };
+
+function ttsSpeak(text, lang) {
+  if (!ttsMode || !text) return;
+  ttsQueue.push({ text, lang });
+  if (!ttsSpeaking) ttsProcessQueue();
+}
+
+function ttsProcessQueue() {
+  if (ttsQueue.length === 0) {
+    ttsSpeaking = false;
+    return;
+  }
+  ttsSpeaking = true;
+  const { text, lang } = ttsQueue.shift();
+
+  const utter = new SpeechSynthesisUtterance(text);
+  utter.lang = lang || sttLang;
+  utter.rate = 1.05;
+  utter.pitch = 1.0;
+  utter.volume = 1.0;
+
+  // 選最好的語音
+  const voice = getBestVoice(utter.lang);
+  if (voice) utter.voice = voice;
+
+  // 壓低對方音量
+  const remoteAudio = document.getElementById('remote-audio');
+  if (remoteAudio) remoteAudio.volume = 0.15;
+
+  utter.onend = () => {
+    // 恢復對方音量
+    if (remoteAudio) remoteAudio.volume = 1.0;
+    // 處理下一個
+    setTimeout(() => ttsProcessQueue(), 200);
+  };
+
+  utter.onerror = () => {
+    if (remoteAudio) remoteAudio.volume = 1.0;
+    setTimeout(() => ttsProcessQueue(), 200);
+  };
+
+  // iOS Safari bug: speechSynthesis 會自動暫停，需要 resume
+  speechSynthesis.cancel(); // 清掉卡住的
+  speechSynthesis.speak(utter);
+
+  // iOS 15 秒 timeout workaround
+  const iosResumeInterval = setInterval(() => {
+    if (!speechSynthesis.speaking) {
+      clearInterval(iosResumeInterval);
+    } else {
+      speechSynthesis.pause();
+      speechSynthesis.resume();
+    }
+  }, 5000);
+}
+
+function ttsStop() {
+  speechSynthesis.cancel();
+  ttsQueue.length = 0;
+  ttsSpeaking = false;
+  const remoteAudio = document.getElementById('remote-audio');
+  if (remoteAudio) remoteAudio.volume = 1.0;
+}
+
+function toggleTtsMode() {
+  ttsMode = !ttsMode;
+  localStorage.setItem('kaitalk.ttsMode', ttsMode);
+  updateTtsBtn();
+  if (!ttsMode) {
+    ttsStop();
+  } else {
+    // iOS Safari 需要在用戶手勢中先「解鎖」speechSynthesis
+    // 播一個空的 utterance 來取得權限
+    const unlock = new SpeechSynthesisUtterance('');
+    unlock.volume = 0;
+    speechSynthesis.speak(unlock);
+  }
+  log(`🔊 語音翻譯：${ttsMode ? '開' : '關'}`);
+}
+
+function updateTtsBtn() {
+  const btn = document.getElementById('btn-tts');
+  if (!btn) return;
+  btn.textContent = ttsMode ? '🔊 語音翻譯：開' : '🔇 語音翻譯：關';
+  btn.classList.toggle('active', ttsMode);
 }
 
 // ─── Web Speech API (STT) ────────────────────────────
@@ -1476,6 +1605,7 @@ function toggleSubtitles() {
 
 function cleanup() {
   stopSTT();
+  ttsStop();
   stopMeterLoop();
   if (subtitleDC) {
     try { subtitleDC.close(); } catch {}
@@ -1696,6 +1826,7 @@ btnCancel.addEventListener('click', cancelMatching);
 btnHangup.addEventListener('click', hangup);
 btnMute.addEventListener('click', toggleMute);
 btnSubtitle.addEventListener('click', toggleSubtitles);
+document.getElementById('btn-tts')?.addEventListener('click', toggleTtsMode);
 langBtn.addEventListener('click', toggleLang);
 
 // 封鎖 + 檢舉
