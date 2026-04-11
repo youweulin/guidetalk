@@ -1082,9 +1082,9 @@
       border-color: var(--primary);
       background: color-mix(in srgb, var(--primary) 6%, transparent);
     }
-    .trend-chip .trend-flag {
-      font-size: 11px;
-      margin-right: 4px;
+    .topic-cat {
+      background: var(--card);
+      border-color: color-mix(in srgb, var(--primary) 20%, transparent);
     }
 
     #match-modes { display: block; }
@@ -2476,9 +2476,22 @@
       </div>
     </div>
 
-    <!-- ═══ 熱門話題 ═══ -->
+    <!-- ═══ 話題配對 ═══ -->
+    <div class="trends-section">
+      <h4 class="trends-title">💬 選話題聊</h4>
+      <div class="trends-grid" id="topic-grid">
+        <div class="trend-chip topic-cat" data-topic="美食">🍜 美食</div>
+        <div class="trend-chip topic-cat" data-topic="旅行">✈️ 旅行</div>
+        <div class="trend-chip topic-cat" data-topic="音樂">🎵 音樂</div>
+        <div class="trend-chip topic-cat" data-topic="電影">🎬 電影</div>
+        <div class="trend-chip topic-cat" data-topic="寵物">🐾 寵物</div>
+        <div class="trend-chip topic-cat" data-topic="運動">⚽ 運動</div>
+        <div class="trend-chip topic-cat" data-topic="語言學習">📚 語言學習</div>
+        <div class="trend-chip topic-cat" data-topic="生活">☕ 生活</div>
+      </div>
+    </div>
     <div id="trends-section" class="trends-section" style="display:none">
-      <h4 class="trends-title">🔥 熱門話題</h4>
+      <h4 class="trends-title">🔥 熱搜</h4>
       <div class="trends-grid" id="trends-grid"></div>
     </div>
 

@@ -2860,42 +2860,33 @@ applyGenderTheme();
 // 先載 trivia，完成後再載 trends（trends 需要 trivia 的破冰話題）
 loadTrivia().finally(() => loadTrends());
 
-// ─── 熱門話題 ─────────────────────────────────────
+// ─── 話題配對（固定分類）─────────────────────────────
+document.querySelectorAll('.topic-cat').forEach(chip => {
+  chip.addEventListener('click', () => {
+    startMatching({ mode: 'quick', topicId: chip.dataset.topic });
+  });
+});
+
+// ─── 熱搜（Google Trends）─────────────────────────────
 async function loadTrends() {
   try {
     const resp = await fetch('/api/trends');
     const data = await resp.json();
     const section = document.getElementById('trends-section');
-    if (!section) return;
+    const grid = document.getElementById('trends-grid');
+    if (!section || !grid) return;
 
-    // 熱門話題（台日各 2）+ 破冰話題（最多 2 個）
-    const tw = (data.tw || []).slice(0, 2);
-    const jp = (data.jp || []).slice(0, 2);
-
-    // 從 trivia 的 intro/fun/challenge 隨機抽
-    const icebreakers = (window._triviaData || [])
-      .filter(t => t.cat && ['intro', 'fun', 'challenge'].includes(t.cat))
-      .sort(() => Math.random() - 0.5)
-      .slice(0, 2)
-      .map(t => ({ title: t.zh.replace(/^[💬🎲🗣️🧠🌏]\s*/, '') }));
-
-    const mixed = [...tw, ...icebreakers, ...jp].slice(0, 6);
-    if (mixed.length === 0) {
-      section.style.display = 'none';
-      return;
-    }
+    const all = [...(data.tw || []).slice(0, 3), ...(data.jp || []).slice(0, 3)];
+    if (all.length === 0) return;
 
     section.style.display = 'block';
-    const grid = document.getElementById('trends-grid');
-    if (!grid) return;
-
-    grid.innerHTML = mixed.map((t, i) =>
+    grid.innerHTML = all.map((t, i) =>
       `<div class="trend-chip" data-idx="${i}">${t.title}</div>`
     ).join('');
 
     grid.querySelectorAll('.trend-chip').forEach(chip => {
       chip.addEventListener('click', () => {
-        const topic = mixed[parseInt(chip.dataset.idx)]?.title;
+        const topic = all[parseInt(chip.dataset.idx)]?.title;
         if (topic) startMatching({ mode: 'quick', topicId: topic });
       });
     });
