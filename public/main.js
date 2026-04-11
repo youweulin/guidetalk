@@ -1657,15 +1657,25 @@ async function signInWithApple() {
   if (window.Capacitor?.Plugins?.SignInWithApple) {
     try {
       const result = await window.Capacitor.Plugins.SignInWithApple.authorize({
-        clientId: 'com.kaitalk.web',
+        clientId: 'com.kaitalk.app',
         redirectURI: 'https://snzyltibimkbxshkzhyr.supabase.co/auth/v1/callback',
         scopes: 'email name',
       });
 
+      console.log('Apple Sign In result:', JSON.stringify(result));
+
       // 拿到 Apple ID token，傳給 Supabase
+      const idToken = result.response?.identityToken;
+      if (!idToken) {
+        log('Apple 登入：沒有收到 identityToken');
+        alert('Apple 登入失敗：沒有收到 token');
+        return;
+      }
+
       const { data, error } = await supabaseClient.auth.signInWithIdToken({
         provider: 'apple',
-        token: result.response.identityToken,
+        token: idToken,
+        nonce: result.response?.nonce || undefined,
       });
 
       if (error) {
