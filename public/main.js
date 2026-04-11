@@ -1697,8 +1697,7 @@ function updateAccountUI() {
       el.innerHTML = `
         <h4>帳號</h4>
         <p style="font-size:12px;color:var(--muted);margin-bottom:8px;">登入以保留好友和資料</p>
-        <button class="btn-oauth btn-apple" onclick="signInWithApple()"> Apple 登入</button>
-        <button class="btn-oauth btn-email" onclick="signInWithEmail()">✉️ Email 登入</button>
+        <div style="display:flex;gap:8px;"><button class="btn-oauth btn-apple" onclick="signInWithApple()" style="flex:1;margin:0;"> Apple</button><button class="btn-oauth btn-email" onclick="signInWithEmail()" style="flex:1;margin:0;">✉️ Email</button></div>
         ${premiumHtml}
       `;
     } else {
