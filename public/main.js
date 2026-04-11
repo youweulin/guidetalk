@@ -2200,7 +2200,9 @@ async function onbDetectRegion() {
       const found = BIG_REGIONS.find(x => x.id === data.bigRegion);
       if (found && onbDetectedRegion) {
         onbDetectedRegion.style.display = 'block';
-        onbDetectedRegionValue.textContent = `${found.flag} ${found.name}`;
+        const countryFlag = data.bigRegion.startsWith('tw') ? '🇹🇼' : '🇯🇵';
+        const shortName = found.name.replace(/^(TW|JP)\s*/, '');
+        onbDetectedRegionValue.textContent = `${countryFlag} ${shortName}`;
         const btn = onbRegionGrid?.querySelector(`[data-region="${data.bigRegion}"]`);
         if (btn) {
           btn.classList.add('selected');
