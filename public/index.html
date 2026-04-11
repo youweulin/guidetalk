@@ -2206,17 +2206,11 @@
         <button id="onb-step5-next" class="btn-primary" disabled>下一步</button>
       </div>
 
-      <!-- Step 6: 語言 -->
+      <!-- Step 6: 語言（從 LANGS 動態生成） -->
       <div class="onboarding-step" id="step-6">
         <h2>你講什麼語言？💬</h2>
         <p class="step-hint">會用來辨識你的語音、轉成文字。<br>對方看不懂的話會自動翻譯。</p>
-        <div class="lang-grid">
-          <button class="grid-btn" data-lang="zh-TW">🇹🇼 中文（繁）</button>
-          <button class="grid-btn" data-lang="ja-JP">🇯🇵 日本語</button>
-          <button class="grid-btn" data-lang="en-US">🇺🇸 English</button>
-          <button class="grid-btn" data-lang="ko-KR">🇰🇷 한국어</button>
-          <button class="grid-btn" data-lang="zh-CN">🇨🇳 简中</button>
-        </div>
+        <div class="lang-grid" id="onb-lang-grid"></div>
         <button id="onb-step6-next" class="btn-primary" disabled>開始使用 🚀</button>
       </div>
     </div>
@@ -2334,8 +2328,15 @@
           <button class="grid-btn target-lang-btn" data-lang="zh-TW">🇹🇼 中文（繁）</button>
           <button class="grid-btn target-lang-btn" data-lang="ja-JP">🇯🇵 日本語</button>
           <button class="grid-btn target-lang-btn" data-lang="en-US">🇺🇸 English</button>
+          <button class="grid-btn target-lang-btn" data-lang="vi-VN">🇻🇳 Tiếng Việt</button>
+          <button class="grid-btn target-lang-btn" data-lang="id-ID">🇮🇩 Indonesia</button>
+          <button class="grid-btn target-lang-btn" data-lang="hi-IN">🇮🇳 हिन्दी</button>
+          <button class="grid-btn target-lang-btn" data-lang="ur-PK">🇵🇰 اردو</button>
           <button class="grid-btn target-lang-btn" data-lang="ko-KR">🇰🇷 한국어</button>
           <button class="grid-btn target-lang-btn" data-lang="zh-CN">🇨🇳 简中</button>
+          <button class="grid-btn target-lang-btn" data-lang="tl-PH">🇵🇭 Tagalog</button>
+          <button class="grid-btn target-lang-btn" data-lang="th-TH">🇹🇭 ภาษาไทย</button>
+          <button class="grid-btn target-lang-btn" data-lang="pt-BR">🇧🇷 Português</button>
         </div>
         <button id="btn-target-lang-clear" class="btn-secondary" style="margin-top:8px;">清除（所有語言）</button>
         <button id="btn-target-lang-save" class="btn-primary">儲存</button>
@@ -2428,29 +2429,17 @@
         <select id="settings-region-select" class="settings-select"></select>
       </div>
 
-      <!-- 我講的語言（下拉選單） -->
+      <!-- 我講的語言（從 LANGS 動態生成） -->
       <div class="settings-section">
         <h4>我講的語言</h4>
-        <select id="settings-lang-select" class="settings-select">
-          <option value="zh-TW">🇹🇼 中文（繁）</option>
-          <option value="ja-JP">🇯🇵 日本語</option>
-          <option value="en-US">🇺🇸 English</option>
-          <option value="ko-KR">🇰🇷 한국어</option>
-          <option value="zh-CN">🇨🇳 简中</option>
-        </select>
+        <select id="settings-lang-select" class="settings-select"></select>
       </div>
 
-      <!-- 想找講什麼語言的人 -->
+      <!-- 想找講什麼語言的人（下拉多選） -->
       <div class="settings-section">
         <h4>想找講什麼語言的人</h4>
-        <div class="checkbox-group" id="settings-target-lang-checks">
-          <label class="checkbox-item"><input type="checkbox" value="zh-TW"> 🇹🇼 中文（繁）</label>
-          <label class="checkbox-item"><input type="checkbox" value="ja-JP"> 🇯🇵 日本語</label>
-          <label class="checkbox-item"><input type="checkbox" value="en-US"> 🇺🇸 English</label>
-          <label class="checkbox-item"><input type="checkbox" value="ko-KR"> 🇰🇷 한국어</label>
-          <label class="checkbox-item"><input type="checkbox" value="zh-CN"> 🇨🇳 简中</label>
-        </div>
-        <p style="font-size:11px;color:var(--muted);margin-top:4px;">不勾 = 所有語言</p>
+        <select id="settings-target-lang-select" class="settings-select" multiple size="4"></select>
+        <p style="font-size:11px;color:var(--muted);margin-top:4px;">不選 = 所有語言</p>
       </div>
 
       </div><!-- end settings-scroll -->

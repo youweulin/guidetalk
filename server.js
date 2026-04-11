@@ -426,11 +426,27 @@ app.get('/api/friends', async (req, res) => {
 
 // 語音對照表（男女各語言最自然的聲音）
 const EDGE_VOICES = {
-  'zh-TW': { female: 'zh-TW-HsiaoChenNeural', male: 'zh-TW-YunJheNeural' },
-  'zh-CN': { female: 'zh-CN-XiaoxiaoNeural',  male: 'zh-CN-YunxiNeural' },
-  'ja-JP': { female: 'ja-JP-NanamiNeural',     male: 'ja-JP-KeitaNeural' },
-  'en-US': { female: 'en-US-JennyNeural',      male: 'en-US-GuyNeural' },
+  // 東亞
+  'zh-TW': { female: 'zh-TW-HsiaoChenNeural',  male: 'zh-TW-YunJheNeural' },
+  'zh-CN': { female: 'zh-CN-XiaoxiaoNeural',   male: 'zh-CN-YunxiNeural' },
+  'ja-JP': { female: 'ja-JP-NanamiNeural',      male: 'ja-JP-KeitaNeural' },
   'ko-KR': { female: 'ko-KR-SunHiNeural',      male: 'ko-KR-InJoonNeural' },
+  // 英語
+  'en-US': { female: 'en-US-JennyNeural',       male: 'en-US-GuyNeural' },
+  // 東南亞
+  'vi-VN': { female: 'vi-VN-HoaiMyNeural',      male: 'vi-VN-NamMinhNeural' },
+  'id-ID': { female: 'id-ID-GadisNeural',       male: 'id-ID-ArdiNeural' },
+  'th-TH': { female: 'th-TH-PremwadeeNeural',   male: 'th-TH-NiwatNeural' },
+  'tl-PH': { female: 'fil-PH-BlessicaNeural',   male: 'fil-PH-AngeloNeural' },
+  // 南亞
+  'hi-IN': { female: 'hi-IN-SwaraNeural',       male: 'hi-IN-MadhurNeural' },
+  'ur-PK': { female: 'ur-PK-UzmaNeural',        male: 'ur-PK-AsadNeural' },
+  // 歐洲
+  'fr-FR': { female: 'fr-FR-DeniseNeural',      male: 'fr-FR-HenriNeural' },
+  'es-ES': { female: 'es-ES-ElviraNeural',      male: 'es-ES-AlvaroNeural' },
+  'pt-BR': { female: 'pt-BR-FranciscaNeural',   male: 'pt-BR-AntonioNeural' },
+  'ru-RU': { female: 'ru-RU-SvetlanaNeural',    male: 'ru-RU-DmitryNeural' },
+  'uk-UA': { female: 'uk-UA-PolinaNeural',      male: 'uk-UA-OstapNeural' },
 };
 
 // TTS 暫存目錄

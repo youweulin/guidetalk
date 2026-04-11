@@ -99,23 +99,48 @@ let ttsSpeaking = false;        // 是否正在朗讀
 
 // 支援的語言（之後加翻譯時，只要每個都能對應到翻譯 API 的 code 即可）
 const LANGS = [
-  { code: 'zh-TW', flag: '🇹🇼', label: '中文' },
-  { code: 'ja-JP', flag: '🇯🇵', label: '日本語' },
-  { code: 'en-US', flag: '🇺🇸', label: 'English' },
-  { code: 'ko-KR', flag: '🇰🇷', label: '한국어' },
+  // 東亞
+  { code: 'zh-TW', flag: '🇹🇼', label: '中文（繁）' },
   { code: 'zh-CN', flag: '🇨🇳', label: '简中' },
+  { code: 'ja-JP', flag: '🇯🇵', label: '日本語' },
+  { code: 'ko-KR', flag: '🇰🇷', label: '한국어' },
+  // 英語
+  { code: 'en-US', flag: '🇺🇸', label: 'English' },
+  // 東南亞
+  { code: 'vi-VN', flag: '🇻🇳', label: 'Tiếng Việt' },
+  { code: 'id-ID', flag: '🇮🇩', label: 'Bahasa Indonesia' },
+  { code: 'th-TH', flag: '🇹🇭', label: 'ภาษาไทย' },
+  { code: 'tl-PH', flag: '🇵🇭', label: 'Tagalog' },
+  // 南亞
+  { code: 'hi-IN', flag: '🇮🇳', label: 'हिन्दी' },
+  { code: 'ur-PK', flag: '🇵🇰', label: 'اردو' },
+  // 歐洲
+  { code: 'fr-FR', flag: '🇫🇷', label: 'Français' },
+  { code: 'es-ES', flag: '🇪🇸', label: 'Español' },
+  { code: 'pt-BR', flag: '🇧🇷', label: 'Português' },
+  { code: 'ru-RU', flag: '🇷🇺', label: 'Русский' },
+  { code: 'uk-UA', flag: '🇺🇦', label: 'Українська' },
 ];
 
 function detectInitialLang() {
-  // 1. localStorage 記住用戶上次的選擇
   const saved = localStorage.getItem('kaitalk.lang');
   if (saved) return saved;
-  // 2. 從瀏覽器語言推測
-  const nav = (navigator.language || 'zh-TW');
-  if (nav.startsWith('zh-TW') || nav === 'zh-Hant') return 'zh-TW';
+  const nav = (navigator.language || 'zh-TW').toLowerCase();
+  if (nav.startsWith('zh-tw') || nav === 'zh-hant') return 'zh-TW';
   if (nav.startsWith('zh')) return 'zh-CN';
   if (nav.startsWith('ja')) return 'ja-JP';
   if (nav.startsWith('ko')) return 'ko-KR';
+  if (nav.startsWith('vi')) return 'vi-VN';
+  if (nav.startsWith('id')) return 'id-ID';
+  if (nav.startsWith('th')) return 'th-TH';
+  if (nav.startsWith('tl') || nav.startsWith('fil')) return 'tl-PH';
+  if (nav.startsWith('hi')) return 'hi-IN';
+  if (nav.startsWith('ur')) return 'ur-PK';
+  if (nav.startsWith('fr')) return 'fr-FR';
+  if (nav.startsWith('es')) return 'es-ES';
+  if (nav.startsWith('pt')) return 'pt-BR';
+  if (nav.startsWith('ru')) return 'ru-RU';
+  if (nav.startsWith('uk')) return 'uk-UA';
   if (nav.startsWith('en')) return 'en-US';
   return 'zh-TW';
 }
@@ -1793,16 +1818,16 @@ async function onbDetectRegion() {
 
 function onbBuildLangGrid() {
   // Step 6 lang grid (only onboarding step-6 lang-grid buttons)
-  document.querySelectorAll('#step-6 .lang-grid .grid-btn').forEach(btn => {
+  document.querySelectorAll('#onb-lang-grid .grid-btn').forEach(btn => {
     btn.addEventListener('click', () => {
-      document.querySelectorAll('#step-6 .lang-grid .grid-btn').forEach(b => b.classList.remove('selected'));
+      document.querySelectorAll('#onb-lang-grid .grid-btn').forEach(b => b.classList.remove('selected'));
       btn.classList.add('selected');
       onbSelectedLang = btn.dataset.lang;
       $('onb-step6-next').disabled = false;
     });
   });
   const detected = detectInitialLang();
-  const btn = document.querySelector(`#step-6 .lang-grid .grid-btn[data-lang="${detected}"]`);
+  const btn = document.querySelector(`#onb-lang-grid .grid-btn[data-lang="${detected}"]`);
   if (btn) {
     btn.classList.add('selected');
     onbSelectedLang = detected;
@@ -2461,7 +2486,22 @@ document.querySelectorAll('.settings-tgender-btn').forEach(btn => {
 
 // 想找講什麼語言（多選 toggle）
 // 想找語言 checkbox group
-const settingsTargetLangChecks = document.getElementById('settings-target-lang-checks');
+const settingsTargetLangSelect = document.getElementById('settings-target-lang-select');
+
+// 動態填充語言下拉選單（從 LANGS 陣列）
+function populateLangSelects() {
+  const opts = LANGS.map(l => `<option value="${l.code}">${l.flag} ${l.label}</option>`).join('');
+  if (settingsLangSelect) settingsLangSelect.innerHTML = opts;
+  if (settingsTargetLangSelect) settingsTargetLangSelect.innerHTML = opts;
+  // onboarding 語言 grid
+  const onbLangGrid = document.getElementById('onb-lang-grid');
+  if (onbLangGrid) {
+    onbLangGrid.innerHTML = LANGS.map(l =>
+      `<button class="grid-btn" data-lang="${l.code}">${l.flag} ${l.label}</button>`
+    ).join('');
+  }
+}
+populateLangSelects();
 
 function openSettings() {
   if (!settingsOverlay) return;
@@ -2507,9 +2547,9 @@ function openSettings() {
   // 預選想找的語言（多選下拉）
   const curTargetLangs = getTargetLangs();
   settingsTempTargetLangs = [...curTargetLangs];
-  if (settingsTargetLangChecks) {
-    settingsTargetLangChecks.querySelectorAll('input[type="checkbox"]').forEach(cb => {
-      cb.checked = curTargetLangs.includes(cb.value);
+  if (settingsTargetLangSelect) {
+    Array.from(settingsTargetLangSelect.options).forEach(opt => {
+      opt.selected = curTargetLangs.includes(opt.value);
     });
   }
 
@@ -2543,8 +2583,8 @@ function saveSettings() {
   }
 
   // 儲存想找的語言（從多選下拉讀取）
-  const selectedTargetLangs = settingsTargetLangChecks
-    ? Array.from(settingsTargetLangChecks.querySelectorAll('input:checked')).map(cb => cb.value)
+  const selectedTargetLangs = settingsTargetLangSelect
+    ? Array.from(settingsTargetLangSelect.selectedOptions).map(o => o.value)
     : settingsTempTargetLangs;
   if (selectedTargetLangs.length === 0) {
     localStorage.removeItem(TARGET_LANGS_KEY);
