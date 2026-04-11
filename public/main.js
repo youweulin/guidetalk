@@ -1222,7 +1222,7 @@ function showUpgradePrompt() {
   showConfirm({
     icon: '☕',
     text: `今日翻譯次數已用完（${getDailyLimit()}次）\n\n贊助我們即可解鎖更多次數 + 自然語音`,
-    okLabel: '贊助 NT$199/月',
+    okLabel: '☕ 贊助測試版',
     cancelLabel: '明天再來',
   }).then(yes => {
     if (yes) openSettings();
@@ -1695,8 +1695,8 @@ function updateAccountUI() {
            <div style="font-size:11px;margin-top:4px;">今日剩餘：${getRemainingUsage()} / ${SPONSOR_DAILY_LIMIT}</div>
          </div>`
       : `<div style="padding:12px;background:var(--card-2);border-radius:12px;margin-top:12px;border:1px solid var(--border);">
-           <div style="font-size:13px;font-weight:700;margin-bottom:4px;">☕ 贊助開放全功能測試 — NT$199/月</div>
-           <div style="font-size:11px;color:var(--muted);margin-bottom:8px;">每日 100 次翻譯 · Edge 自然語音 · 信件 · 優先配對</div>
+           <div style="font-size:13px;font-weight:700;margin-bottom:4px;">☕ 贊助測試版</div>
+           <div style="font-size:11px;color:var(--muted);margin-bottom:8px;">贊助可解鎖全功能測試，未來可抵扣正式費用</div>
            <div style="font-size:11px;color:var(--muted);margin-bottom:8px;">今日剩餘：${getRemainingUsage()} / ${FREE_DAILY_LIMIT} 次翻譯</div>
            <button class="btn-oauth" onclick="purchasePremium()" style="background:linear-gradient(135deg,#ffe08c,#ffb347);color:#333;">☕ 贊助我們</button>
          </div>`;
