@@ -2875,12 +2875,10 @@ async function loadTrends() {
     const gridTw = document.getElementById('trends-grid-tw');
     const gridJp = document.getElementById('trends-grid-jp');
 
-    function renderChips(el, items, flag) {
+    function renderChips(el, items) {
       if (!el) return;
       el.innerHTML = items.map(t =>
-        `<div class="trend-chip" data-topic="${encodeURIComponent(t.title)}">
-          <span class="trend-flag">${flag}</span>${t.title}
-        </div>`
+        `<div class="trend-chip" data-topic="${encodeURIComponent(t.title)}">${t.title}</div>`
       ).join('');
       el.querySelectorAll('.trend-chip').forEach(chip => {
         chip.addEventListener('click', () => {
@@ -2889,8 +2887,8 @@ async function loadTrends() {
       });
     }
 
-    renderChips(gridTw, tw, '🇹🇼');
-    renderChips(gridJp, jp, '🇯🇵');
+    renderChips(gridTw, tw);
+    renderChips(gridJp, jp);
   } catch (err) {
     console.log('Trends load failed:', err.message);
   }
