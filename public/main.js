@@ -1353,27 +1353,14 @@ async function setupPeerConnection() {
 
     if (state === 'connected' || state === 'completed') {
       setStatus(`🎙️ 與 ${peerName} 通話中`, true);
-      reconnectAttempts = 0;
-    } else if (state === 'disconnected') {
-      // 短暫斷線（Wi-Fi 切換等）→ 顯示重連中，等幾秒看會不會恢復
-      setStatus('⏳ 連線中斷，嘗試重新連線...', true);
-      log('🔄 連線暫時中斷，等待恢復...');
-      // 5 秒後如果還是 disconnected，嘗試 ICE restart
-      setTimeout(() => {
-        if (pc && pc.iceConnectionState === 'disconnected') {
-          attemptReconnect();
-        }
-      }, 5000);
-    } else if (state === 'failed') {
-      attemptReconnect();
+    } else if (state === 'disconnected' || state === 'failed') {
+      setStatus('連線已中斷');
+      log('連線中斷');
     }
   };
 
   pc.onconnectionstatechange = () => {
     log(`PC state: ${pc.connectionState}`);
-    if (pc.connectionState === 'failed') {
-      attemptReconnect();
-    }
   };
 
   // host 主動發 offer
@@ -1384,42 +1371,6 @@ async function setupPeerConnection() {
     log(`已發送 offer 給 ${peerId.slice(0, 8)}`);
   }
   // guest 等對方的 offer
-}
-
-// ─── 自動重連 ─────────────────────────────────────────
-let reconnectAttempts = 0;
-const MAX_RECONNECT = 3;
-
-async function attemptReconnect() {
-  if (!pc || !peerId) return;
-  reconnectAttempts++;
-
-  if (reconnectAttempts > MAX_RECONNECT) {
-    setStatus('❌ 連線失敗，請重新配對');
-    log(`重連失敗（已嘗試 ${MAX_RECONNECT} 次）`);
-    updateConnectionUI('failed');
-    return;
-  }
-
-  log(`🔄 嘗試重連 (${reconnectAttempts}/${MAX_RECONNECT})...`);
-  setStatus(`🔄 重新連線中 (${reconnectAttempts}/${MAX_RECONNECT})...`, true);
-  updateConnectionUI('reconnecting');
-
-  try {
-    // ICE restart：重新協商連線路徑
-    const offer = await pc.createOffer({ iceRestart: true });
-    await pc.setLocalDescription(offer);
-    socket.emit('webrtc_signal', { target: peerId, signal: offer });
-    log('🔄 已發送 ICE restart offer');
-  } catch (err) {
-    log(`🔄 重連失敗: ${err.message}`);
-    // 等 3 秒再試
-    setTimeout(() => {
-      if (pc && pc.iceConnectionState !== 'connected') {
-        attemptReconnect();
-      }
-    }, 3000);
-  }
 }
 
 // ─── 連線狀態 UI ─────────────────────────────────────
@@ -1766,7 +1717,6 @@ function cleanup() {
   stopSTT();
   ttsStop();
   stopMeterLoop();
-  reconnectAttempts = 0;
   const ci = document.getElementById('connection-indicator');
   if (ci) ci.style.display = 'none';
   if (subtitleDC) {
@@ -3015,6 +2965,11 @@ async function loadTrivia() {
     log(`豆知識載入失敗: ${err.message}`);
   }
 }
+
+// 豆知識展開/收合
+document.getElementById('trivia-toggle')?.addEventListener('click', () => {
+  document.getElementById('trivia-card')?.classList.toggle('expanded');
+});
 
 function showRandomTrivia(myRegion, peerRegion) {
   const cardEl = document.getElementById('trivia-card');

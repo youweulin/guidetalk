@@ -272,18 +272,37 @@
       background: #fffcf2;
       border: 1px solid #ffe6ac;
       border-radius: 14px;
-      padding: 10px 14px;
+      padding: 0;
+      overflow: hidden;
       margin-bottom: 12px;
       text-align: center;
       animation: fadeIn 0.3s ease-out;
     }
     .trivia-card.active { display: block; }
     .trivia-card .trivia-header {
-      font-size: 10px;
+      font-size: 11px;
       color: #d97706;
       font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: 0.08em;
+      padding: 8px 14px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .trivia-card .trivia-header::after {
+      content: '▾';
+      font-size: 12px;
+      transition: transform 0.2s;
+    }
+    .trivia-card.expanded .trivia-header::after {
+      transform: rotate(180deg);
+    }
+    .trivia-body {
+      display: none;
+      padding: 0 14px 10px;
+    }
+    .trivia-card.expanded .trivia-body {
+      display: block;
       margin-bottom: 6px;
     }
     .trivia-card .trivia-text {
@@ -882,6 +901,22 @@
     }
     .input:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px rgba(255,126,179,0.15); }
 
+    .footer-links {
+      text-align: center;
+      margin-top: 16px;
+      font-size: 11px;
+      color: var(--muted);
+    }
+    .footer-links a {
+      color: var(--muted);
+      text-decoration: none;
+    }
+    .footer-links a:hover {
+      color: var(--primary);
+    }
+    .footer-links span {
+      margin: 0 6px;
+    }
     .log {
       /* 隱藏 debug log — 用戶不需要看到 socket/STT 訊息 */
       display: none;
@@ -2335,9 +2370,11 @@
 
     <!-- 豆知識（保留在最上面）-->
     <div id="trivia-card" class="trivia-card">
-      <div class="trivia-header">💡 今日話題</div>
-      <div class="trivia-text" id="trivia-text-zh">—</div>
-      <div class="trivia-text-ja" id="trivia-text-ja">—</div>
+      <div class="trivia-header" id="trivia-toggle">💡 今日話題</div>
+      <div class="trivia-body">
+        <div class="trivia-text" id="trivia-text-zh">—</div>
+        <div class="trivia-text-ja" id="trivia-text-ja">—</div>
+      </div>
     </div>
 
     <!-- 對方 + 自己（精簡兩行 bar） -->
@@ -2466,6 +2503,11 @@
     <div id="target-lang-bar" style="display:none"></div>
 
     <div id="log" class="log"></div>
+    <div class="footer-links">
+      <a href="/privacy.html" target="_blank">隱私政策</a>
+      <span>·</span>
+      <a href="/terms.html" target="_blank">使用條款</a>
+    </div>
   </div>
 
   <!-- 對話 / 好友 tab（主畫面下方）-->
