@@ -1576,16 +1576,23 @@ async function signInWithApple() {
   }
 }
 
-async function signInWithGoogle() {
+async function signInWithEmail() {
+  const email = prompt('請輸入你的 Email：');
+  if (!email || !email.includes('@')) return;
   if (!supabaseClient) return;
   try {
-    const { error } = await supabaseClient.auth.signInWithOAuth({
-      provider: 'google',
-      options: { redirectTo: window.location.origin },
+    const { error } = await supabaseClient.auth.signInWithOtp({
+      email,
+      options: { emailRedirectTo: window.location.origin },
     });
-    if (error) log(`Google 登入失敗: ${error.message}`);
+    if (error) {
+      log(`Email 登入失敗: ${error.message}`);
+      alert('登入失敗：' + error.message);
+    } else {
+      alert('已寄出登入信！請到信箱點擊連結完成登入。');
+    }
   } catch (err) {
-    log(`Google 登入錯誤: ${err.message}`);
+    log(`Email 登入錯誤: ${err.message}`);
   }
 }
 
@@ -1614,7 +1621,7 @@ function updateAccountUI() {
       <h4>${t('settings') || '帳號'}</h4>
       <p style="font-size:12px;color:var(--muted);margin-bottom:8px;">登入以保留好友和資料</p>
       <button class="btn-oauth btn-apple" onclick="signInWithApple()"> Apple 登入</button>
-      <button class="btn-oauth btn-google" onclick="signInWithGoogle()"> Google 登入</button>
+      <button class="btn-oauth btn-email" onclick="signInWithEmail()">✉️ Email 登入</button>
     `;
     return;
   }
