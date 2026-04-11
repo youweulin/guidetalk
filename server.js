@@ -867,7 +867,7 @@ io.on('connection', (socket) => {
 
     const me = {
       socket,
-      name: name || 'Anonymous',
+      name: (name && name.trim()) || 'Anonymous',
       gender,
       targetGender,
       lang,
