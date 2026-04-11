@@ -20,49 +20,36 @@
 
   <h2>1. 我們收集什麼</h2>
   <ul>
-    <li><strong>暱稱、性別、地區、語言偏好</strong> — 用於配對和個人化體驗</li>
-    <li><strong>匿名帳號 ID</strong> — 由 Supabase 產生，不綁定真實身份</li>
-    <li><strong>IP 位址（雜湊處理）</strong> — 僅用於地理位置偵測，不儲存原始 IP</li>
-    <li><strong>通話紀錄</strong> — 僅儲存時間、時長、配對資訊，不錄音</li>
+    <li>暱稱、性別、地區、語言偏好 — 用於配對和個人化體驗</li>
+    <li>匿名帳號 — 不綁定真實身份，無需提供 Email 或電話</li>
+    <li>通話紀錄 — 僅記錄時間與時長，不錄音</li>
   </ul>
 
   <h2>2. 我們不收集什麼</h2>
   <ul>
-    <li><strong>語音內容</strong> — 所有語音走 P2P 直連，完全不經過我們的 server</li>
-    <li><strong>字幕/翻譯內容</strong> — 在你的裝置上處理，不上傳 server</li>
-    <li><strong>對話歷史</strong> — 僅儲存在你的裝置（localStorage），不上傳</li>
-    <li><strong>真實姓名、電話、Email</strong> — 我們不要求這些資訊</li>
+    <li><strong>語音內容</strong> — 通話音訊直接在雙方裝置間傳輸，不經過我們的伺服器</li>
+    <li><strong>對話內容</strong> — 字幕與翻譯在你的裝置上處理，不上傳</li>
+    <li><strong>對話歷史</strong> — 僅儲存在你的裝置上，不上傳</li>
+    <li><strong>真實身份</strong> — 不要求姓名、電話或 Email</li>
   </ul>
 
   <h2>3. 檢舉時的資料</h2>
-  <p>當你主動按下「檢舉」按鈕時，即代表你授權我們上傳：</p>
+  <p>當你主動按下「檢舉」時，最近的文字字幕紀錄會作為證據提交。這是你主動授權的行為，我們不會在未經同意的情況下收集對話內容。</p>
+
+  <h2>4. 資料保護</h2>
   <ul>
-    <li>最近的文字字幕記錄（約 50 則）作為證據</li>
-    <li>這是你主動授權的行為，我們不會在未經同意的情況下收集對話內容</li>
+    <li>所有資料傳輸皆使用加密連線</li>
+    <li>IP 位址僅用於地區偵測，不儲存原始資料</li>
+    <li>我們不會將你的資料出售給第三方</li>
   </ul>
 
-  <h2>4. 資料儲存</h2>
-  <ul>
-    <li>帳號資料儲存於 Turso（SQLite 雲端資料庫）</li>
-    <li>伺服器位於日本東京（Zeabur）</li>
-    <li>頭像圖片透過 Cloudflare CDN 提供</li>
-  </ul>
+  <h2>5. 資料刪除</h2>
+  <p>你可以隨時清除瀏覽器資料來刪除本機紀錄。如需刪除帳號，請聯繫我們。</p>
 
-  <h2>5. 第三方服務</h2>
-  <ul>
-    <li><strong>Supabase</strong> — 匿名身份驗證</li>
-    <li><strong>ipinfo.io</strong> — IP 地理位置查詢</li>
-    <li><strong>Microsoft Edge TTS</strong> — 語音合成（付費用戶）</li>
-    <li><strong>Google Translate / MyMemory</strong> — 文字翻譯</li>
-  </ul>
+  <h2>6. 未成年保護</h2>
+  <p>KaiTalk 不適用於 13 歲以下的兒童。未滿 18 歲的用戶需在監護人同意下使用。</p>
 
-  <h2>6. 資料刪除</h2>
-  <p>你可以隨時清除瀏覽器的 localStorage 來刪除本機資料。如需刪除 server 端的帳號資料，請聯繫我們。</p>
-
-  <h2>7. 未成年保護</h2>
-  <p>KaiTalk 不適用於 13 歲以下的兒童。如果我們發現未成年用戶，將立即停用其帳號。</p>
-
-  <h2>8. 聯繫我們</h2>
-  <p>如有隱私相關問題，請聯繫：<a href="mailto:support@kaitalk.app">support@kaitalk.app</a></p>
+  <h2>7. 聯繫我們</h2>
+  <p>隱私相關問題請聯繫：<a href="mailto:support@kaitalk.app">support@kaitalk.app</a></p>
 </body>
 </html>
