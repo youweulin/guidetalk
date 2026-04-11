@@ -1652,6 +1652,45 @@ async function initSupabaseAnonAuth() {
 // ─── OAuth 登入（Apple / Google）─────────────────────
 async function signInWithApple() {
   if (!supabaseClient) return;
+
+  // iOS native: 用 Capacitor plugin（不跳 Safari）
+  if (window.Capacitor?.Plugins?.SignInWithApple) {
+    try {
+      const result = await window.Capacitor.Plugins.SignInWithApple.authorize({
+        clientId: 'com.kaitalk.web',
+        redirectURI: 'https://snzyltibimkbxshkzhyr.supabase.co/auth/v1/callback',
+        scopes: 'email name',
+      });
+
+      // 拿到 Apple ID token，傳給 Supabase
+      const { data, error } = await supabaseClient.auth.signInWithIdToken({
+        provider: 'apple',
+        token: result.response.identityToken,
+      });
+
+      if (error) {
+        log(`Apple 登入失敗: ${error.message}`);
+        alert('Apple 登入失敗：' + error.message);
+        return;
+      }
+
+      if (data?.session) {
+        kaitalkUserId = data.session.user.id;
+        kaitalkAccessToken = data.session.access_token;
+        log(`✅ Apple 登入成功: ${kaitalkUserId.slice(0, 8)}`);
+        alert('Apple 登入成功！');
+        updateAccountUI();
+      }
+    } catch (err) {
+      log(`Apple 登入錯誤: ${err.message}`);
+      if (!err.message?.includes('1001')) {
+        alert('Apple 登入失敗');
+      }
+    }
+    return;
+  }
+
+  // Web fallback: OAuth redirect
   try {
     const { error } = await supabaseClient.auth.signInWithOAuth({
       provider: 'apple',
@@ -1664,19 +1703,42 @@ async function signInWithApple() {
 }
 
 async function signInWithEmail() {
-  const email = prompt('請輸入你的 Email：');
+  const email = prompt(t('login_hint') + '\n\nEmail:');
   if (!email || !email.includes('@')) return;
   if (!supabaseClient) return;
   try {
     const { error } = await supabaseClient.auth.signInWithOtp({
       email,
-      options: { emailRedirectTo: window.location.origin },
+      options: { shouldCreateUser: true },
     });
     if (error) {
       log(`Email 登入失敗: ${error.message}`);
       alert('登入失敗：' + error.message);
-    } else {
-      alert('已寄出登入信！請到信箱點擊連結完成登入。');
+      return;
+    }
+
+    // 請用戶輸入驗證碼
+    const code = prompt('已寄出驗證碼到你的信箱！\n請輸入 6 位數驗證碼：');
+    if (!code || code.length < 6) return;
+
+    const { data, error: verifyError } = await supabaseClient.auth.verifyOtp({
+      email,
+      token: code.trim(),
+      type: 'email',
+    });
+
+    if (verifyError) {
+      log(`驗證失敗: ${verifyError.message}`);
+      alert('驗證碼錯誤，請重試');
+      return;
+    }
+
+    if (data?.session) {
+      kaitalkUserId = data.session.user.id;
+      kaitalkAccessToken = data.session.access_token;
+      log(`✅ Email 登入成功: ${email}`);
+      alert('登入成功！');
+      updateAccountUI();
     }
   } catch (err) {
     log(`Email 登入錯誤: ${err.message}`);
