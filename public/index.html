@@ -2334,31 +2334,31 @@
         <div class="onb-logo">
           <img src="/icon-192.png" class="onb-icon" alt="KaiTalk">
         </div>
-        <h2 class="onb-title">歡迎來到 KaiTalk</h2>
-        <p class="onb-slogan">會講你的語言，就能跟全世界聊天</p>
+        <h2 class="onb-title" data-i18n="welcome">歡迎來到 KaiTalk</h2>
+        <p class="onb-slogan" data-i18n="slogan">會講你的語言，就能跟全世界聊天</p>
         <div class="onb-divider"></div>
-        <p class="step-hint">先取個暱稱，讓對方知道怎麼稱呼你</p>
-        <input id="onb-name" class="input" placeholder="你的暱稱（12 字內）" maxlength="12">
-        <p class="step-warning">暱稱設定後不能修改（除非升級會員）</p>
-        <button id="onb-step1-next" class="btn-primary" disabled>下一步</button>
+        <p class="step-hint" data-i18n="nickname_hint">先取個暱稱，讓對方知道怎麼稱呼你</p>
+        <input id="onb-name" class="input" data-i18n="nickname_placeholder" placeholder="你的暱稱（12 字內）" maxlength="12">
+        <p class="step-warning" data-i18n="nickname_warning">暱稱設定後不能修改（除非升級會員）</p>
+        <button id="onb-step1-next" class="btn-primary" disabled data-i18n="next">下一步</button>
       </div>
 
       <!-- Step 2: 性別 -->
       <div class="onboarding-step" id="step-2">
-        <h2>你的性別</h2>
-        <p class="step-hint">讓對方知道你是誰。</p>
+        <h2 data-i18n="your_gender">你的性別</h2>
+        <p class="step-hint" data-i18n="gender_hint">讓對方知道你是誰。</p>
         <div class="gender-grid">
-          <button class="grid-btn onb-gender-btn" data-gender="male">♂ 男生</button>
-          <button class="grid-btn onb-gender-btn" data-gender="female">♀ 女生</button>
-          <button class="grid-btn onb-gender-btn" data-gender="other">⚥ 其他</button>
+          <button class="grid-btn onb-gender-btn" data-gender="male" data-i18n="male">♂ 男生</button>
+          <button class="grid-btn onb-gender-btn" data-gender="female" data-i18n="female">♀ 女生</button>
+          <button class="grid-btn onb-gender-btn" data-gender="other" data-i18n="other">⚥ 其他</button>
         </div>
-        <button id="onb-step2-next" class="btn-primary" disabled>下一步</button>
+        <button id="onb-step2-next" class="btn-primary" disabled data-i18n="next">下一步</button>
       </div>
 
       <!-- Step 3: 頭像 -->
       <div class="onboarding-step" id="step-3">
-        <h2>選一個虛擬頭像 🎭</h2>
-        <p class="step-hint">對方會看到這個頭像。<br>之後可以在設定裡更換。</p>
+        <h2 data-i18n="pick_avatar">選一個虛擬頭像 🎭</h2>
+        <p class="step-hint" data-i18n="avatar_hint">對方會看到這個頭像。之後可以在設定裡更換。</p>
         <div class="avatar-grid">
           <div class="avatar-option selected" data-avatar="avatar_mature.png"><img src="https://imagedelivery.net/8vYNanmJriUCfsABJIN-Gw/avatar_mature/public" style="transform: scale(1.1) translateY(2%);"></div>
           <div class="avatar-option" data-avatar="avatar_sporty.png"><img src="https://imagedelivery.net/8vYNanmJriUCfsABJIN-Gw/avatar_sporty/public" style="transform: scale(1.4) translateY(10%);"></div>
@@ -2369,39 +2369,39 @@
           <div class="avatar-option" data-avatar="avatar_idol_m.png"><img src="https://imagedelivery.net/8vYNanmJriUCfsABJIN-Gw/avatar_idol_m/public" style="transform: scale(1.0) translateY(0);"></div>
           <div class="avatar-option" data-avatar="avatar_idol_f.png"><img src="https://imagedelivery.net/8vYNanmJriUCfsABJIN-Gw/avatar_idol_f/public" style="transform: scale(1.15) translateY(4%);"></div>
         </div>
-        <button id="onb-step3-next" class="btn-primary">下一步</button>
+        <button id="onb-step3-next" class="btn-primary" data-i18n="next">下一步</button>
       </div>
 
       <!-- Step 4: 想找 -->
       <div class="onboarding-step" id="step-4">
-        <h2>想跟誰聊？</h2>
-        <p class="step-hint">配對時會優先配給你想要的對象。</p>
+        <h2 data-i18n="who_to_chat">想跟誰聊？</h2>
+        <p class="step-hint" data-i18n="who_hint">配對時會優先配給你想要的對象。</p>
         <div class="gender-grid">
-          <button class="grid-btn onb-target-gender-btn" data-tgender="male">♂ 男生</button>
-          <button class="grid-btn onb-target-gender-btn" data-tgender="female">♀ 女生</button>
-          <button class="grid-btn onb-target-gender-btn" data-tgender="any">⚥ 都可以</button>
+          <button class="grid-btn onb-target-gender-btn" data-tgender="male" data-i18n="male">♂ 男生</button>
+          <button class="grid-btn onb-target-gender-btn" data-tgender="female" data-i18n="female">♀ 女生</button>
+          <button class="grid-btn onb-target-gender-btn" data-tgender="any" data-i18n="any_gender">⚥ 都可以</button>
         </div>
-        <button id="onb-step4-next" class="btn-primary" disabled>下一步</button>
+        <button id="onb-step4-next" class="btn-primary" disabled data-i18n="next">下一步</button>
       </div>
 
       <!-- Step 5: 國家/地區 -->
       <div class="onboarding-step" id="step-5">
-        <h2>你在哪裡？🌏</h2>
-        <p class="step-hint">這個會用在「附近配對」跟「指定地方」功能。<br>之後可以隨時改。</p>
+        <h2 data-i18n="where_are_you">你在哪裡？🌏</h2>
+        <p class="step-hint" data-i18n="region_hint">這個會用在「附近配對」跟「指定地方」功能。之後可以隨時改。</p>
         <div class="detected-box" id="onb-detected-region" style="display:none">
-          <div class="label">系統偵測到</div>
+          <div class="label" data-i18n="detected">系統偵測到</div>
           <div class="value" id="onb-detected-region-value">—</div>
         </div>
         <div class="region-grid" id="onb-region-grid"></div>
-        <button id="onb-step5-next" class="btn-primary" disabled>下一步</button>
+        <button id="onb-step5-next" class="btn-primary" disabled data-i18n="next">下一步</button>
       </div>
 
       <!-- Step 6: 語言（從 LANGS 動態生成） -->
       <div class="onboarding-step" id="step-6">
-        <h2>你講什麼語言？💬</h2>
-        <p class="step-hint">會用來辨識你的語音、轉成文字。<br>對方看不懂的話會自動翻譯。</p>
+        <h2 data-i18n="your_language">你講什麼語言？💬</h2>
+        <p class="step-hint" data-i18n="lang_hint">會用來辨識你的語音、轉成文字。對方看不懂的話會自動翻譯。</p>
         <div class="lang-grid" id="onb-lang-grid"></div>
-        <button id="onb-step6-next" class="btn-primary" disabled>開始使用 🚀</button>
+        <button id="onb-step6-next" class="btn-primary" disabled data-i18n="start_using">開始使用 🚀</button>
       </div>
     </div>
   </div>
@@ -2489,16 +2489,16 @@
 
     <!-- ═══ 話題配對 ═══ -->
     <div class="trends-section">
-      <h4 class="trends-title">💬 選話題聊</h4>
+      <h4 class="trends-title" data-i18n="topics_title">💬 選話題聊</h4>
       <div class="trends-grid" id="topic-grid">
-        <div class="trend-chip topic-cat" data-topic="美食">🍜 美食</div>
-        <div class="trend-chip topic-cat" data-topic="旅行">✈️ 旅行</div>
-        <div class="trend-chip topic-cat" data-topic="音樂">🎵 音樂</div>
-        <div class="trend-chip topic-cat" data-topic="電影">🎬 電影</div>
-        <div class="trend-chip topic-cat" data-topic="寵物">🐾 寵物</div>
-        <div class="trend-chip topic-cat" data-topic="運動">⚽ 運動</div>
-        <div class="trend-chip topic-cat" data-topic="語言學習">📚 語言學習</div>
-        <div class="trend-chip topic-cat" data-topic="生活">☕ 生活</div>
+        <div class="trend-chip topic-cat" data-topic="美食" data-i18n="food">🍜 美食</div>
+        <div class="trend-chip topic-cat" data-topic="旅行" data-i18n="travel">✈️ 旅行</div>
+        <div class="trend-chip topic-cat" data-topic="音樂" data-i18n="music">🎵 音樂</div>
+        <div class="trend-chip topic-cat" data-topic="電影" data-i18n="movie">🎬 電影</div>
+        <div class="trend-chip topic-cat" data-topic="寵物" data-i18n="pets">🐾 寵物</div>
+        <div class="trend-chip topic-cat" data-topic="運動" data-i18n="sports">⚽ 運動</div>
+        <div class="trend-chip topic-cat" data-topic="語言學習" data-i18n="lang_learn">📚 語言學習</div>
+        <div class="trend-chip topic-cat" data-topic="生活" data-i18n="life">☕ 生活</div>
       </div>
     </div>
     <div id="trends-section" class="trends-section" style="display:none">
@@ -2509,12 +2509,12 @@
     <!-- ═══ 主配對按鈕（Massive CTA）═══ -->
     <div id="match-modes">
       <button id="btn-start" class="btn-primary-massive" disabled>
-        <div class="btn-title">チャットしよう！</div>
-        <div class="btn-subtitle-text">開聊！</div>
+        <div class="btn-title" data-i18n="cta_title">チャットしよう！</div>
+        <div class="btn-subtitle-text" data-i18n="cta_subtitle">開聊！</div>
       </button>
       <div class="action-row">
-        <button id="btn-nearby" class="btn-secondary-outline" disabled>📍 附近的人</button>
-        <button id="btn-specific" class="btn-secondary-outline" disabled>🌏 指定地方</button>
+        <button id="btn-nearby" class="btn-secondary-outline" disabled data-i18n="nearby">📍 附近的人</button>
+        <button id="btn-specific" class="btn-secondary-outline" disabled data-i18n="specific">🌏 指定地方</button>
       </div>
     </div>
 
@@ -2523,8 +2523,8 @@
     <button id="btn-mute" class="btn-mute" style="display:none">🔊 喇叭：開</button>
 
     <div id="call-actions" class="call-actions" style="display:none">
-      <button id="btn-meet-again" class="btn-meet-again">💚 想再遇</button>
-      <button id="btn-hangup" class="btn-danger">📞 掛斷</button>
+      <button id="btn-meet-again" class="btn-meet-again" data-i18n="meet_again">💚 想再遇</button>
+      <button id="btn-hangup" class="btn-danger" data-i18n="hangup">📞 掛斷</button>
     </div>
     <div id="safety-actions" class="safety-actions" style="display:none">
       <button id="btn-block" class="btn-safety">🚫 封鎖</button>
@@ -2579,9 +2579,9 @@
   <!-- 對話 / 好友 tab（主畫面下方）-->
   <div id="bottom-tabs" class="bottom-tabs" style="display:none">
     <div class="tab-bar">
-      <button class="tab-btn active" data-tab="history">💬 對話</button>
-      <button class="tab-btn" data-tab="friends">👥 好友</button>
-      <button class="tab-btn" data-tab="inbox">✉️ 信箱 <span id="inbox-badge" class="inbox-badge" style="display:none">0</span></button>
+      <button class="tab-btn active" data-tab="history" data-i18n="tab_chat">💬 對話</button>
+      <button class="tab-btn" data-tab="friends" data-i18n="tab_friends">👥 好友</button>
+      <button class="tab-btn" data-tab="inbox">✉️ <span data-i18n="tab_inbox">信箱</span> <span id="inbox-badge" class="inbox-badge" style="display:none">0</span></button>
     </div>
     <div class="tab-content" id="tab-history">
       <div id="history-list"></div>

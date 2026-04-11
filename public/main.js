@@ -21,6 +21,223 @@ const ICE_SERVERS = [
   { urls: 'stun:stun1.l.google.com:19302' },
 ];
 
+// ─── i18n 多語言 ─────────────────────────────────────
+const I18N = {
+  'zh-TW': {
+    welcome: '歡迎來到 KaiTalk',
+    slogan: '會講你的語言，就能跟全世界聊天',
+    nickname_hint: '先取個暱稱，讓對方知道怎麼稱呼你',
+    nickname_placeholder: '你的暱稱（12 字內）',
+    nickname_warning: '暱稱設定後不能修改（除非升級會員）',
+    next: '下一步',
+    your_gender: '你的性別',
+    gender_hint: '讓對方知道你是誰。',
+    male: '♂ 男生', female: '♀ 女生', other: '⚥ 其他',
+    pick_avatar: '選一個虛擬頭像 🎭',
+    avatar_hint: '對方會看到這個頭像。之後可以在設定裡更換。',
+    who_to_chat: '想跟誰聊？',
+    who_hint: '配對時會優先配給你想要的對象。',
+    any_gender: '⚥ 都可以',
+    where_are_you: '你在哪裡？🌏',
+    region_hint: '這個會用在「附近配對」跟「指定地方」功能。之後可以隨時改。',
+    your_language: '你講什麼語言？💬',
+    lang_hint: '會用來辨識你的語音、轉成文字。對方看不懂的話會自動翻譯。',
+    start_using: '開始使用 🚀',
+    cta_title: 'チャットしよう！',
+    cta_subtitle: '開聊！',
+    nearby: '📍 附近的人',
+    specific: '🌏 指定地方',
+    topics_title: '💬 選話題聊',
+    trends_title: '🔥 熱搜',
+    tab_chat: '💬 對話',
+    tab_friends: '👥 好友',
+    tab_inbox: '✉️ 信箱',
+    no_history: '還沒有對話紀錄',
+    no_friends: '還沒有好友',
+    no_friends_hint: '通話時互按「💚 想再遇」就能成為好友',
+    settings: '⚙️ 設定',
+    change_avatar: '更換頭像',
+    upgrade_hint: '升級會員可改暱稱',
+    want_to_chat: '想跟誰聊',
+    my_region: '我的地區',
+    my_language: '我講的語言',
+    target_language: '想找講什麼語言的人',
+    all_languages: '🌐 所有語言',
+    save: '儲存',
+    cancel: '取消',
+    meet_again: '💚 想再遇',
+    hangup: '📞 掛斷',
+    block: '🚫 封鎖',
+    report: '🚨 檢舉',
+    tts_on: '🔊 語音翻譯：開',
+    tts_off: '🔇 語音翻譯：關',
+    cancel_match: '取消配對',
+    connecting: '建立連線中...',
+    matched: '已配對到',
+    in_call: '通話中',
+    disconnected: '連線已中斷',
+    confirm_hangup: '確定要結束通話嗎？',
+    confirm_hangup_ok: '結束通話',
+    confirm_hangup_cancel: '繼續聊',
+    privacy: '隱私政策',
+    terms: '使用條款',
+    food: '🍜 美食', travel: '✈️ 旅行', music: '🎵 音樂', movie: '🎬 電影',
+    pets: '🐾 寵物', sports: '⚽ 運動', lang_learn: '📚 語言學習', life: '☕ 生活',
+    detected: '系統偵測到',
+    gender_label: '性別',
+  },
+  'ja-JP': {
+    welcome: 'KaiTalk へようこそ',
+    slogan: 'あなたの言葉で、世界中の人と話そう',
+    nickname_hint: 'ニックネームを決めましょう',
+    nickname_placeholder: 'ニックネーム（12文字以内）',
+    nickname_warning: 'ニックネームは変更できません（有料会員を除く）',
+    next: '次へ',
+    your_gender: 'あなたの性別',
+    gender_hint: '相手に表示されます。',
+    male: '♂ 男性', female: '♀ 女性', other: '⚥ その他',
+    pick_avatar: 'アバターを選ぼう 🎭',
+    avatar_hint: '相手に表示されます。設定で変更できます。',
+    who_to_chat: '誰と話したい？',
+    who_hint: 'マッチング時に優先されます。',
+    any_gender: '⚥ どちらでも',
+    where_are_you: 'どこにいますか？🌏',
+    region_hint: '「近くの人」と「地域指定」に使います。後から変更できます。',
+    your_language: '何語を話しますか？💬',
+    lang_hint: '音声認識と翻訳に使います。',
+    start_using: 'はじめる 🚀',
+    cta_title: 'チャットしよう！',
+    cta_subtitle: '話そう！',
+    nearby: '📍 近くの人',
+    specific: '🌏 地域を指定',
+    topics_title: '💬 トピックで探す',
+    trends_title: '🔥 トレンド',
+    tab_chat: '💬 トーク',
+    tab_friends: '👥 友達',
+    tab_inbox: '✉️ 受信箱',
+    no_history: 'まだトーク履歴がありません',
+    no_friends: 'まだ友達がいません',
+    no_friends_hint: '通話中に「💚 また会いたい」を押すと友達になれます',
+    settings: '⚙️ 設定',
+    change_avatar: 'アバター変更',
+    upgrade_hint: '有料会員でニックネーム変更可能',
+    want_to_chat: '話したい相手',
+    my_region: '地域',
+    my_language: '話す言語',
+    target_language: '相手の言語',
+    all_languages: '🌐 すべての言語',
+    save: '保存',
+    cancel: 'キャンセル',
+    meet_again: '💚 また会いたい',
+    hangup: '📞 切断',
+    block: '🚫 ブロック',
+    report: '🚨 通報',
+    tts_on: '🔊 音声翻訳：ON',
+    tts_off: '🔇 音声翻訳：OFF',
+    cancel_match: 'マッチング中止',
+    connecting: '接続中...',
+    matched: 'マッチしました：',
+    in_call: '通話中',
+    disconnected: '接続が切れました',
+    confirm_hangup: '通話を終了しますか？',
+    confirm_hangup_ok: '終了する',
+    confirm_hangup_cancel: '続ける',
+    privacy: 'プライバシーポリシー',
+    terms: '利用規約',
+    food: '🍜 グルメ', travel: '✈️ 旅行', music: '🎵 音楽', movie: '🎬 映画',
+    pets: '🐾 ペット', sports: '⚽ スポーツ', lang_learn: '📚 語学', life: '☕ 生活',
+    detected: '自動検出',
+    gender_label: '性別',
+  },
+  'en-US': {
+    welcome: 'Welcome to KaiTalk',
+    slogan: 'Speak your language, meet the world',
+    nickname_hint: 'Pick a nickname so others know what to call you',
+    nickname_placeholder: 'Nickname (max 12 chars)',
+    nickname_warning: 'Nickname cannot be changed (unless premium)',
+    next: 'Next',
+    your_gender: 'Your gender',
+    gender_hint: 'This will be shown to others.',
+    male: '♂ Male', female: '♀ Female', other: '⚥ Other',
+    pick_avatar: 'Pick an avatar 🎭',
+    avatar_hint: 'Others will see this avatar. You can change it later.',
+    who_to_chat: 'Who do you want to chat with?',
+    who_hint: 'Matching will prioritize your preference.',
+    any_gender: '⚥ Anyone',
+    where_are_you: 'Where are you? 🌏',
+    region_hint: 'Used for "Nearby" and "Specific region" matching. Can be changed later.',
+    your_language: 'What language do you speak? 💬',
+    lang_hint: 'Used for speech recognition and auto-translation.',
+    start_using: 'Get Started 🚀',
+    cta_title: 'Let\'s Chat!',
+    cta_subtitle: 'Start talking!',
+    nearby: '📍 Nearby',
+    specific: '🌏 Pick a region',
+    topics_title: '💬 Pick a topic',
+    trends_title: '🔥 Trending',
+    tab_chat: '💬 Chats',
+    tab_friends: '👥 Friends',
+    tab_inbox: '✉️ Inbox',
+    no_history: 'No chat history yet',
+    no_friends: 'No friends yet',
+    no_friends_hint: 'Tap "💚 Meet again" during a call to become friends',
+    settings: '⚙️ Settings',
+    change_avatar: 'Change',
+    upgrade_hint: 'Upgrade to change nickname',
+    want_to_chat: 'Looking for',
+    my_region: 'My region',
+    my_language: 'I speak',
+    target_language: 'I want to talk to',
+    all_languages: '🌐 Any language',
+    save: 'Save',
+    cancel: 'Cancel',
+    meet_again: '💚 Meet again',
+    hangup: '📞 Hang up',
+    block: '🚫 Block',
+    report: '🚨 Report',
+    tts_on: '🔊 Voice translation: ON',
+    tts_off: '🔇 Voice translation: OFF',
+    cancel_match: 'Cancel',
+    connecting: 'Connecting...',
+    matched: 'Matched with',
+    in_call: 'In call',
+    disconnected: 'Disconnected',
+    confirm_hangup: 'End this call?',
+    confirm_hangup_ok: 'End call',
+    confirm_hangup_cancel: 'Keep talking',
+    privacy: 'Privacy Policy',
+    terms: 'Terms of Service',
+    food: '🍜 Food', travel: '✈️ Travel', music: '🎵 Music', movie: '🎬 Movies',
+    pets: '🐾 Pets', sports: '⚽ Sports', lang_learn: '📚 Languages', life: '☕ Life',
+    detected: 'Detected',
+    gender_label: 'Gender',
+  },
+};
+
+// UI 語言（根據瀏覽器語系或用戶選的語言）
+function getUILang() {
+  const lang = localStorage.getItem('kaitalk.lang') || navigator.language || 'zh-TW';
+  if (lang.startsWith('ja')) return 'ja-JP';
+  if (lang.startsWith('en')) return 'en-US';
+  return 'zh-TW'; // 其他語言 fallback 到中文
+}
+const uiLang = getUILang();
+const T = I18N[uiLang] || I18N['zh-TW'];
+function t(key) { return T[key] || I18N['zh-TW'][key] || key; }
+
+// 自動翻譯所有 data-i18n 元素
+function applyI18n() {
+  document.querySelectorAll('[data-i18n]').forEach(el => {
+    const key = el.dataset.i18n;
+    const val = t(key);
+    if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA') {
+      el.placeholder = val;
+    } else {
+      el.textContent = val;
+    }
+  });
+}
+
 // ─── Cloudflare Images CDN ───────────────────────────
 const CF_IMG = 'https://imagedelivery.net/8vYNanmJriUCfsABJIN-Gw';
 function avatarUrl(name) {
@@ -1709,19 +1926,19 @@ const GENDER_SVGS = {
 const GENDER_ICONS = { male: '♂', female: '♀', other: '⚥' };
 
 const BIG_REGIONS = [
-  { id: 'tw-north', flag: '🇹🇼', name: '北部' },
-  { id: 'tw-central', flag: '🇹🇼', name: '中部' },
-  { id: 'tw-south', flag: '🇹🇼', name: '南部' },
-  { id: 'tw-east', flag: '🇹🇼', name: '東部' },
-  { id: 'tw-island', flag: '🇹🇼', name: '離島' },
-  { id: 'jp-hokkaido', flag: '🇯🇵', name: '北海道' },
-  { id: 'jp-tohoku', flag: '🇯🇵', name: '東北' },
-  { id: 'jp-kanto', flag: '🇯🇵', name: '関東' },
-  { id: 'jp-chubu', flag: '🇯🇵', name: '中部' },
-  { id: 'jp-kansai', flag: '🇯🇵', name: '関西' },
-  { id: 'jp-chugoku', flag: '🇯🇵', name: '中国' },
-  { id: 'jp-shikoku', flag: '🇯🇵', name: '四国' },
-  { id: 'jp-kyushu', flag: '🇯🇵', name: '九州' },
+  { id: 'tw-north',    flag: '📍', name: 'TW 北部' },
+  { id: 'tw-central',  flag: '📍', name: 'TW 中部' },
+  { id: 'tw-south',    flag: '📍', name: 'TW 南部' },
+  { id: 'tw-east',     flag: '📍', name: 'TW 東部' },
+  { id: 'tw-island',   flag: '📍', name: 'TW 離島' },
+  { id: 'jp-hokkaido', flag: '📍', name: 'JP 北海道' },
+  { id: 'jp-tohoku',   flag: '📍', name: 'JP 東北' },
+  { id: 'jp-kanto',    flag: '📍', name: 'JP 関東' },
+  { id: 'jp-chubu',    flag: '📍', name: 'JP 中部' },
+  { id: 'jp-kansai',   flag: '📍', name: 'JP 関西' },
+  { id: 'jp-chugoku',  flag: '📍', name: 'JP 中国' },
+  { id: 'jp-shikoku',  flag: '📍', name: 'JP 四国' },
+  { id: 'jp-kyushu',   flag: '📍', name: 'JP 九州' },
 ];
 
 const onboardingEl = $('onboarding');
@@ -2900,7 +3117,8 @@ function hideTrivia() {
 
 renderBottomTabs();
 applyGenderTheme();
-onbBuildLangGrid(); // 填充語言選單（onboarding + 設定頁）
+onbBuildLangGrid();
+applyI18n(); // 填充語言選單（onboarding + 設定頁）
 loadTrivia().finally(() => loadTrends());
 
 // ─── 話題配對（固定分類）─────────────────────────────
