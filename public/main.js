@@ -2690,10 +2690,17 @@ async function openLetterThread(friendId, friendName) {
       msgsEl.innerHTML = msgs.map(m => {
         const isMine = m.from_uid === kaitalkUserId;
         const time = new Date(m.created_at).toLocaleString('zh-TW', { month: 'numeric', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+        const transId = `letter-trans-${m.id}`;
         return `
           <div class="letter-msg ${isMine ? 'self' : 'peer'}">
-            <div class="letter-bubble">${escapeHtml(m.body)}</div>
-            <div class="letter-time">${time}</div>
+            <div class="letter-bubble">
+              ${escapeHtml(m.body)}
+              <div class="letter-trans" id="${transId}" style="display:none"></div>
+            </div>
+            <div class="letter-time">
+              ${time}
+              ${!isMine ? `<button class="letter-translate-btn" data-body="${encodeURIComponent(m.body)}" data-target="${transId}">翻譯</button>` : ''}
+            </div>
           </div>
         `;
       }).join('');
@@ -2702,6 +2709,25 @@ async function openLetterThread(friendId, friendName) {
   } catch {
     document.getElementById('letter-messages').innerHTML = '<div class="friends-empty">載入失敗</div>';
   }
+
+  // 翻譯按鈕
+  document.querySelectorAll('.letter-translate-btn').forEach(btn => {
+    btn.addEventListener('click', async (e) => {
+      e.stopPropagation();
+      const body = decodeURIComponent(btn.dataset.body);
+      const targetEl = document.getElementById(btn.dataset.target);
+      if (!targetEl) return;
+      btn.textContent = '...';
+      try {
+        const translated = await translateText(body, 'auto', sttLang);
+        if (translated && translated !== body) {
+          targetEl.innerHTML = `↳ ${escapeHtml(translated)}`;
+          targetEl.style.display = 'block';
+        }
+      } catch {}
+      btn.textContent = '翻譯';
+    });
+  });
 
   // 寄信
   document.getElementById('btn-letter-send')?.addEventListener('click', async () => {

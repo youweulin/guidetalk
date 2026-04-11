@@ -439,6 +439,21 @@
       outline: none;
     }
     .letter-input:focus { border-color: var(--primary); }
+    .letter-trans {
+      font-size: 12px;
+      color: var(--muted);
+      margin-top: 4px;
+      font-style: italic;
+    }
+    .letter-translate-btn {
+      background: none;
+      border: none;
+      color: var(--primary);
+      font-size: 10px;
+      font-weight: 600;
+      cursor: pointer;
+      margin-left: 6px;
+    }
     .fi-btn-mail {
       background: var(--card-2);
       color: var(--primary);
@@ -2583,11 +2598,6 @@
     <div id="target-lang-bar" style="display:none"></div>
 
     <div id="log" class="log"></div>
-    <div class="footer-links">
-      <a href="/privacy.html" target="_blank">隱私政策</a>
-      <span>·</span>
-      <a href="/terms.html" target="_blank">使用條款</a>
-    </div>
   </div>
 
   <!-- 對話 / 好友 tab（主畫面下方）-->
@@ -2606,6 +2616,12 @@
     <div class="tab-content" id="tab-inbox" style="display:none">
       <div id="inbox-list"></div>
     </div>
+  </div>
+
+  <div class="footer-links">
+    <a href="/privacy.html" target="_blank" data-i18n="privacy">隱私政策</a>
+    <span>·</span>
+    <a href="/terms.html" target="_blank" data-i18n="terms">使用條款</a>
   </div>
 
   <!-- 歷史對話詳細 overlay -->
