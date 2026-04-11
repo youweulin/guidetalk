@@ -2396,7 +2396,7 @@ document.getElementById('btn-mutual-ok')?.addEventListener('click', () => {
 const btnSettings = document.getElementById('btn-settings');
 const settingsOverlay = document.getElementById('settings-overlay');
 const settingsNicknameDisplay = document.getElementById('settings-nickname-display');
-const settingsRegionGrid = document.getElementById('settings-region-grid');
+const settingsRegionSelect = document.getElementById('settings-region-select');
 const btnSettingsSave = document.getElementById('btn-settings-save');
 const btnSettingsCancel = document.getElementById('btn-settings-cancel');
 
@@ -2407,20 +2407,16 @@ let settingsTempTargetGender = null;
 let settingsTempAvatar = null;
 let settingsTempTargetLangs = [];
 
-function buildSettingsRegionGrid() {
-  if (!settingsRegionGrid) return;
-  settingsRegionGrid.innerHTML = BIG_REGIONS.map(r =>
-    `<button class="grid-btn" data-region="${r.id}">${r.flag} ${r.name}</button>`
+function buildSettingsRegionSelect() {
+  if (!settingsRegionSelect) return;
+  settingsRegionSelect.innerHTML = BIG_REGIONS.map(r =>
+    `<option value="${r.id}">${r.flag} ${r.name}</option>`
   ).join('');
-  settingsRegionGrid.querySelectorAll('.grid-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
-      settingsRegionGrid.querySelectorAll('.grid-btn').forEach(b => b.classList.remove('selected'));
-      btn.classList.add('selected');
-      settingsTempRegion = btn.dataset.region;
-    });
+  settingsRegionSelect.addEventListener('change', () => {
+    settingsTempRegion = settingsRegionSelect.value;
   });
 }
-buildSettingsRegionGrid();
+buildSettingsRegionSelect();
 
 function wireSettingsLangButtons() {
 }
@@ -2507,9 +2503,7 @@ function openSettings() {
   // 預選當前地區
   const currentRegion = localStorage.getItem(ONB_BIG_REGION_KEY);
   settingsTempRegion = currentRegion;
-  settingsRegionGrid?.querySelectorAll('.grid-btn').forEach(b => {
-    b.classList.toggle('selected', b.dataset.region === currentRegion);
-  });
+  if (settingsRegionSelect) settingsRegionSelect.value = currentRegion || '';
 
   // 預選當前語言（下拉選單）
   settingsTempLang = sttLang;

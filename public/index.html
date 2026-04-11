@@ -2345,7 +2345,7 @@
         <h4>虛擬頭像</h4>
         <div class="settings-avatar-preview" id="settings-avatar-preview">
           <img id="settings-current-avatar" class="settings-avatar-img" src="">
-          <button class="btn-secondary" id="btn-change-avatar" style="font-size:12px;padding:6px 14px;">更換</button>
+          <button class="btn-secondary" id="btn-change-avatar" style="font-size:11px;padding:5px 12px;border-radius:8px;">更換</button>
         </div>
         <div class="avatar-grid" id="settings-avatar-grid" style="display:none">
           <div class="avatar-option" data-avatar="avatar_mature.png"><img src="https://imagedelivery.net/8vYNanmJriUCfsABJIN-Gw/avatar_mature/public" style="transform: scale(1.1) translateY(2%);"></div>
@@ -2389,13 +2389,13 @@
         </div>
       </div>
 
-      <!-- 我的地區（可改） -->
+      <!-- 我的地區（下拉選單） -->
       <div class="settings-section">
         <h4>我的地區</h4>
-        <div class="region-grid" id="settings-region-grid"></div>
+        <select id="settings-region-select" class="settings-select"></select>
       </div>
 
-      <!-- 我的語言（下拉選單） -->
+      <!-- 我講的語言（下拉選單） -->
       <div class="settings-section">
         <h4>我講的語言</h4>
         <select id="settings-lang-select" class="settings-select">
@@ -2407,7 +2407,7 @@
         </select>
       </div>
 
-      <!-- 想找講什麼語言的人（多選下拉） -->
+      <!-- 想找講什麼語言的人 -->
       <div class="settings-section">
         <h4>想找講什麼語言的人</h4>
         <div class="checkbox-group" id="settings-target-lang-checks">
@@ -2417,11 +2417,10 @@
           <label class="checkbox-item"><input type="checkbox" value="ko-KR"> 🇰🇷 한국어</label>
           <label class="checkbox-item"><input type="checkbox" value="zh-CN"> 🇨🇳 简中</label>
         </div>
-        <p style="font-size:11px;color:var(--muted);margin-top:6px;">不勾 = 所有語言</p>
-        </div>
+        <p style="font-size:11px;color:var(--muted);margin-top:4px;">不勾 = 所有語言</p>
       </div>
 
-      </div>
+      </div><!-- end settings-scroll -->
       <div class="settings-actions">
         <button id="btn-settings-save" class="btn-primary">儲存</button>
         <button id="btn-settings-cancel" class="btn-secondary">取消</button>
