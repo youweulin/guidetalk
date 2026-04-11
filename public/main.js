@@ -2867,28 +2867,29 @@ async function loadTrends() {
     const section = document.getElementById('trends-section');
     if (!section) return;
 
-    const tw = (data.tw || []).slice(0, 5);
-    const jp = (data.jp || []).slice(0, 5);
-    if (tw.length === 0 && jp.length === 0) return;
+    // 台日混合，交錯排列，共取 6 個
+    const tw = (data.tw || []).slice(0, 3);
+    const jp = (data.jp || []).slice(0, 3);
+    const mixed = [];
+    for (let i = 0; i < 3; i++) {
+      if (tw[i]) mixed.push(tw[i]);
+      if (jp[i]) mixed.push(jp[i]);
+    }
+    if (mixed.length === 0) return;
 
     section.style.display = 'block';
-    const gridTw = document.getElementById('trends-grid-tw');
-    const gridJp = document.getElementById('trends-grid-jp');
+    const grid = document.getElementById('trends-grid');
+    if (!grid) return;
 
-    function renderChips(el, items) {
-      if (!el) return;
-      el.innerHTML = items.map(t =>
-        `<div class="trend-chip" data-topic="${encodeURIComponent(t.title)}">${t.title}</div>`
-      ).join('');
-      el.querySelectorAll('.trend-chip').forEach(chip => {
-        chip.addEventListener('click', () => {
-          startMatching({ mode: 'quick', topicId: decodeURIComponent(chip.dataset.topic) });
-        });
+    grid.innerHTML = mixed.map(t =>
+      `<div class="trend-chip" data-topic="${encodeURIComponent(t.title)}">${t.title}</div>`
+    ).join('');
+
+    grid.querySelectorAll('.trend-chip').forEach(chip => {
+      chip.addEventListener('click', () => {
+        startMatching({ mode: 'quick', topicId: decodeURIComponent(chip.dataset.topic) });
       });
-    }
-
-    renderChips(gridTw, tw);
-    renderChips(gridJp, jp);
+    });
   } catch (err) {
     console.log('Trends load failed:', err.message);
   }
