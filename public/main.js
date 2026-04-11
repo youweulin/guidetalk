@@ -660,11 +660,26 @@ class ChromeBuiltinTranslator extends TranslationProvider {
 }
 
 // ─── Provider 3: Google 免費 endpoint ───
+// 語言代碼轉換：Google Translate 需要特殊處理繁簡中文
+function langCodeForGoogle(code) {
+  if (code === 'zh-TW') return 'zh-TW'; // 繁體
+  if (code === 'zh-CN') return 'zh-CN'; // 簡體
+  if (code === 'tl-PH') return 'tl';    // 他加祿語
+  return code.split('-')[0];
+}
+
+function langCodeForMyMemory(code) {
+  if (code === 'zh-TW') return 'zh-TW';
+  if (code === 'zh-CN') return 'zh-CN';
+  if (code === 'tl-PH') return 'tl';
+  return code.split('-')[0];
+}
+
 class GoogleFreeTranslator extends TranslationProvider {
   async isAvailable() { return true; }
   async translate(text, fromLang, toLang) {
-    const from = fromLang.split('-')[0];
-    const to = toLang.split('-')[0];
+    const from = langCodeForGoogle(fromLang);
+    const to = langCodeForGoogle(toLang);
     if (from === to) return text;
     const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=${from}&tl=${to}&dt=t&q=${encodeURIComponent(text)}`;
     const res = await fetch(url);
@@ -678,8 +693,8 @@ class GoogleFreeTranslator extends TranslationProvider {
 class MyMemoryTranslator extends TranslationProvider {
   async isAvailable() { return true; }
   async translate(text, fromLang, toLang) {
-    const from = fromLang.split('-')[0];
-    const to = toLang.split('-')[0];
+    const from = langCodeForMyMemory(fromLang);
+    const to = langCodeForMyMemory(toLang);
     if (from === to) return text;
     const url = `https://api.mymemory.translated.net/get?q=${encodeURIComponent(text)}&langpair=${from}|${to}`;
     const res = await fetch(url);
