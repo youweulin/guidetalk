@@ -1846,6 +1846,8 @@ async function startMatching(opts = {}) {
       targetLangs: getTargetLangs(),
       gender: localStorage.getItem(ONB_GENDER_KEY) || null,
       targetGender: localStorage.getItem(ONB_TARGET_GENDER_KEY) || 'any',
+      avatar: localStorage.getItem(ONB_AVATAR_KEY) || 'avatar_mature.png',
+      topicId: opts.topicId || null,
       reunionCode,
     };
 
