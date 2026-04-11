@@ -469,6 +469,11 @@ function applyI18n() {
   });
 }
 
+// ─── API Base URL ────────────────────────────────────
+// 本地模式（Capacitor iOS）時，API 打遠端 server
+// 網頁模式時，API 用相對路徑（同 origin）
+const API_BASE = window.Capacitor?.isNativePlatform?.() ? 'https://kaitalk.zeabur.app' : '';
+
 // ─── Cloudflare Images CDN ───────────────────────────
 const CF_IMG = 'https://imagedelivery.net/8vYNanmJriUCfsABJIN-Gw';
 function avatarUrl(name) {
@@ -1282,7 +1287,7 @@ async function edgeTtsSpeak(text, lang, remoteAudio) {
     // 壓低對方音量
     if (remoteAudio) remoteAudio.volume = 0.15;
 
-    const resp = await fetch('/api/tts', {
+    const resp = await fetch(API_BASE + '/api/tts', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -1585,7 +1590,7 @@ async function initSupabaseAnonAuth() {
   // 1. 讀 server 給的 config
   let config;
   try {
-    const r = await fetch('/config.json');
+    const r = await fetch(API_BASE + '/config.json');
     config = await r.json();
   } catch (err) {
     log(`⚠️ /config.json 讀不到，跳過 Auth: ${err.message}`);
@@ -1872,7 +1877,7 @@ function connectSocket() {
   if (kaitalkAccessToken) {
     opts.auth = { token: kaitalkAccessToken };
   }
-  socket = io(opts);
+  socket = API_BASE ? io(API_BASE, opts) : io(opts);
 
   socket.on('connect', () => {
     log(`Socket connected: ${socket.id.slice(0, 8)}`);
@@ -2525,7 +2530,7 @@ function onbBuildRegionGrid() {
 
 async function onbDetectRegion() {
   try {
-    const r = await fetch('/api/geo/me');
+    const r = await fetch(API_BASE + '/api/geo/me');
     const data = await r.json();
     if (data?.bigRegion) {
       const found = BIG_REGIONS.find(x => x.id === data.bigRegion);
@@ -2903,7 +2908,7 @@ async function renderFriendsTab() {
   listEl.innerHTML = '<div class="friends-empty">載入中...</div>';
 
   try {
-    const resp = await fetch('/api/friends', {
+    const resp = await fetch(API_BASE + '/api/friends', {
       headers: { 'Authorization': `Bearer ${kaitalkAccessToken}` },
     });
     const data = await resp.json();
@@ -3039,7 +3044,7 @@ async function openLetterThread(friendId, friendName) {
     const body = input?.value?.trim();
     if (!body) return;
 
-    const resp = await fetch('/api/letters/send', {
+    const resp = await fetch(API_BASE + '/api/letters/send', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -3091,7 +3096,7 @@ async function renderInboxTab() {
   listEl.innerHTML = '<div class="friends-empty">載入中...</div>';
 
   try {
-    const resp = await fetch('/api/letters/inbox', {
+    const resp = await fetch(API_BASE + '/api/letters/inbox', {
       headers: { 'Authorization': `Bearer ${kaitalkAccessToken}` },
     });
     const data = await resp.json();
@@ -3147,7 +3152,7 @@ async function renderInboxTab() {
 async function loadInboxBadge() {
   if (!kaitalkAccessToken) return;
   try {
-    const resp = await fetch('/api/letters/inbox', {
+    const resp = await fetch(API_BASE + '/api/letters/inbox', {
       headers: { 'Authorization': `Bearer ${kaitalkAccessToken}` },
     });
     const data = await resp.json();
@@ -3804,7 +3809,7 @@ loadOnlineStatus();
 
 async function loadOnlineStatus() {
   try {
-    const resp = await fetch('/api/stats/online');
+    const resp = await fetch(API_BASE + '/api/stats/online');
     const data = await resp.json();
     const el = document.getElementById('online-status');
     if (!el) return;
@@ -3849,7 +3854,7 @@ renderTopicChips();
 // ─── 熱搜（Google Trends）─────────────────────────────
 async function loadTrends() {
   try {
-    const resp = await fetch('/api/trends');
+    const resp = await fetch(API_BASE + '/api/trends');
     const data = await resp.json();
     const section = document.getElementById('trends-section');
     const grid = document.getElementById('trends-grid');

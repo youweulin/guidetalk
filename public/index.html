@@ -2784,13 +2784,6 @@
 
   <script src="/socket.io/socket.io.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.74.0/dist/umd/supabase.min.js"></script>
-  <script src="https://unpkg.com/@capacitor/core@latest/dist/capacitor.js"></script>
-  <script>
-    // 手動註冊 Apple Sign In plugin（遠端 URL 模式需要）
-    if (window.Capacitor?.registerPlugin) {
-      window.Capacitor.Plugins.SignInWithApple = window.Capacitor.registerPlugin('SignInWithApple');
-    }
-  </script>
   <script src="/main.js"></script>
 </body>
 </html>
