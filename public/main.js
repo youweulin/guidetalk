@@ -3364,18 +3364,31 @@ async function loadTrivia() {
   }
 }
 
+// 話題中文 key → i18n key 對照
+const TOPIC_I18N = {
+  '美食': 'food', '旅行': 'travel', '音樂': 'music', '電影': 'movie',
+  '寵物': 'pets', '運動': 'sports', '語言學習': 'lang_learn', '生活': 'life',
+};
+function translateTopic(topic) {
+  const key = TOPIC_I18N[topic];
+  return key ? t(key) : topic; // 有翻譯就用，沒有就原文（熱搜話題）
+}
+
 function showTopicHint(myTopic, peerTopic, peer) {
   const el = document.getElementById('topic-hint');
   if (!el) return;
   if (!myTopic && !peerTopic) { el.style.display = 'none'; return; }
 
+  const myT = myTopic ? translateTopic(myTopic) : null;
+  const peerT = peerTopic ? translateTopic(peerTopic) : null;
+
   let html = '';
   if (myTopic && peerTopic && myTopic === peerTopic) {
-    html = `💬 你們都想聊「<strong>${myTopic}</strong>」！`;
+    html = `💬 ${myT}`;
   } else {
     const parts = [];
-    if (myTopic) parts.push(`你：<strong>${myTopic}</strong>`);
-    if (peerTopic) parts.push(`${peer || '對方'}：<strong>${peerTopic}</strong>`);
+    if (myT) parts.push(myT);
+    if (peerT) parts.push(peerT);
     html = '💬 ' + parts.join(' · ');
   }
   el.innerHTML = html;
