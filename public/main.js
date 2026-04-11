@@ -2286,9 +2286,94 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
     const tab = btn.dataset.tab;
     document.getElementById('tab-history').style.display = tab === 'history' ? 'block' : 'none';
     document.getElementById('tab-friends').style.display = tab === 'friends' ? 'block' : 'none';
+    document.getElementById('tab-inbox').style.display = tab === 'inbox' ? 'block' : 'none';
     if (tab === 'friends') renderFriendsTab();
+    if (tab === 'inbox') renderInboxTab();
   });
 });
+
+// ─── 信箱 tab ─────────────────────────────────────
+async function renderInboxTab() {
+  const listEl = document.getElementById('inbox-list');
+  if (!listEl) return;
+
+  if (!kaitalkAccessToken) {
+    listEl.innerHTML = '<div class="friends-empty">登入後可查看信箱</div>';
+    return;
+  }
+
+  listEl.innerHTML = '<div class="friends-empty">載入中...</div>';
+
+  try {
+    const resp = await fetch('/api/letters/inbox', {
+      headers: { 'Authorization': `Bearer ${kaitalkAccessToken}` },
+    });
+    const data = await resp.json();
+    const letters = data.letters || [];
+
+    if (letters.length === 0) {
+      listEl.innerHTML = '<div class="friends-empty">還沒有信件<br><span style="font-size:11px;">好友可以寫信給你</span></div>';
+      return;
+    }
+
+    // 按寄件者分組
+    const grouped = {};
+    letters.forEach(l => {
+      const key = l.from_uid;
+      if (!grouped[key]) grouped[key] = { name: l.from_name || '未知', letters: [], unread: 0 };
+      grouped[key].letters.push(l);
+      if (!l.read_at) grouped[key].unread++;
+    });
+
+    listEl.innerHTML = Object.entries(grouped).map(([uid, g]) => {
+      const lastLetter = g.letters[0];
+      const time = new Date(lastLetter.created_at).toLocaleString('zh-TW', { month:'numeric', day:'numeric', hour:'numeric', minute:'2-digit' });
+      const preview = (lastLetter.body || '').slice(0, 30);
+      const unreadBadge = g.unread > 0 ? `<span class="inbox-item-badge">${g.unread}</span>` : '';
+      return `
+        <div class="inbox-item" data-friend-id="${uid}" data-friend-name="${escapeHtml(g.name)}">
+          <div class="fi-row">
+            <div class="fi-avatar">✉️</div>
+            <div class="fi-info">
+              <div class="fi-name">${escapeHtml(g.name)} ${unreadBadge}</div>
+              <div class="fi-meta">${escapeHtml(preview)}</div>
+            </div>
+            <div class="hi-right">
+              <span class="hi-date">${time}</span>
+              <span class="hi-meta">${g.letters.length} 封</span>
+            </div>
+          </div>
+        </div>
+      `;
+    }).join('');
+
+    // 點擊打開信件對話
+    listEl.querySelectorAll('.inbox-item').forEach(item => {
+      item.addEventListener('click', () => {
+        openLetterThread(item.dataset.friendId, item.dataset.friendName);
+      });
+    });
+  } catch {
+    listEl.innerHTML = '<div class="friends-empty">載入失敗</div>';
+  }
+}
+
+// 載入未讀數（進入 app 時呼叫）
+async function loadInboxBadge() {
+  if (!kaitalkAccessToken) return;
+  try {
+    const resp = await fetch('/api/letters/inbox', {
+      headers: { 'Authorization': `Bearer ${kaitalkAccessToken}` },
+    });
+    const data = await resp.json();
+    const unread = data.unread || 0;
+    const badge = document.getElementById('inbox-badge');
+    if (badge) {
+      badge.textContent = unread;
+      badge.style.display = unread > 0 ? 'inline' : 'none';
+    }
+  } catch {}
+}
 
 function deleteHistoryById(id) {
   try {
@@ -2924,4 +3009,5 @@ setStatus('連接 server...');
 // 連線本身永遠會發生
 initSupabaseAnonAuth().finally(() => {
   connectSocket();
+  loadInboxBadge();
 });
