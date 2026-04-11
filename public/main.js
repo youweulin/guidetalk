@@ -3033,27 +3033,30 @@ async function loadTrends() {
     const section = document.getElementById('trends-section');
     if (!grid || !section) return;
 
-    const all = [
-      ...(data.tw || []).slice(0, 5).map(t => ({ ...t, flag: '🇹🇼' })),
-      ...(data.jp || []).slice(0, 5).map(t => ({ ...t, flag: '🇯🇵' })),
-    ];
-
-    if (all.length === 0) return;
+    const tw = (data.tw || []).slice(0, 5);
+    const jp = (data.jp || []).slice(0, 5);
+    if (tw.length === 0 && jp.length === 0) return;
 
     section.style.display = 'block';
-    grid.innerHTML = all.map(t =>
-      `<div class="trend-chip" data-topic="${encodeURIComponent(t.title)}">
-        <span class="trend-flag">${t.flag}</span>${t.title}
-      </div>`
-    ).join('');
+    const gridTw = document.getElementById('trends-grid-tw');
+    const gridJp = document.getElementById('trends-grid-jp');
 
-    // 點話題 → 用話題配對
-    grid.querySelectorAll('.trend-chip').forEach(chip => {
-      chip.addEventListener('click', () => {
-        const topic = decodeURIComponent(chip.dataset.topic);
-        startMatching({ mode: 'quick', topicId: topic });
+    function renderChips(el, items, flag) {
+      if (!el) return;
+      el.innerHTML = items.map(t =>
+        `<div class="trend-chip" data-topic="${encodeURIComponent(t.title)}">
+          <span class="trend-flag">${flag}</span>${t.title}
+        </div>`
+      ).join('');
+      el.querySelectorAll('.trend-chip').forEach(chip => {
+        chip.addEventListener('click', () => {
+          startMatching({ mode: 'quick', topicId: decodeURIComponent(chip.dataset.topic) });
+        });
       });
-    });
+    }
+
+    renderChips(gridTw, tw, '🇹🇼');
+    renderChips(gridJp, jp, '🇯🇵');
   } catch (err) {
     console.log('Trends load failed:', err.message);
   }
