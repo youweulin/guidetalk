@@ -2432,15 +2432,26 @@ settingsLangSelect?.addEventListener('change', () => {
 });
 
 function wireSettingsAvatarButtons() {
-  document.querySelectorAll('.avatar-option').forEach(btn => {
+  document.querySelectorAll('#settings-avatar-grid .avatar-option').forEach(btn => {
     btn.addEventListener('click', () => {
-      document.querySelectorAll('.avatar-option').forEach(b => b.classList.remove('selected'));
+      document.querySelectorAll('#settings-avatar-grid .avatar-option').forEach(b => b.classList.remove('selected'));
       btn.classList.add('selected');
       settingsTempAvatar = btn.dataset.avatar;
+      // 更新預覽 + 收起 grid
+      const previewImg = document.getElementById('settings-current-avatar');
+      if (previewImg) previewImg.src = avatarUrl(btn.dataset.avatar);
+      const grid = document.getElementById('settings-avatar-grid');
+      if (grid) grid.style.display = 'none';
     });
   });
 }
 wireSettingsAvatarButtons();
+
+// 更換按鈕：展開/收起 avatar grid
+document.getElementById('btn-change-avatar')?.addEventListener('click', () => {
+  const grid = document.getElementById('settings-avatar-grid');
+  if (grid) grid.style.display = grid.style.display === 'none' ? 'grid' : 'none';
+});
 
 // Wire settings gender buttons
 document.querySelectorAll('.settings-gender-btn').forEach(btn => {
@@ -2470,10 +2481,14 @@ function openSettings() {
     settingsNicknameDisplay.textContent = localStorage.getItem(ONB_NICKNAME_KEY) || '（未設定）';
   }
 
-  // 預選當前頭像
+  // 顯示當前頭像預覽（收起 grid）
   const curAvatar = localStorage.getItem(ONB_AVATAR_KEY) || 'avatar_mature.png';
   settingsTempAvatar = curAvatar;
-  document.querySelectorAll('.avatar-option').forEach(b => {
+  const curAvatarImg = document.getElementById('settings-current-avatar');
+  if (curAvatarImg) curAvatarImg.src = avatarUrl(curAvatar);
+  const avatarGrid = document.getElementById('settings-avatar-grid');
+  if (avatarGrid) avatarGrid.style.display = 'none';
+  document.querySelectorAll('#settings-avatar-grid .avatar-option').forEach(b => {
     b.classList.toggle('selected', b.dataset.avatar === curAvatar);
   });
 
