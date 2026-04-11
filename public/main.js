@@ -2368,9 +2368,14 @@ async function startMatching(opts = {}) {
       return;
     }
     // 寫進通話畫面右半「自己」的名字
-    const myGender = localStorage.getItem(ONB_GENDER_KEY);
-    const myGIcon = GENDER_ICONS[myGender] || '';
-    if (userDisplayEl) userDisplayEl.textContent = `${name} ${myGIcon}`;
+    if (userDisplayEl) userDisplayEl.textContent = name;
+    // 顯示自己的頭像
+    const myAvatarImg = document.getElementById('my-avatar-img');
+    if (myAvatarImg) {
+      const myAvatar = localStorage.getItem(ONB_AVATAR_KEY) || 'avatar_mature.png';
+      myAvatarImg.src = avatarUrl(myAvatar);
+      myAvatarImg.style.display = 'block';
+    }
 
     // 我自己的大區（onboarding 存的）
     const myBigRegion = localStorage.getItem(ONB_BIG_REGION_KEY) || null;
@@ -2675,6 +2680,8 @@ function cleanup() {
   isHost = false;
   pendingCandidates = [];
   if (userDisplayEl) userDisplayEl.textContent = '—';
+  const myAvatarImg = document.getElementById('my-avatar-img');
+  if (myAvatarImg) myAvatarImg.style.display = 'none';
 }
 
 // ─── Onboarding（新用戶第一次開時的 5 步驟引導）────
