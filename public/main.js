@@ -86,6 +86,7 @@ let recognition = null;         // SpeechRecognition instance
 let sttActive = false;          // 是否正在跑 STT
 let sttLang = detectInitialLang(); // 我講的語言（影響 STT + 對方知道我在講什麼）
 let peerLang = null;            // 對方講的語言（從對方第一筆字幕學到）
+let peerAvatarStored = null;    // 對方的頭像（match_found 取得）
 let peerRegionStored = null;    // 對方的地區（match_found 取得）
 let peerGenderStored = null;    // 對方的性別（match_found 取得）
 let subtitlesEnabled = localStorage.getItem('kaitalk.subtitles') !== 'false'; // 用戶開關，預設開
@@ -1173,8 +1174,9 @@ function connectSocket() {
     // 配對成功，停掉等待逾時
     stopMatchTimeoutTimer();
     peerId = peer.id;
-    peerUserId = peer.userId || null; // Supabase uid（for block/report API）
+    peerUserId = peer.userId || null;
     peerName = peer.name;
+    peerAvatarStored = peer.avatar || null;
     peerRegionStored = peerRegion || null;
     peerGenderStored = peerGender || null;
     isHost = hostFlag;
@@ -1427,6 +1429,7 @@ async function startMatching(opts = {}) {
       targetLangs: getTargetLangs(),
       gender: localStorage.getItem(ONB_GENDER_KEY) || null,
       targetGender: localStorage.getItem(ONB_TARGET_GENDER_KEY) || 'any',
+      avatar: localStorage.getItem(ONB_AVATAR_KEY) || 'avatar_mature.png',
       reunionCode,
     };
 
@@ -1709,6 +1712,7 @@ function cleanup() {
   peerUserId = null;
   peerName = null;
   peerLang = null;
+  peerAvatarStored = null;
   peerRegionStored = null;
   peerGenderStored = null;
   isHost = false;
@@ -2027,6 +2031,7 @@ function saveConversationHistory() {
   const entry = {
     id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
     peerName: peerName || '未知',
+    peerAvatar: peerAvatarStored || null,
     peerGender: peerGenderStored || null,
     peerRegion: peerRegionStored || null,
     peerLang: peerLang || null,
@@ -2097,11 +2102,13 @@ function renderHistoryTab(history) {
     const regionTag = regionObj ? `<span class="tag tag-blue">${regionObj.flag} ${regionObj.name}</span>` : '';
     const li = h.peerLang ? langInfo(h.peerLang) : null;
     const langTag = li ? `<span class="tag tag-red">${li.flag} ${li.label}</span>` : '';
-    const gSvg = GENDER_SVGS[h.peerGender] || '';
+    const avatarHtml = h.peerAvatar
+      ? `<img src="${avatarUrl(h.peerAvatar)}" class="hi-avatar-img">`
+      : `<div class="hi-avatar">${GENDER_SVGS[h.peerGender] || '👤'}</div>`;
     return `
       <div class="history-item" data-id="${h.id}">
         <div class="hi-row">
-          <div class="hi-avatar">${gSvg || '👤'}</div>
+          ${avatarHtml}
           <div class="hi-info">
             <div class="hi-name">${escapeHtml(h.peerName)}</div>
             <div class="hi-tags">${regionTag}${langTag}</div>
@@ -2321,7 +2328,7 @@ function showHistoryDetail(h) {
 
   contentEl.innerHTML = `
     <div class="hd-header">
-      <span class="hd-avatar">${gSvg || '👤'}</span>
+      ${h.peerAvatar ? `<img src="${avatarUrl(h.peerAvatar)}" class="hd-avatar-img">` : `<span class="hd-avatar">${gSvg || '👤'}</span>`}
       <span class="hd-name">${escapeHtml(h.peerName)}</span>
       <span class="hd-info">${regionTag} ${langTag}</span>
     </div>

@@ -797,7 +797,7 @@ io.on('connection', (socket) => {
   //   - 用「**雙向相容**」演算法：A 願意跟 B + B 願意跟 A 才配
   //   - 走 queue 找第一個 compatible 的對手
   //   - 找不到就留在 queue 裡等
-  socket.on('find_match', async ({ name, gender, targetGender, lang, mode, myBigRegion, targetRegion, targetLangs, reunionCode } = {}) => {
+  socket.on('find_match', async ({ name, gender, targetGender, lang, mode, myBigRegion, targetRegion, targetLangs, avatar, reunionCode } = {}) => {
     const game = 'voice';
     const q = getQueue(game);
 
@@ -819,6 +819,7 @@ io.on('connection', (socket) => {
       myBigRegion: myBigRegion || null,
       targetRegion: targetRegion || null,
       targetLangs: Array.isArray(targetLangs) ? targetLangs : [],
+      avatar: avatar || 'avatar_mature.png',
       reunionCode: reunionCode || null,
     };
 
@@ -914,6 +915,7 @@ io.on('connection', (socket) => {
             id: players[peerIdx].socket.id,
             name: players[peerIdx].name,
             userId: players[peerIdx].socket.data.userId || null,
+            avatar: players[peerIdx].avatar || 'avatar_mature.png',
           },
           // 告訴這一端：對方資訊
           peerVerified: verifyResults[peerIdx],
