@@ -793,9 +793,16 @@ let lastWorkingProvider = null; // 紀錄最後一次成功的 provider，下次
 
 async function translateText(text, fromLang, toLang) {
   if (!text || !text.trim()) return null;
+
+  // 用量限制檢查
+  if (!canUseTranslation()) {
+    showUpgradePrompt();
+    return null;
+  }
+
   const key = `${fromLang}|${toLang}|${text}`;
 
-  // 查快取
+  // 查快取（快取命中不算用量）
   const cached = translationCache.get(key);
   if (cached) {
     // 更新 ts（LRU 用），但不寫檔（避免每次讀都寫）
@@ -818,6 +825,7 @@ async function translateText(text, fromLang, toLang) {
           lastWorkingProvider = p;
         }
         translationCache.set(key, { value: translated, ts: Date.now() });
+        incrementUsage(); // 計算用量
         evictOldestIfNeeded();
         saveTranslationCacheDebounced();
         return translated;
@@ -1168,8 +1176,50 @@ function ttsSpeak(text, lang) {
 const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 
 // 付費用戶判斷（之後接訂閱系統，目前先用 localStorage 模擬）
+// ─── 付費 / 用量限制 ──────────────────────────────────
+const FREE_DAILY_LIMIT = 20; // 免費用戶每天翻譯+TTS 次數
+
 function isPremiumUser() {
   return localStorage.getItem('kaitalk.premium') === 'true';
+}
+
+function getDailyUsage() {
+  const today = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+  const raw = localStorage.getItem('kaitalk.usage');
+  if (!raw) return { date: today, count: 0 };
+  try {
+    const data = JSON.parse(raw);
+    if (data.date !== today) return { date: today, count: 0 }; // 新的一天重置
+    return data;
+  } catch { return { date: today, count: 0 }; }
+}
+
+function incrementUsage() {
+  const usage = getDailyUsage();
+  usage.count++;
+  localStorage.setItem('kaitalk.usage', JSON.stringify(usage));
+  return usage.count;
+}
+
+function canUseTranslation() {
+  if (isPremiumUser()) return true;
+  return getDailyUsage().count < FREE_DAILY_LIMIT;
+}
+
+function getRemainingUsage() {
+  if (isPremiumUser()) return '∞';
+  return Math.max(0, FREE_DAILY_LIMIT - getDailyUsage().count);
+}
+
+function showUpgradePrompt() {
+  showConfirm({
+    icon: '⭐',
+    text: `今日免費翻譯次數已用完（${FREE_DAILY_LIMIT}次）\n\n升級 Premium 享無限翻譯 + 自然語音`,
+    okLabel: '升級 NT$199/月',
+    cancelLabel: '明天再來',
+  }).then(yes => {
+    if (yes) openSettings(); // 導到設定頁購買
+  });
 }
 
 function ttsProcessQueue() {
@@ -1631,26 +1681,70 @@ function updateAccountUI() {
     const provider = user?.app_metadata?.provider || 'anonymous';
     const email = user?.email || '';
 
+    const premiumHtml = isPremiumUser()
+      ? `<div style="padding:10px;background:linear-gradient(135deg,#ffe08c,#ffb347);border-radius:12px;text-align:center;margin-top:12px;">
+           <div style="font-size:14px;font-weight:700;">⭐ Premium 會員</div>
+           <div style="font-size:11px;margin-top:2px;">無限翻譯 · 自然語音 · 信件</div>
+         </div>`
+      : `<div style="padding:12px;background:var(--card-2);border-radius:12px;margin-top:12px;border:1px solid var(--border);">
+           <div style="font-size:13px;font-weight:700;margin-bottom:4px;">⭐ 升級 Premium — NT$199/月</div>
+           <div style="font-size:11px;color:var(--muted);margin-bottom:8px;">無限翻譯 · 自然語音 · 信件 · 優先配對</div>
+           <div style="font-size:11px;color:var(--muted);margin-bottom:8px;">今日剩餘：${getRemainingUsage()} / ${FREE_DAILY_LIMIT} 次翻譯</div>
+           <button class="btn-oauth" onclick="purchasePremium()" style="background:linear-gradient(135deg,#ffe08c,#ffb347);color:#333;">⭐ 升級 Premium</button>
+         </div>`;
+
     if (provider === 'anonymous') {
       el.innerHTML = `
         <h4>帳號</h4>
-        <p style="font-size:12px;color:var(--muted);margin-bottom:8px;">目前為匿名帳號，登入以保留資料</p>
+        <p style="font-size:12px;color:var(--muted);margin-bottom:8px;">登入以保留好友和資料</p>
         <button class="btn-oauth btn-apple" onclick="signInWithApple()"> Apple 登入</button>
-        <button class="btn-oauth btn-google" onclick="signInWithGoogle()"> Google 登入</button>
+        <button class="btn-oauth btn-email" onclick="signInWithEmail()">✉️ Email 登入</button>
+        ${premiumHtml}
       `;
     } else {
       el.innerHTML = `
         <h4>帳號</h4>
         <div style="display:flex;align-items:center;gap:8px;padding:10px;background:var(--card-2);border-radius:12px;">
-          <span style="font-size:20px;">${provider === 'apple' ? '' : '🔵'}</span>
+          <span style="font-size:20px;">${provider === 'apple' ? '' : '✉️'}</span>
           <div>
-            <div style="font-size:13px;font-weight:600;">${provider === 'apple' ? 'Apple' : 'Google'} 帳號</div>
+            <div style="font-size:13px;font-weight:600;">${provider === 'apple' ? 'Apple' : 'Email'} 帳號</div>
             <div style="font-size:11px;color:var(--muted);">${email || '已連結'}</div>
           </div>
         </div>
+        ${premiumHtml}
       `;
     }
   }).catch(() => {});
+}
+
+// ─── 購買 Premium ─────────────────────────────────────
+async function purchasePremium() {
+  // TODO: 接 Apple IAP（Capacitor plugin）
+  // 目前先用 placeholder
+  if (window.Capacitor?.Plugins?.InAppPurchase) {
+    // iOS native IAP
+    try {
+      await window.Capacitor.Plugins.InAppPurchase.purchase({ productId: 'com.kaitalk.premium.monthly' });
+      localStorage.setItem('kaitalk.premium', 'true');
+      updateAccountUI();
+      alert('🎉 Premium 啟用成功！');
+    } catch (err) {
+      log(`購買失敗: ${err.message}`);
+    }
+  } else {
+    // Web fallback — 暫時手動啟用（測試用）
+    const yes = await showConfirm({
+      icon: '⭐',
+      text: 'Premium 功能（NT$199/月）\n\n• 無限翻譯\n• 自然語音翻譯\n• 信件功能\n• 優先配對\n\n目前為測試版，確認啟用？',
+      okLabel: '啟用 Premium',
+      cancelLabel: '取消',
+    });
+    if (yes) {
+      localStorage.setItem('kaitalk.premium', 'true');
+      updateAccountUI();
+      log('⭐ Premium 已啟用（測試）');
+    }
+  }
 }
 
 function connectSocket() {
