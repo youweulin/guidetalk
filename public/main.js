@@ -86,7 +86,6 @@ let recognition = null;         // SpeechRecognition instance
 let sttActive = false;          // 是否正在跑 STT
 let sttLang = detectInitialLang(); // 我講的語言（影響 STT + 對方知道我在講什麼）
 let peerLang = null;            // 對方講的語言（從對方第一筆字幕學到）
-let peerAvatarStored = null;    // 對方的頭像（match_found 取得）
 let peerRegionStored = null;    // 對方的地區（match_found 取得）
 let peerGenderStored = null;    // 對方的性別（match_found 取得）
 let subtitlesEnabled = localStorage.getItem('kaitalk.subtitles') !== 'false'; // 用戶開關，預設開
@@ -100,48 +99,23 @@ let ttsSpeaking = false;        // 是否正在朗讀
 
 // 支援的語言（之後加翻譯時，只要每個都能對應到翻譯 API 的 code 即可）
 const LANGS = [
-  // 東亞
-  { code: 'zh-TW', flag: '🇹🇼', label: '中文（繁）' },
-  { code: 'zh-CN', flag: '🇨🇳', label: '简中' },
+  { code: 'zh-TW', flag: '🇹🇼', label: '中文' },
   { code: 'ja-JP', flag: '🇯🇵', label: '日本語' },
-  { code: 'ko-KR', flag: '🇰🇷', label: '한국어' },
-  // 英語
   { code: 'en-US', flag: '🇺🇸', label: 'English' },
-  // 東南亞
-  { code: 'vi-VN', flag: '🇻🇳', label: 'Tiếng Việt' },
-  { code: 'id-ID', flag: '🇮🇩', label: 'Bahasa Indonesia' },
-  { code: 'th-TH', flag: '🇹🇭', label: 'ภาษาไทย' },
-  { code: 'tl-PH', flag: '🇵🇭', label: 'Tagalog' },
-  // 南亞
-  { code: 'hi-IN', flag: '🇮🇳', label: 'हिन्दी' },
-  { code: 'ur-PK', flag: '🇵🇰', label: 'اردو' },
-  // 歐洲
-  { code: 'fr-FR', flag: '🇫🇷', label: 'Français' },
-  { code: 'es-ES', flag: '🇪🇸', label: 'Español' },
-  { code: 'pt-BR', flag: '🇧🇷', label: 'Português' },
-  { code: 'ru-RU', flag: '🇷🇺', label: 'Русский' },
-  { code: 'uk-UA', flag: '🇺🇦', label: 'Українська' },
+  { code: 'ko-KR', flag: '🇰🇷', label: '한국어' },
+  { code: 'zh-CN', flag: '🇨🇳', label: '简中' },
 ];
 
 function detectInitialLang() {
+  // 1. localStorage 記住用戶上次的選擇
   const saved = localStorage.getItem('kaitalk.lang');
   if (saved) return saved;
-  const nav = (navigator.language || 'zh-TW').toLowerCase();
-  if (nav.startsWith('zh-tw') || nav === 'zh-hant') return 'zh-TW';
+  // 2. 從瀏覽器語言推測
+  const nav = (navigator.language || 'zh-TW');
+  if (nav.startsWith('zh-TW') || nav === 'zh-Hant') return 'zh-TW';
   if (nav.startsWith('zh')) return 'zh-CN';
   if (nav.startsWith('ja')) return 'ja-JP';
   if (nav.startsWith('ko')) return 'ko-KR';
-  if (nav.startsWith('vi')) return 'vi-VN';
-  if (nav.startsWith('id')) return 'id-ID';
-  if (nav.startsWith('th')) return 'th-TH';
-  if (nav.startsWith('tl') || nav.startsWith('fil')) return 'tl-PH';
-  if (nav.startsWith('hi')) return 'hi-IN';
-  if (nav.startsWith('ur')) return 'ur-PK';
-  if (nav.startsWith('fr')) return 'fr-FR';
-  if (nav.startsWith('es')) return 'es-ES';
-  if (nav.startsWith('pt')) return 'pt-BR';
-  if (nav.startsWith('ru')) return 'ru-RU';
-  if (nav.startsWith('uk')) return 'uk-UA';
   if (nav.startsWith('en')) return 'en-US';
   return 'zh-TW';
 }
@@ -365,7 +339,7 @@ function saveTranslationCacheDebounced() {
         for (const [k, v] of translationCache) obj[k] = v;
         localStorage.setItem(TRANSLATION_CACHE_KEY, JSON.stringify(obj));
         log(`已清掉一半舊快取重新存`);
-      } catch {}
+      } catch { }
     }
   }, 2000);
 }
@@ -425,7 +399,7 @@ async function translateText(text, fromLang, toLang) {
 }
 
 // 給 UI/Console 用：清掉所有翻譯快取
-window.kaitalkClearTranslationCache = function() {
+window.kaitalkClearTranslationCache = function () {
   translationCache.clear();
   localStorage.removeItem(TRANSLATION_CACHE_KEY);
   log(`🗑️ 翻譯快取已清空`);
@@ -1008,7 +982,7 @@ function startSTT() {
 function stopSTT() {
   sttActive = false;
   if (recognition) {
-    try { recognition.stop(); } catch {}
+    try { recognition.stop(); } catch { }
     recognition = null;
   }
   setSTTStatus('idle', '未啟動');
@@ -1174,15 +1148,13 @@ function connectSocket() {
     // 配對成功，停掉等待逾時
     stopMatchTimeoutTimer();
     peerId = peer.id;
-    peerUserId = peer.userId || null;
+    peerUserId = peer.userId || null; // Supabase uid（for block/report API）
     peerName = peer.name;
-    peerAvatarStored = peer.avatar || null;
     peerRegionStored = peerRegion || null;
     peerGenderStored = peerGender || null;
     isHost = hostFlag;
     log(`配對成功！房號 ${roomCode}, 對方 ${peer.name} ${peerGender || '?'}, 我是 ${isHost ? 'host' : 'guest'}`);
     setStatus(`🎉 已配對到 ${peer.name}，建立連線中...`, true);
-    updateConnectionUI('checking');
     showPeerCard(peer.name, roomCode, isHost ? 'host' : 'guest', peerVerified, peerGender);
     setPeerLangBadge(null); // 對方語言一開始未知
     // 在地化豆知識：根據雙方地區選
@@ -1263,7 +1235,7 @@ function connectSocket() {
       codes.unshift({ code, peerName: peerName || '未知', ts: Date.now() });
       if (codes.length > 20) codes.length = 20;
       localStorage.setItem('kaitalk.reunionCodes', JSON.stringify(codes));
-    } catch {}
+    } catch { }
   });
 
   socket.on('reunion_invalid', () => {
@@ -1347,15 +1319,11 @@ async function setupPeerConnection() {
   };
 
   pc.oniceconnectionstatechange = () => {
-    const state = pc.iceConnectionState;
-    log(`ICE state: ${state}`);
-    updateConnectionUI(state);
-
-    if (state === 'connected' || state === 'completed') {
-      setStatus(`🎙️ 與 ${peerName} 通話中`, true);
-    } else if (state === 'disconnected' || state === 'failed') {
-      setStatus('連線已中斷');
-      log('連線中斷');
+    log(`ICE state: ${pc.iceConnectionState}`);
+    if (pc.iceConnectionState === 'connected') {
+      setStatus(`🎙️ 與 ${peerName} P2P 連線成功，正在通話`, true);
+    } else if (pc.iceConnectionState === 'failed') {
+      setStatus('連線失敗（可能需要 TURN）');
     }
   };
 
@@ -1371,27 +1339,6 @@ async function setupPeerConnection() {
     log(`已發送 offer 給 ${peerId.slice(0, 8)}`);
   }
   // guest 等對方的 offer
-}
-
-// ─── 連線狀態 UI ─────────────────────────────────────
-function updateConnectionUI(state) {
-  const indicator = document.getElementById('connection-indicator');
-  if (!indicator) return;
-
-  const states = {
-    'new':           { text: '準備中', color: 'var(--muted)', anim: false },
-    'checking':      { text: '連線中', color: 'var(--warning)', anim: true },
-    'connecting':    { text: '連線中', color: 'var(--warning)', anim: true },
-    'connected':     { text: '已連線', color: 'var(--success)', anim: false },
-    'completed':     { text: '已連線', color: 'var(--success)', anim: false },
-    'disconnected':  { text: '重連中', color: 'var(--warning)', anim: true },
-    'reconnecting':  { text: '重連中', color: 'var(--warning)', anim: true },
-    'failed':        { text: '已斷線', color: 'var(--danger)', anim: false },
-  };
-
-  const s = states[state] || states['new'];
-  indicator.innerHTML = `<span class="conn-dot ${s.anim ? 'conn-pulse' : ''}" style="background:${s.color}"></span> ${s.text}`;
-  indicator.style.display = 'inline-flex';
 }
 
 // ─── Actions ─────────────────────────────────────────
@@ -1455,8 +1402,6 @@ async function startMatching(opts = {}) {
       targetLangs: getTargetLangs(),
       gender: localStorage.getItem(ONB_GENDER_KEY) || null,
       targetGender: localStorage.getItem(ONB_TARGET_GENDER_KEY) || 'any',
-      avatar: localStorage.getItem(ONB_AVATAR_KEY) || 'avatar_mature.png',
-      topicId: opts.topicId || null,
       reunionCode,
     };
 
@@ -1718,10 +1663,8 @@ function cleanup() {
   stopSTT();
   ttsStop();
   stopMeterLoop();
-  const ci = document.getElementById('connection-indicator');
-  if (ci) ci.style.display = 'none';
   if (subtitleDC) {
-    try { subtitleDC.close(); } catch {}
+    try { subtitleDC.close(); } catch { }
     subtitleDC = null;
   }
   if (pc) {
@@ -1741,7 +1684,6 @@ function cleanup() {
   peerUserId = null;
   peerName = null;
   peerLang = null;
-  peerAvatarStored = null;
   peerRegionStored = null;
   peerGenderStored = null;
   isHost = false;
@@ -1765,19 +1707,19 @@ const GENDER_SVGS = {
 const GENDER_ICONS = { male: '♂', female: '♀', other: '⚥' };
 
 const BIG_REGIONS = [
-  { id: 'tw-north',    flag: '📍', name: 'TW 北部' },
-  { id: 'tw-central',  flag: '📍', name: 'TW 中部' },
-  { id: 'tw-south',    flag: '📍', name: 'TW 南部' },
-  { id: 'tw-east',     flag: '📍', name: 'TW 東部' },
-  { id: 'tw-island',   flag: '📍', name: 'TW 離島' },
-  { id: 'jp-hokkaido', flag: '📍', name: 'JP 北海道' },
-  { id: 'jp-tohoku',   flag: '📍', name: 'JP 東北' },
-  { id: 'jp-kanto',    flag: '📍', name: 'JP 関東' },
-  { id: 'jp-chubu',    flag: '📍', name: 'JP 中部' },
-  { id: 'jp-kansai',   flag: '📍', name: 'JP 関西' },
-  { id: 'jp-chugoku',  flag: '📍', name: 'JP 中国' },
-  { id: 'jp-shikoku',  flag: '📍', name: 'JP 四国' },
-  { id: 'jp-kyushu',   flag: '📍', name: 'JP 九州' },
+  { id: 'tw-north', flag: '🇹🇼', name: '北部' },
+  { id: 'tw-central', flag: '🇹🇼', name: '中部' },
+  { id: 'tw-south', flag: '🇹🇼', name: '南部' },
+  { id: 'tw-east', flag: '🇹🇼', name: '東部' },
+  { id: 'tw-island', flag: '🇹🇼', name: '離島' },
+  { id: 'jp-hokkaido', flag: '🇯🇵', name: '北海道' },
+  { id: 'jp-tohoku', flag: '🇯🇵', name: '東北' },
+  { id: 'jp-kanto', flag: '🇯🇵', name: '関東' },
+  { id: 'jp-chubu', flag: '🇯🇵', name: '中部' },
+  { id: 'jp-kansai', flag: '🇯🇵', name: '関西' },
+  { id: 'jp-chugoku', flag: '🇯🇵', name: '中国' },
+  { id: 'jp-shikoku', flag: '🇯🇵', name: '四国' },
+  { id: 'jp-kyushu', flag: '🇯🇵', name: '九州' },
 ];
 
 const onboardingEl = $('onboarding');
@@ -1851,16 +1793,16 @@ async function onbDetectRegion() {
 
 function onbBuildLangGrid() {
   // Step 6 lang grid (only onboarding step-6 lang-grid buttons)
-  document.querySelectorAll('#onb-lang-grid .grid-btn').forEach(btn => {
+  document.querySelectorAll('#step-6 .lang-grid .grid-btn').forEach(btn => {
     btn.addEventListener('click', () => {
-      document.querySelectorAll('#onb-lang-grid .grid-btn').forEach(b => b.classList.remove('selected'));
+      document.querySelectorAll('#step-6 .lang-grid .grid-btn').forEach(b => b.classList.remove('selected'));
       btn.classList.add('selected');
       onbSelectedLang = btn.dataset.lang;
       $('onb-step6-next').disabled = false;
     });
   });
   const detected = detectInitialLang();
-  const btn = document.querySelector(`#onb-lang-grid .grid-btn[data-lang="${detected}"]`);
+  const btn = document.querySelector(`#step-6 .lang-grid .grid-btn[data-lang="${detected}"]`);
   if (btn) {
     btn.classList.add('selected');
     onbSelectedLang = detected;
@@ -2055,12 +1997,11 @@ function saveConversationHistory() {
     const codes = JSON.parse(localStorage.getItem('kaitalk.reunionCodes') || '[]');
     const match = codes.find(c => c.peerName === (peerName || '未知'));
     if (match) reunionCode = match.code;
-  } catch {}
+  } catch { }
 
   const entry = {
     id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
     peerName: peerName || '未知',
-    peerAvatar: peerAvatarStored || null,
     peerGender: peerGenderStored || null,
     peerRegion: peerRegionStored || null,
     peerLang: peerLang || null,
@@ -2131,13 +2072,11 @@ function renderHistoryTab(history) {
     const regionTag = regionObj ? `<span class="tag tag-blue">${regionObj.flag} ${regionObj.name}</span>` : '';
     const li = h.peerLang ? langInfo(h.peerLang) : null;
     const langTag = li ? `<span class="tag tag-red">${li.flag} ${li.label}</span>` : '';
-    const avatarHtml = h.peerAvatar
-      ? `<img src="${avatarUrl(h.peerAvatar)}" class="hi-avatar-img">`
-      : `<div class="hi-avatar">${GENDER_SVGS[h.peerGender] || '👤'}</div>`;
+    const gSvg = GENDER_SVGS[h.peerGender] || '';
     return `
       <div class="history-item" data-id="${h.id}">
         <div class="hi-row">
-          ${avatarHtml}
+          <div class="hi-avatar">${gSvg || '👤'}</div>
           <div class="hi-info">
             <div class="hi-name">${escapeHtml(h.peerName)}</div>
             <div class="hi-tags">${regionTag}${langTag}</div>
@@ -2262,7 +2201,7 @@ async function openLetterThread(friendId, friendName) {
     } else {
       msgsEl.innerHTML = msgs.map(m => {
         const isMine = m.from_uid === kaitalkUserId;
-        const time = new Date(m.created_at).toLocaleString('zh-TW', { month:'numeric', day:'numeric', hour:'numeric', minute:'2-digit' });
+        const time = new Date(m.created_at).toLocaleString('zh-TW', { month: 'numeric', day: 'numeric', hour: 'numeric', minute: '2-digit' });
         return `
           <div class="letter-msg ${isMine ? 'self' : 'peer'}">
             <div class="letter-bubble">${escapeHtml(m.body)}</div>
@@ -2315,94 +2254,9 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
     const tab = btn.dataset.tab;
     document.getElementById('tab-history').style.display = tab === 'history' ? 'block' : 'none';
     document.getElementById('tab-friends').style.display = tab === 'friends' ? 'block' : 'none';
-    document.getElementById('tab-inbox').style.display = tab === 'inbox' ? 'block' : 'none';
     if (tab === 'friends') renderFriendsTab();
-    if (tab === 'inbox') renderInboxTab();
   });
 });
-
-// ─── 信箱 tab ─────────────────────────────────────
-async function renderInboxTab() {
-  const listEl = document.getElementById('inbox-list');
-  if (!listEl) return;
-
-  if (!kaitalkAccessToken) {
-    listEl.innerHTML = '<div class="friends-empty">登入後可查看信箱</div>';
-    return;
-  }
-
-  listEl.innerHTML = '<div class="friends-empty">載入中...</div>';
-
-  try {
-    const resp = await fetch('/api/letters/inbox', {
-      headers: { 'Authorization': `Bearer ${kaitalkAccessToken}` },
-    });
-    const data = await resp.json();
-    const letters = data.letters || [];
-
-    if (letters.length === 0) {
-      listEl.innerHTML = '<div class="friends-empty">還沒有信件<br><span style="font-size:11px;">好友可以寫信給你</span></div>';
-      return;
-    }
-
-    // 按寄件者分組
-    const grouped = {};
-    letters.forEach(l => {
-      const key = l.from_uid;
-      if (!grouped[key]) grouped[key] = { name: l.from_name || '未知', letters: [], unread: 0 };
-      grouped[key].letters.push(l);
-      if (!l.read_at) grouped[key].unread++;
-    });
-
-    listEl.innerHTML = Object.entries(grouped).map(([uid, g]) => {
-      const lastLetter = g.letters[0];
-      const time = new Date(lastLetter.created_at).toLocaleString('zh-TW', { month:'numeric', day:'numeric', hour:'numeric', minute:'2-digit' });
-      const preview = (lastLetter.body || '').slice(0, 30);
-      const unreadBadge = g.unread > 0 ? `<span class="inbox-item-badge">${g.unread}</span>` : '';
-      return `
-        <div class="inbox-item" data-friend-id="${uid}" data-friend-name="${escapeHtml(g.name)}">
-          <div class="fi-row">
-            <div class="fi-avatar">✉️</div>
-            <div class="fi-info">
-              <div class="fi-name">${escapeHtml(g.name)} ${unreadBadge}</div>
-              <div class="fi-meta">${escapeHtml(preview)}</div>
-            </div>
-            <div class="hi-right">
-              <span class="hi-date">${time}</span>
-              <span class="hi-meta">${g.letters.length} 封</span>
-            </div>
-          </div>
-        </div>
-      `;
-    }).join('');
-
-    // 點擊打開信件對話
-    listEl.querySelectorAll('.inbox-item').forEach(item => {
-      item.addEventListener('click', () => {
-        openLetterThread(item.dataset.friendId, item.dataset.friendName);
-      });
-    });
-  } catch {
-    listEl.innerHTML = '<div class="friends-empty">載入失敗</div>';
-  }
-}
-
-// 載入未讀數（進入 app 時呼叫）
-async function loadInboxBadge() {
-  if (!kaitalkAccessToken) return;
-  try {
-    const resp = await fetch('/api/letters/inbox', {
-      headers: { 'Authorization': `Bearer ${kaitalkAccessToken}` },
-    });
-    const data = await resp.json();
-    const unread = data.unread || 0;
-    const badge = document.getElementById('inbox-badge');
-    if (badge) {
-      badge.textContent = unread;
-      badge.style.display = unread > 0 ? 'inline' : 'none';
-    }
-  } catch {}
-}
 
 function deleteHistoryById(id) {
   try {
@@ -2411,7 +2265,7 @@ function deleteHistoryById(id) {
     let history = JSON.parse(raw);
     history = history.filter(h => h.id !== id);
     localStorage.setItem(HISTORY_KEY, JSON.stringify(history));
-  } catch {}
+  } catch { }
 }
 
 function showHistoryDetail(h) {
@@ -2442,7 +2296,7 @@ function showHistoryDetail(h) {
 
   contentEl.innerHTML = `
     <div class="hd-header">
-      ${h.peerAvatar ? `<img src="${avatarUrl(h.peerAvatar)}" class="hd-avatar-img">` : `<span class="hd-avatar">${gSvg || '👤'}</span>`}
+      <span class="hd-avatar">${gSvg || '👤'}</span>
       <span class="hd-name">${escapeHtml(h.peerName)}</span>
       <span class="hd-info">${regionTag} ${langTag}</span>
     </div>
@@ -2607,24 +2461,7 @@ document.querySelectorAll('.settings-tgender-btn').forEach(btn => {
 
 // 想找講什麼語言（多選 toggle）
 // 想找語言 checkbox group
-const settingsTargetLangSelect = document.getElementById('settings-target-lang-select');
-
-// 動態填充語言下拉選單（從 LANGS 陣列）
-function populateLangSelects() {
-  const opts = LANGS.map(l => `<option value="${l.code}">${l.flag} ${l.label}</option>`).join('');
-  if (settingsLangSelect) settingsLangSelect.innerHTML = opts;
-  if (settingsTargetLangSelect) {
-    settingsTargetLangSelect.innerHTML = `<option value="">🌐 所有語言</option>` + opts;
-  }
-  // onboarding 語言 grid
-  const onbLangGrid = document.getElementById('onb-lang-grid');
-  if (onbLangGrid) {
-    onbLangGrid.innerHTML = LANGS.map(l =>
-      `<button class="grid-btn" data-lang="${l.code}">${l.flag} ${l.label}</button>`
-    ).join('');
-  }
-}
-populateLangSelects();
+const settingsTargetLangChecks = document.getElementById('settings-target-lang-checks');
 
 function openSettings() {
   if (!settingsOverlay) return;
@@ -2670,8 +2507,10 @@ function openSettings() {
   // 預選想找的語言（多選下拉）
   const curTargetLangs = getTargetLangs();
   settingsTempTargetLangs = [...curTargetLangs];
-  if (settingsTargetLangSelect) {
-    settingsTargetLangSelect.value = curTargetLangs.length === 1 ? curTargetLangs[0] : '';
+  if (settingsTargetLangChecks) {
+    settingsTargetLangChecks.querySelectorAll('input[type="checkbox"]').forEach(cb => {
+      cb.checked = curTargetLangs.includes(cb.value);
+    });
   }
 
   settingsOverlay.classList.add('active');
@@ -2704,12 +2543,13 @@ function saveSettings() {
   }
 
   // 儲存想找的語言（從多選下拉讀取）
-  // 儲存想找的語言（單選下拉，空 = 所有語言）
-  const targetVal = settingsTargetLangSelect ? settingsTargetLangSelect.value : '';
-  if (!targetVal) {
+  const selectedTargetLangs = settingsTargetLangChecks
+    ? Array.from(settingsTargetLangChecks.querySelectorAll('input:checked')).map(cb => cb.value)
+    : settingsTempTargetLangs;
+  if (selectedTargetLangs.length === 0) {
     localStorage.removeItem(TARGET_LANGS_KEY);
   } else {
-    localStorage.setItem(TARGET_LANGS_KEY, JSON.stringify([targetVal]));
+    localStorage.setItem(TARGET_LANGS_KEY, JSON.stringify(selectedTargetLangs));
   }
 
   log(`設定已儲存`);
@@ -2752,14 +2592,14 @@ function renderUserBar() {
     const chosenAvatar = localStorage.getItem(ONB_AVATAR_KEY) || 'avatar_mature.png';
     avatarImgEl.src = avatarUrl(chosenAvatar);
     const avatarTransforms = {
-      'avatar_mature.png':   'scale(1.1) translateY(2%)',
-      'avatar_sporty.png':   'scale(1.4) translateY(10%)',
-      'avatar_elegant.png':  'scale(1.2) translateY(5%)',
-      'avatar_shorthair.png':'scale(1.1) translateY(3%)',
-      'avatar_older_m.png':  'scale(1.15) translateY(3%)',
-      'avatar_older_f.png':  'scale(1.2) translateY(5%)',
-      'avatar_idol_m.png':   'scale(1.0) translateY(0)',
-      'avatar_idol_f.png':   'scale(1.15) translateY(4%)',
+      'avatar_mature.png': 'scale(1.1) translateY(2%)',
+      'avatar_sporty.png': 'scale(1.4) translateY(10%)',
+      'avatar_elegant.png': 'scale(1.2) translateY(5%)',
+      'avatar_shorthair.png': 'scale(1.1) translateY(3%)',
+      'avatar_older_m.png': 'scale(1.15) translateY(3%)',
+      'avatar_older_f.png': 'scale(1.2) translateY(5%)',
+      'avatar_idol_m.png': 'scale(1.0) translateY(0)',
+      'avatar_idol_f.png': 'scale(1.15) translateY(4%)',
     };
     avatarImgEl.style.transform = avatarTransforms[chosenAvatar] || 'scale(1) translateY(0)';
   }
@@ -2967,11 +2807,6 @@ async function loadTrivia() {
   }
 }
 
-// 豆知識展開/收合
-document.getElementById('trivia-toggle')?.addEventListener('click', () => {
-  document.getElementById('trivia-card')?.classList.toggle('expanded');
-});
-
 function showRandomTrivia(myRegion, peerRegion) {
   const cardEl = document.getElementById('trivia-card');
   const headerEl = cardEl?.querySelector('.trivia-header');
@@ -3029,9 +2864,8 @@ async function loadTrends() {
   try {
     const resp = await fetch('/api/trends');
     const data = await resp.json();
-    const grid = document.getElementById('trends-grid');
     const section = document.getElementById('trends-section');
-    if (!grid || !section) return;
+    if (!section) return;
 
     const tw = (data.tw || []).slice(0, 5);
     const jp = (data.jp || []).slice(0, 5);
@@ -3082,5 +2916,4 @@ setStatus('連接 server...');
 // 連線本身永遠會發生
 initSupabaseAnonAuth().finally(() => {
   connectSocket();
-  loadInboxBadge();
 });
