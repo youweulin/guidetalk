@@ -2450,13 +2450,7 @@ document.getElementById('btn-change-avatar')?.addEventListener('click', () => {
 });
 
 // Wire settings gender buttons
-document.querySelectorAll('.settings-gender-btn').forEach(btn => {
-  btn.addEventListener('click', () => {
-    document.querySelectorAll('.settings-gender-btn').forEach(b => b.classList.remove('selected'));
-    btn.classList.add('selected');
-    settingsTempGender = btn.dataset.gender;
-  });
-});
+// 性別已鎖定，不提供設定裡修改
 document.querySelectorAll('.settings-tgender-btn').forEach(btn => {
   btn.addEventListener('click', () => {
     document.querySelectorAll('.settings-tgender-btn').forEach(b => b.classList.remove('selected'));
@@ -2488,12 +2482,13 @@ function openSettings() {
     b.classList.toggle('selected', b.dataset.avatar === curAvatar);
   });
 
-  // 預選當前性別
+  // 顯示性別（鎖定，不可改）
   const curGender = localStorage.getItem(ONB_GENDER_KEY);
-  settingsTempGender = curGender;
-  document.querySelectorAll('.settings-gender-btn').forEach(b => {
-    b.classList.toggle('selected', b.dataset.gender === curGender);
-  });
+  const genderDisplay = document.getElementById('settings-gender-display');
+  if (genderDisplay) {
+    const gLabel = curGender === 'male' ? '♂ 男生' : curGender === 'female' ? '♀ 女生' : '⚥ 其他';
+    genderDisplay.textContent = gLabel;
+  }
   const curTGender = localStorage.getItem(ONB_TARGET_GENDER_KEY);
   settingsTempTargetGender = curTGender;
   document.querySelectorAll('.settings-tgender-btn').forEach(b => {
@@ -2527,7 +2522,7 @@ function closeSettings() {
 
 function saveSettings() {
   // 儲存性別
-  if (settingsTempGender) localStorage.setItem(ONB_GENDER_KEY, settingsTempGender);
+  // 性別已鎖定，不儲存（onboarding 時設定）
   if (settingsTempTargetGender) localStorage.setItem(ONB_TARGET_GENDER_KEY, settingsTempTargetGender);
 
   // 儲存頭像

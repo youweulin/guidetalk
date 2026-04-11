@@ -1540,17 +1540,63 @@
       height: 16px;
       accent-color: var(--primary);
     }
-    .settings-avatar-preview {
+    .settings-profile-row {
       display: flex;
       align-items: center;
-      gap: 12px;
+      gap: 16px;
+    }
+    .settings-profile-left {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+      flex-shrink: 0;
     }
     .settings-avatar-img {
-      width: 56px;
-      height: 56px;
+      width: 68px;
+      height: 68px;
       border-radius: 50%;
       object-fit: cover;
       border: 2px solid var(--border);
+    }
+    .settings-change-btn {
+      font-size: 10px;
+      color: var(--primary);
+      background: none;
+      border: none;
+      cursor: pointer;
+      font-weight: 600;
+    }
+    .settings-profile-right {
+      flex: 1;
+    }
+    .settings-profile-name {
+      font-size: 18px;
+      font-weight: 700;
+      color: var(--text);
+      margin-bottom: 4px;
+    }
+    .settings-profile-hint {
+      font-size: 11px;
+      color: var(--muted);
+    }
+    .settings-gender-row {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-top: 6px;
+      font-size: 13px;
+    }
+    .settings-gender-label {
+      color: var(--muted);
+      font-weight: 600;
+    }
+    .settings-gender-value {
+      font-weight: 700;
+      color: var(--text);
+    }
+    .settings-gender-lock {
+      font-size: 10px;
     }
     .settings-locked-row {
       display: flex;
@@ -2340,12 +2386,22 @@
       <h3>⚙️ 設定</h3>
       <div class="settings-scroll">
 
-      <!-- 虛擬頭像（精簡：只顯示當前 + 更換按鈕） -->
+      <!-- 頭像 + 暱稱（合併一行） -->
       <div class="settings-section">
-        <h4>虛擬頭像</h4>
-        <div class="settings-avatar-preview" id="settings-avatar-preview">
-          <img id="settings-current-avatar" class="settings-avatar-img" src="">
-          <button class="btn-secondary" id="btn-change-avatar" style="font-size:11px;padding:5px 12px;border-radius:8px;">更換</button>
+        <div class="settings-profile-row">
+          <div class="settings-profile-left">
+            <img id="settings-current-avatar" class="settings-avatar-img" src="">
+            <button class="settings-change-btn" id="btn-change-avatar">更換頭像</button>
+          </div>
+          <div class="settings-profile-right">
+            <div class="settings-profile-name">🔒 <span id="settings-nickname-display">—</span></div>
+            <div class="settings-profile-hint">升級會員可改暱稱</div>
+            <div class="settings-gender-row">
+              <span class="settings-gender-label">性別</span>
+              <span class="settings-gender-value" id="settings-gender-display">—</span>
+              <span class="settings-gender-lock">🔒</span>
+            </div>
+          </div>
         </div>
         <div class="avatar-grid" id="settings-avatar-grid" style="display:none">
           <div class="avatar-option" data-avatar="avatar_mature.png"><img src="https://imagedelivery.net/8vYNanmJriUCfsABJIN-Gw/avatar_mature/public" style="transform: scale(1.1) translateY(2%);"></div>
@@ -2359,25 +2415,6 @@
         </div>
       </div>
 
-      <!-- 暱稱（鎖死） -->
-      <div class="settings-section">
-        <h4>暱稱</h4>
-        <div class="settings-locked-row">
-          <span class="lock-icon">🔒</span>
-          <span id="settings-nickname-display">—</span>
-          <span class="locked-hint">升級會員可改</span>
-        </div>
-      </div>
-
-      <!-- 我的性別（可改） -->
-      <div class="settings-section">
-        <h4>我的性別</h4>
-        <div class="gender-grid">
-          <button class="grid-btn settings-gender-btn" data-gender="male">♂ 男生</button>
-          <button class="grid-btn settings-gender-btn" data-gender="female">♀ 女生</button>
-          <button class="grid-btn settings-gender-btn" data-gender="other">⚥ 其他</button>
-        </div>
-      </div>
 
       <!-- 想跟誰聊（可改） -->
       <div class="settings-section">
