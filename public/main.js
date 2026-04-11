@@ -2534,7 +2534,11 @@ function renderHistoryTab(history) {
     return;
   }
 
-  listEl.innerHTML = history.map(h => {
+  const HISTORY_SHOW = 3;
+  const showAll = listEl.dataset.showAll === 'true';
+  const visible = showAll ? history : history.slice(0, HISTORY_SHOW);
+
+  function renderItem(h) {
     const date = new Date(h.endedAt);
     const dateStr = `${date.getMonth() + 1}/${date.getDate()} ${date.getHours()}:${String(date.getMinutes()).padStart(2, '0')}`;
     const durationSec = Math.round((h.endedAt - h.startedAt) / 1000);
@@ -2543,11 +2547,13 @@ function renderHistoryTab(history) {
     const regionTag = regionObj ? `<span class="tag tag-blue">${regionObj.flag} ${regionObj.name}</span>` : '';
     const li = h.peerLang ? langInfo(h.peerLang) : null;
     const langTag = li ? `<span class="tag tag-red">${li.flag} ${li.label}</span>` : '';
-    const gSvg = GENDER_SVGS[h.peerGender] || '';
+    const avatarHtml = h.peerAvatar
+      ? `<img src="${avatarUrl(h.peerAvatar)}" class="hi-avatar-img">`
+      : `<div class="hi-avatar">${GENDER_SVGS[h.peerGender] || '👤'}</div>`;
     return `
       <div class="history-item" data-id="${h.id}">
         <div class="hi-row">
-          <div class="hi-avatar">${gSvg || '👤'}</div>
+          ${avatarHtml}
           <div class="hi-info">
             <div class="hi-name">${escapeHtml(h.peerName)}</div>
             <div class="hi-tags">${regionTag}${langTag}</div>
@@ -2559,7 +2565,13 @@ function renderHistoryTab(history) {
         </div>
       </div>
     `;
-  }).join('');
+  }
+
+  let html = visible.map(renderItem).join('');
+  if (!showAll && history.length > HISTORY_SHOW) {
+    html += `<div class="history-more" id="btn-history-more" style="text-align:center;padding:10px;font-size:12px;color:var(--primary);cursor:pointer;font-weight:600;">查看更多（${history.length - HISTORY_SHOW}筆）▾</div>`;
+  }
+  listEl.innerHTML = html;
 
   listEl.querySelectorAll('.history-item').forEach(item => {
     item.addEventListener('click', () => {
@@ -2567,6 +2579,11 @@ function renderHistoryTab(history) {
       const h = history.find(x => x.id === id);
       if (h) showHistoryDetail(h);
     });
+  });
+
+  document.getElementById('btn-history-more')?.addEventListener('click', () => {
+    listEl.dataset.showAll = 'true';
+    renderHistoryTab(history);
   });
 }
 
