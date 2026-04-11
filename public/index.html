@@ -1088,12 +1088,12 @@
       margin-bottom: 8px;
     }
     .trends-grid {
-      display: flex;
-      flex-wrap: wrap;
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
       gap: 6px;
     }
     .trend-chip {
-      padding: 5px 10px;
+      padding: 8px 4px;
       border-radius: 10px;
       border: 1px solid var(--border);
       background: var(--card-2);
@@ -1103,6 +1103,7 @@
       cursor: pointer;
       transition: all 0.15s;
       white-space: nowrap;
+      text-align: center;
     }
     .trend-chip:hover {
       border-color: var(--primary);
@@ -2554,23 +2555,9 @@
       </div>
     </div>
 
-    <!-- ═══ 話題配對 ═══ -->
+    <!-- ═══ 話題配對（JS 動態生成 5 個）═══ -->
     <div id="topic-section" class="trends-section">
-      <h4 class="trends-title" data-i18n="topics_title">💬 選話題聊</h4>
-      <div class="trends-grid" id="topic-grid">
-        <div class="trend-chip topic-cat" data-topic="美食" data-i18n="food">🍜 美食</div>
-        <div class="trend-chip topic-cat" data-topic="旅行" data-i18n="travel">✈️ 旅行</div>
-        <div class="trend-chip topic-cat" data-topic="音樂" data-i18n="music">🎵 音樂</div>
-        <div class="trend-chip topic-cat" data-topic="電影" data-i18n="movie">🎬 電影</div>
-        <div class="trend-chip topic-cat" data-topic="寵物" data-i18n="pets">🐾 寵物</div>
-        <div class="trend-chip topic-cat" data-topic="運動" data-i18n="sports">⚽ 運動</div>
-        <div class="trend-chip topic-cat" data-topic="語言學習" data-i18n="lang_learn">📚 語言學習</div>
-        <div class="trend-chip topic-cat" data-topic="生活" data-i18n="life">☕ 生活</div>
-      </div>
-    </div>
-    <div id="trends-section" class="trends-section" style="display:none">
-      <h4 class="trends-title" style="font-size:11px;">🔥 熱搜</h4>
-      <div class="trends-grid trends-oneline" id="trends-grid"></div>
+      <div class="trends-grid" id="topic-grid"></div>
     </div>
 
     <!-- ═══ 主配對按鈕（Massive CTA）═══ -->

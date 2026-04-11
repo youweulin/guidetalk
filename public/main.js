@@ -3681,7 +3681,7 @@ renderBottomTabs();
 applyGenderTheme();
 onbBuildLangGrid();
 applyI18n(); // 填充語言選單（onboarding + 設定頁）
-loadTrivia().finally(() => loadTrends());
+loadTrivia();
 loadOnlineStatus();
 
 async function loadOnlineStatus() {
@@ -3701,11 +3701,32 @@ async function loadOnlineStatus() {
 }
 
 // ─── 話題配對（固定分類）─────────────────────────────
-document.querySelectorAll('.topic-cat').forEach(chip => {
-  chip.addEventListener('click', () => {
-    startMatching({ mode: 'quick', topicId: chip.dataset.topic });
+// 話題配對：從 8 個隨機挑 5 個顯示
+const ALL_TOPICS = [
+  { key: '美食', i18n: 'food' },
+  { key: '旅行', i18n: 'travel' },
+  { key: '音樂', i18n: 'music' },
+  { key: '電影', i18n: 'movie' },
+  { key: '寵物', i18n: 'pets' },
+  { key: '運動', i18n: 'sports' },
+  { key: '語言學習', i18n: 'lang_learn' },
+  { key: '生活', i18n: 'life' },
+];
+
+function renderTopicChips() {
+  const grid = document.getElementById('topic-grid');
+  if (!grid) return;
+  const picked = ALL_TOPICS;
+  grid.innerHTML = picked.map(tp =>
+    `<div class="trend-chip topic-cat" data-topic="${tp.key}">${t(tp.i18n)}</div>`
+  ).join('');
+  grid.querySelectorAll('.topic-cat').forEach(chip => {
+    chip.addEventListener('click', () => {
+      startMatching({ mode: 'quick', topicId: chip.dataset.topic });
+    });
   });
-});
+}
+renderTopicChips();
 
 // ─── 熱搜（Google Trends）─────────────────────────────
 async function loadTrends() {
