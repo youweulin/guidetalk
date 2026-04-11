@@ -854,18 +854,15 @@ const showButtons = (state) => {
   const matchModes = document.getElementById('match-modes');
   if (matchModes) matchModes.style.display = state === 'idle' ? 'block' : 'none';
 
-  // user card（暱稱+地區+想找）只在 idle 顯示
-  const ub = document.getElementById('user-bar');
-  if (ub) ub.style.display = state === 'idle' ? 'flex' : 'none';
-
-  // 話題區只在 idle 顯示
-  document.querySelectorAll('.trends-section').forEach(el => {
-    el.style.display = state === 'idle' ? el.dataset.wasVisible || 'block' : 'none';
+  // idle-only 元素：user card、話題、隱私條款
+  const idleOnly = ['user-bar', 'topic-section', 'trends-section'];
+  idleOnly.forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.style.display = state === 'idle' ? '' : 'none';
   });
-
-  // 隱私/條款連結只在 idle 顯示
-  const footerLinks = document.querySelector('.footer-links');
-  if (footerLinks) footerLinks.style.display = state === 'idle' ? 'block' : 'none';
+  document.querySelectorAll('.trends-section, .footer-links').forEach(el => {
+    el.style.display = state === 'idle' ? '' : 'none';
+  });
 
   // 歷史對話區只在 idle 顯示（有紀錄時）
   const bottomTabs = document.getElementById('bottom-tabs');
@@ -1603,8 +1600,8 @@ function connectSocket() {
     const myRegion = localStorage.getItem(ONB_BIG_REGION_KEY) || null;
     showRandomTrivia(myRegion, peerRegion);
     // 話題提示：顯示雙方選的話題
-    showTopicHint(myTopicId, peerTopicId, peerName);
     showButtons('in-call');
+    showTopicHint(myTopicId, peerTopicId, peerName);
     showMeters();
     if (subtitlesEnabled) showSubtitles();
     clearSubtitles();
