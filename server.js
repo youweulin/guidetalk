@@ -224,7 +224,7 @@ async function fetchTrendsRSS(geo) {
     const domain = geo === 'JP' ? 'google.co.jp' : 'google.com.tw';
     const url = `https://trends.${domain}/trending/rss?geo=${geo}`;
     const ctrl = new AbortController();
-    const t = setTimeout(() => ctrl.abort(), 5000);
+    const t = setTimeout(() => ctrl.abort(), 15000);
     const resp = await fetch(url, { signal: ctrl.signal });
     clearTimeout(t);
     const xml = await resp.text();
