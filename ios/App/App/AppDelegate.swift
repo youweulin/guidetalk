@@ -7,7 +7,17 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     var window: UIWindow?
 
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
-        // Override point for customization after application launch.
+        // Register local plugins after a short delay to ensure bridge is ready
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
+            guard let vc = self?.window?.rootViewController as? CAPBridgeViewController else {
+                print("[AppDelegate] ERROR: rootViewController is not CAPBridgeViewController")
+                return
+            }
+            print("[AppDelegate] Found bridge VC, registering plugins")
+            vc.bridge?.registerPluginInstance(AppleSignInPlugin())
+            vc.bridge?.registerPluginInstance(AppleTranslationPlugin())
+            print("[AppDelegate] Plugins registered successfully")
+        }
         return true
     }
 

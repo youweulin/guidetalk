@@ -469,12 +469,10 @@ function applyI18n() {
   });
 }
 
-// ─── 註冊本地 Capacitor Plugin ────────────────────────
-if (window.Capacitor?.registerPlugin) {
-  window.Capacitor.registerPlugin('AppleSignIn');
-  window.Capacitor.registerPlugin('TextToSpeech');
-  window.Capacitor.registerPlugin('AppleTranslation');
-}
+// ─── Capacitor Native Bridge Helper ────────────────────────
+// 本地 plugin 透過 nativePromise 直接呼叫（不需要 registerPlugin）
+const _capNative = window.Capacitor?.nativePromise;
+const isCapacitorNative = !!_capNative;
 
 // 原生 TTS plugin（Capacitor）
 const NativeTTS = window.Capacitor?.Plugins?.TextToSpeech;
@@ -638,19 +636,25 @@ class TranslationProvider {
 //     }
 //   }
 //
-// JS 端就會有 window.Capacitor.Plugins.AppleTranslation.translate({...})
+// 透過 Capacitor.nativePromise 直接呼叫原生 AppleTranslation plugin
 class AppleTranslationProvider extends TranslationProvider {
   static isInstalled() {
-    return !!(window.Capacitor?.Plugins?.AppleTranslation);
+    return isCapacitorNative;
   }
   async isAvailable(from, to) {
-    return AppleTranslationProvider.isInstalled();
+    return isCapacitorNative;
+  }
+  // Apple Translation 需要區分 zh-Hant / zh-Hans
+  static _mapLang(lang) {
+    if (lang.startsWith('zh-TW') || lang.startsWith('zh-HK')) return 'zh-Hant';
+    if (lang.startsWith('zh-CN') || lang === 'zh') return 'zh-Hans';
+    return lang.split('-')[0];
   }
   async translate(text, fromLang, toLang) {
-    const from = fromLang.split('-')[0];
-    const to = toLang.split('-')[0];
+    const from = AppleTranslationProvider._mapLang(fromLang);
+    const to = AppleTranslationProvider._mapLang(toLang);
     if (from === to) return text;
-    const result = await window.Capacitor.Plugins.AppleTranslation.translate({
+    const result = await window.Capacitor.nativePromise('AppleTranslation', 'translate', {
       text, from, to,
     });
     return result.translated;

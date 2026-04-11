@@ -3,7 +3,7 @@ import Capacitor
 import SwiftUI
 import Translation
 
-// MARK: - Translation Bridge (coordinates between Capacitor Plugin and SwiftUI)
+// MARK: - Translation Bridge
 
 @available(iOS 18.0, *)
 class TranslationBridge: ObservableObject {
@@ -14,21 +14,22 @@ class TranslationBridge: ObservableObject {
     private var currentFrom: String = ""
     private var currentTo: String = ""
 
-    /// Queue a translation request. Cancels any previous pending request.
     func request(text: String, from: String, to: String, completion: @escaping (String?, String?) -> Void) {
-        // Cancel previous pending request so its Promise resolves
+        // Cancel previous pending request
         pendingCompletion?(nil, "Cancelled by newer request")
 
         pendingText = text
         pendingCompletion = completion
 
+        print("[AppleTranslation] request: \(from) → \(to), text=\(text.prefix(30))")
+
         if from == currentFrom && to == currentTo {
-            // Same language pair → invalidate to re-trigger .translationTask
+            print("[AppleTranslation] same pair, invalidating config")
             configuration?.invalidate()
         } else {
-            // New language pair → create fresh configuration
             currentFrom = from
             currentTo = to
+            print("[AppleTranslation] new pair, creating config")
             configuration = .init(
                 source: Locale.Language(identifier: from),
                 target: Locale.Language(identifier: to)
@@ -36,34 +37,41 @@ class TranslationBridge: ObservableObject {
         }
     }
 
-    /// Called from .translationTask when a session is ready
     func handleSession(_ session: TranslationSession) async {
+        print("[AppleTranslation] handleSession called!")
         let text = pendingText
         let completion = pendingCompletion
         pendingText = ""
         pendingCompletion = nil
 
-        guard !text.isEmpty, let done = completion else { return }
+        guard !text.isEmpty, let done = completion else {
+            print("[AppleTranslation] no pending text or completion")
+            return
+        }
 
         do {
             let response = try await session.translate(text)
+            print("[AppleTranslation] success: \(response.targetText.prefix(30))")
             await MainActor.run { done(response.targetText, nil) }
         } catch {
+            print("[AppleTranslation] error: \(error)")
             await MainActor.run { done(nil, error.localizedDescription) }
         }
     }
 }
 
-// MARK: - Hidden SwiftUI View with .translationTask modifier
+// MARK: - SwiftUI View with .translationTask
 
 @available(iOS 18.0, *)
 struct TranslationHelperView: View {
     @ObservedObject var bridge: TranslationBridge
 
     var body: some View {
+        // Must be non-hidden and non-zero for SwiftUI to evaluate modifiers
         Color.clear
-            .frame(width: 0, height: 0)
+            .frame(width: 1, height: 1)
             .translationTask(bridge.configuration) { session in
+                print("[AppleTranslation] .translationTask fired!")
                 await bridge.handleSession(session)
             }
     }
@@ -79,12 +87,16 @@ public class AppleTranslationPlugin: CAPPlugin, CAPBridgedPlugin {
         CAPPluginMethod(name: "translate", returnType: CAPPluginReturnPromise)
     ]
 
-    // Type-erased to avoid @available issues at property level
     private var translationBridge: Any?
     private var hostingController: UIViewController?
 
     override public func load() {
-        guard #available(iOS 18.0, *) else { return }
+        guard #available(iOS 18.0, *) else {
+            print("[AppleTranslation] iOS < 18.0, skipping")
+            return
+        }
+
+        print("[AppleTranslation] load() called, setting up SwiftUI bridge")
 
         let tBridge = TranslationBridge()
         self.translationBridge = tBridge
@@ -92,14 +104,19 @@ public class AppleTranslationPlugin: CAPPlugin, CAPBridgedPlugin {
         DispatchQueue.main.async { [weak self] in
             let view = TranslationHelperView(bridge: tBridge)
             let hc = UIHostingController(rootView: view)
-            hc.view.frame = .zero
-            hc.view.isHidden = true
+
+            // Off-screen but NOT hidden — SwiftUI must consider the view "alive"
+            hc.view.frame = CGRect(x: -10, y: -10, width: 1, height: 1)
+            hc.view.alpha = 0.01
             self?.hostingController = hc
 
             if let parent = self?.bridge?.viewController {
                 parent.addChild(hc)
                 parent.view.addSubview(hc.view)
                 hc.didMove(toParent: parent)
+                print("[AppleTranslation] SwiftUI hosting controller added to view hierarchy")
+            } else {
+                print("[AppleTranslation] ERROR: no parent viewController")
             }
         }
     }
@@ -121,6 +138,8 @@ public class AppleTranslationPlugin: CAPPlugin, CAPBridgedPlugin {
             call.reject("Translation not initialized")
             return
         }
+
+        print("[AppleTranslation] translate() called from JS")
 
         DispatchQueue.main.async {
             tBridge.request(text: text, from: from, to: to) { translated, error in
