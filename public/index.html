@@ -1086,6 +1086,17 @@
       background: var(--card);
       border-color: color-mix(in srgb, var(--primary) 20%, transparent);
     }
+    .trends-oneline {
+      flex-wrap: nowrap;
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+    }
+    .trends-oneline::-webkit-scrollbar { display: none; }
+    .trends-oneline .trend-chip {
+      font-size: 10px;
+      padding: 4px 8px;
+      color: var(--muted);
+    }
 
     #match-modes { display: block; }
 
@@ -2491,8 +2502,8 @@
       </div>
     </div>
     <div id="trends-section" class="trends-section" style="display:none">
-      <h4 class="trends-title">🔥 熱搜</h4>
-      <div class="trends-grid" id="trends-grid"></div>
+      <h4 class="trends-title" style="font-size:11px;">🔥 熱搜</h4>
+      <div class="trends-grid trends-oneline" id="trends-grid"></div>
     </div>
 
     <!-- ═══ 主配對按鈕（Massive CTA）═══ -->

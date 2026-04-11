@@ -1794,7 +1794,26 @@ async function onbDetectRegion() {
 }
 
 function onbBuildLangGrid() {
-  // Step 6 lang grid (only onboarding step-6 lang-grid buttons)
+  // 動態填充語言按鈕 + 設定頁下拉選單
+  const onbLangGrid = document.getElementById('onb-lang-grid');
+  if (onbLangGrid) {
+    onbLangGrid.innerHTML = LANGS.map(l =>
+      `<button class="grid-btn" data-lang="${l.code}">${l.flag} ${l.label}</button>`
+    ).join('');
+  }
+  const settingsLangSel = document.getElementById('settings-lang-select');
+  if (settingsLangSel) {
+    settingsLangSel.innerHTML = LANGS.map(l =>
+      `<option value="${l.code}">${l.flag} ${l.label}</option>`
+    ).join('');
+  }
+  const settingsTargetLangSel = document.getElementById('settings-target-lang-select');
+  if (settingsTargetLangSel) {
+    settingsTargetLangSel.innerHTML = `<option value="">🌐 所有語言</option>` +
+      LANGS.map(l => `<option value="${l.code}">${l.flag} ${l.label}</option>`).join('');
+  }
+
+  // Step 6 lang grid click handlers
   document.querySelectorAll('#step-6 .lang-grid .grid-btn').forEach(btn => {
     btn.addEventListener('click', () => {
       document.querySelectorAll('#step-6 .lang-grid .grid-btn').forEach(b => b.classList.remove('selected'));
@@ -2880,7 +2899,7 @@ function hideTrivia() {
 
 renderBottomTabs();
 applyGenderTheme();
-// 先載 trivia，完成後再載 trends（trends 需要 trivia 的破冰話題）
+onbBuildLangGrid(); // 填充語言選單（onboarding + 設定頁）
 loadTrivia().finally(() => loadTrends());
 
 // ─── 話題配對（固定分類）─────────────────────────────
