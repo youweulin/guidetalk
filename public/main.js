@@ -1177,11 +1177,14 @@ const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platfor
 
 // 付費用戶判斷（之後接訂閱系統，目前先用 localStorage 模擬）
 // ─── 付費 / 用量限制 ──────────────────────────────────
-const FREE_DAILY_LIMIT = 20; // 免費用戶每天翻譯+TTS 次數
+const FREE_DAILY_LIMIT = 20;    // 免費：每天 20 次翻譯
+const SPONSOR_DAILY_LIMIT = 100; // 贊助者：每天 100 次 + Edge TTS
 
-function isPremiumUser() {
+function isSponsor() {
   return localStorage.getItem('kaitalk.premium') === 'true';
 }
+// 保留舊名相容
+function isPremiumUser() { return isSponsor(); }
 
 function getDailyUsage() {
   const today = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
@@ -1202,23 +1205,27 @@ function incrementUsage() {
 }
 
 function canUseTranslation() {
-  if (isPremiumUser()) return true;
-  return getDailyUsage().count < FREE_DAILY_LIMIT;
+  const limit = isSponsor() ? SPONSOR_DAILY_LIMIT : FREE_DAILY_LIMIT;
+  return getDailyUsage().count < limit;
 }
 
 function getRemainingUsage() {
-  if (isPremiumUser()) return '∞';
-  return Math.max(0, FREE_DAILY_LIMIT - getDailyUsage().count);
+  const limit = isSponsor() ? SPONSOR_DAILY_LIMIT : FREE_DAILY_LIMIT;
+  return Math.max(0, limit - getDailyUsage().count);
+}
+
+function getDailyLimit() {
+  return isSponsor() ? SPONSOR_DAILY_LIMIT : FREE_DAILY_LIMIT;
 }
 
 function showUpgradePrompt() {
   showConfirm({
-    icon: '⭐',
-    text: `今日免費翻譯次數已用完（${FREE_DAILY_LIMIT}次）\n\n升級 Premium 享無限翻譯 + 自然語音`,
-    okLabel: '升級 NT$199/月',
+    icon: '☕',
+    text: `今日翻譯次數已用完（${getDailyLimit()}次）\n\n贊助我們即可解鎖更多次數 + 自然語音`,
+    okLabel: '贊助 NT$199/月',
     cancelLabel: '明天再來',
   }).then(yes => {
-    if (yes) openSettings(); // 導到設定頁購買
+    if (yes) openSettings();
   });
 }
 
@@ -1681,16 +1688,17 @@ function updateAccountUI() {
     const provider = user?.app_metadata?.provider || 'anonymous';
     const email = user?.email || '';
 
-    const premiumHtml = isPremiumUser()
+    const premiumHtml = isSponsor()
       ? `<div style="padding:10px;background:linear-gradient(135deg,#ffe08c,#ffb347);border-radius:12px;text-align:center;margin-top:12px;">
-           <div style="font-size:14px;font-weight:700;">⭐ Premium 會員</div>
-           <div style="font-size:11px;margin-top:2px;">無限翻譯 · 自然語音 · 信件</div>
+           <div style="font-size:14px;font-weight:700;">☕ 感謝贊助！</div>
+           <div style="font-size:11px;margin-top:2px;">每日 ${SPONSOR_DAILY_LIMIT} 次翻譯 · Edge 自然語音 · 全功能開放</div>
+           <div style="font-size:11px;margin-top:4px;">今日剩餘：${getRemainingUsage()} / ${SPONSOR_DAILY_LIMIT}</div>
          </div>`
       : `<div style="padding:12px;background:var(--card-2);border-radius:12px;margin-top:12px;border:1px solid var(--border);">
-           <div style="font-size:13px;font-weight:700;margin-bottom:4px;">⭐ 升級 Premium — NT$199/月</div>
-           <div style="font-size:11px;color:var(--muted);margin-bottom:8px;">無限翻譯 · 自然語音 · 信件 · 優先配對</div>
+           <div style="font-size:13px;font-weight:700;margin-bottom:4px;">☕ 贊助開放全功能測試 — NT$199/月</div>
+           <div style="font-size:11px;color:var(--muted);margin-bottom:8px;">每日 100 次翻譯 · Edge 自然語音 · 信件 · 優先配對</div>
            <div style="font-size:11px;color:var(--muted);margin-bottom:8px;">今日剩餘：${getRemainingUsage()} / ${FREE_DAILY_LIMIT} 次翻譯</div>
-           <button class="btn-oauth" onclick="purchasePremium()" style="background:linear-gradient(135deg,#ffe08c,#ffb347);color:#333;">⭐ 升級 Premium</button>
+           <button class="btn-oauth" onclick="purchasePremium()" style="background:linear-gradient(135deg,#ffe08c,#ffb347);color:#333;">☕ 贊助我們</button>
          </div>`;
 
     if (provider === 'anonymous') {
@@ -1739,7 +1747,7 @@ async function purchasePremium() {
     // PWA / 網頁 → 導到下載 App
     await showConfirm({
       icon: '📱',
-      text: '下載 KaiTalk App 即可升級 Premium\n\n• 無限翻譯\n• 自然語音翻譯\n• 信件功能\n• 優先配對',
+      text: '下載 KaiTalk App 贊助解鎖全功能\n\n• 每日 100 次翻譯\n• 自然語音翻譯\n• 信件功能',
       okLabel: '前往下載',
       cancelLabel: '稍後',
     }).then(yes => {
