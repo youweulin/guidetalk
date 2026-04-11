@@ -2470,8 +2470,8 @@ document.querySelectorAll('.settings-tgender-btn').forEach(btn => {
 });
 
 // 想找講什麼語言（多選 toggle）
-// 想找語言多選下拉
-const settingsTargetLangSelect = document.getElementById('settings-target-lang-select');
+// 想找語言 checkbox group
+const settingsTargetLangChecks = document.getElementById('settings-target-lang-checks');
 
 function openSettings() {
   if (!settingsOverlay) return;
@@ -2518,9 +2518,9 @@ function openSettings() {
   // 預選想找的語言（多選下拉）
   const curTargetLangs = getTargetLangs();
   settingsTempTargetLangs = [...curTargetLangs];
-  if (settingsTargetLangSelect) {
-    Array.from(settingsTargetLangSelect.options).forEach(opt => {
-      opt.selected = curTargetLangs.includes(opt.value);
+  if (settingsTargetLangChecks) {
+    settingsTargetLangChecks.querySelectorAll('input[type="checkbox"]').forEach(cb => {
+      cb.checked = curTargetLangs.includes(cb.value);
     });
   }
 
@@ -2554,8 +2554,8 @@ function saveSettings() {
   }
 
   // 儲存想找的語言（從多選下拉讀取）
-  const selectedTargetLangs = settingsTargetLangSelect
-    ? Array.from(settingsTargetLangSelect.selectedOptions).map(o => o.value)
+  const selectedTargetLangs = settingsTargetLangChecks
+    ? Array.from(settingsTargetLangChecks.querySelectorAll('input:checked')).map(cb => cb.value)
     : settingsTempTargetLangs;
   if (selectedTargetLangs.length === 0) {
     localStorage.removeItem(TARGET_LANGS_KEY);
