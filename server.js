@@ -43,6 +43,15 @@ const io = new Server(server, { cors: { origin: '*' } });
 // 開發階段：禁止瀏覽器快取靜態檔，每次 refresh 都拿到最新版
 // 正式上線改成 max-age 即可
 app.use((req, res, next) => {
+  // CORS: 允許 Capacitor iOS app 的請求
+  const origin = req.headers.origin;
+  if (origin === 'capacitor://localhost' || origin === 'http://localhost' || !origin) {
+    res.set('Access-Control-Allow-Origin', origin || '*');
+    res.set('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Admin-Key');
+    res.set('Access-Control-Allow-Methods', 'GET, POST, PATCH, OPTIONS');
+  }
+  if (req.method === 'OPTIONS') return res.status(204).end();
+
   res.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
   res.set('Pragma', 'no-cache');
   res.set('Expires', '0');

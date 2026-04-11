@@ -472,8 +472,10 @@ function applyI18n() {
 // ─── API Base URL ────────────────────────────────────
 // 本地模式（Capacitor iOS）：URL 不是 http/https 開頭 → 打遠端 server
 // 網頁模式：正常 http/https → 用相對路徑
-const isLocalCapacitor = !window.location.href.startsWith('http');
+// 偵測是否在 Capacitor 本地模式
+const isLocalCapacitor = window.location.href.includes('capacitor://') || window.location.href.includes('localhost') && !window.location.href.includes('zeabur');
 const API_BASE = isLocalCapacitor ? 'https://kaitalk.zeabur.app' : '';
+console.log('[kaitalk] URL:', window.location.href, 'isLocal:', isLocalCapacitor, 'API_BASE:', API_BASE || '(relative)');
 
 // ─── Cloudflare Images CDN ───────────────────────────
 const CF_IMG = 'https://imagedelivery.net/8vYNanmJriUCfsABJIN-Gw';
