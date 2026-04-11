@@ -472,7 +472,12 @@ function applyI18n() {
 // ─── 註冊本地 Capacitor Plugin ────────────────────────
 if (window.Capacitor?.registerPlugin) {
   window.Capacitor.registerPlugin('AppleSignIn');
+  window.Capacitor.registerPlugin('TextToSpeech');
 }
+
+// 原生 TTS plugin（Capacitor）
+const NativeTTS = window.Capacitor?.Plugins?.TextToSpeech;
+let nativeTtsVoices = []; // 快取原生語音清單
 
 // ─── API Base URL ────────────────────────────────────
 // 本地模式（Capacitor iOS）：URL 不是 http/https 開頭 → 打遠端 server
@@ -964,8 +969,18 @@ const showButtons = (state) => {
   }
 };
 
-const showPeerCard = (name, room, role, peerVerified, peerGender) => {
+const showPeerCard = (name, room, role, peerVerified, peerGender, peerAvatar) => {
   peerNameEl.textContent = name;
+  // 顯示對方頭像
+  const peerAvatarImg = document.getElementById('peer-avatar-img');
+  if (peerAvatarImg) {
+    if (peerAvatar) {
+      peerAvatarImg.src = avatarUrl(peerAvatar);
+      peerAvatarImg.style.display = 'block';
+    } else {
+      peerAvatarImg.style.display = 'none';
+    }
+  }
   // 顯示對方性別 icon
   const pgIcon = document.getElementById('peer-gender-icon');
   if (pgIcon) pgIcon.innerHTML = GENDER_SVGS[peerGender] || '';
@@ -988,6 +1003,8 @@ const showPeerCard = (name, room, role, peerVerified, peerGender) => {
 
 const hidePeerCard = () => {
   peerCard.classList.remove('active');
+  const peerAvatarImg = document.getElementById('peer-avatar-img');
+  if (peerAvatarImg) peerAvatarImg.style.display = 'none';
 };
 
 // 對方語言徽章：null = 偵測中、傳 lang code = 顯示國旗
@@ -1185,29 +1202,155 @@ function clearSubtitles() {
 // 對方說話 → STT → 翻譯 → SpeechSynthesis 朗讀翻譯
 // 朗讀時壓低對方音量，朗讀完恢復
 
-// 找最好的 TTS 語音（優先選高品質 / 非預設的）
+// 找最好的 TTS 語音（優先選 Premium > Enhanced > 特定人名 > 一般）
 let ttsVoiceCache = {};
 function getBestVoice(lang) {
-  if (ttsVoiceCache[lang]) return ttsVoiceCache[lang];
+  const savedVoiceURI = localStorage.getItem('kaitalk.ttsVoiceURI');
   const voices = speechSynthesis.getVoices();
   if (voices.length === 0) return null;
 
-  const langPrefix = lang.split('-')[0]; // 'zh', 'ja', 'en', 'ko'
-  // 找匹配語言的語音，優先選名字含 "Premium", "Enhanced", "Natural" 的
+  // 如果用戶有手動選過，優先用
+  if (savedVoiceURI) {
+    const saved = voices.find(v => v.voiceURI === savedVoiceURI);
+    if (saved) return saved;
+  }
+
+  const cacheKey = lang;
+  if (ttsVoiceCache[cacheKey]) return ttsVoiceCache[cacheKey];
+
+  const langPrefix = lang.split('-')[0];
   const matches = voices.filter(v => v.lang.startsWith(langPrefix) || v.lang.startsWith(lang));
   if (matches.length === 0) return null;
 
-  const premium = matches.find(v =>
-    /premium|enhanced|natural|samantha|kyoko|meijia|yuna/i.test(v.name)
-  );
-  const nonDefault = matches.find(v => !v.default) || matches[0];
-  const best = premium || nonDefault;
-  ttsVoiceCache[lang] = best;
+  // 頂級人名清單（iOS 18 推薦）
+  const topNames = ['Lilian', 'Han', 'Yun', 'Limu', 'Meijia', 'Kyoko', 'Otoya', 'O-ren', 'Ava', 'Yuna'];
+
+  // 優先順序：人名匹配 + Premium > Premium > Enhanced > 一般
+  const topMatch = matches.find(v => topNames.some(name => v.name.includes(name)) && /\(Premium\)/i.test(v.name));
+  const premium = matches.find(v => /\(Premium\)/i.test(v.name));
+  const enhanced = matches.find(v => /\(Enhanced\)/i.test(v.name));
+  
+  const best = topMatch || premium || enhanced || matches[0];
+  ttsVoiceCache[cacheKey] = best;
   return best;
 }
 
-// 瀏覽器語音列表是異步載入的
-speechSynthesis.onvoiceschanged = () => { ttsVoiceCache = {}; };
+// 監聽語音清單變化（iOS 常用）
+speechSynthesis.onvoiceschanged = () => {
+  ttsVoiceCache = {};
+  refreshSettingsVoiceList();
+};
+
+function refreshSettingsVoiceList() {
+  const sel = document.getElementById('settings-tts-voice-select');
+  if (!sel) return;
+
+  const langPrefix = sttLang.split('-')[0];
+  const regionFlags = {
+    'zh-TW': '🇹🇼', 'zh-CN': '🇨🇳', 'zh-HK': '🇭🇰',
+    'en-US': '🇺🇸', 'en-GB': '🇬🇧', 'en-AU': '🇦🇺',
+    'es-ES': '🇪🇸', 'es-MX': '🇲🇽',
+    'fr-FR': '🇫🇷', 'fr-CA': '🇨🇦',
+    'pt-BR': '🇧🇷', 'pt-PT': '🇵🇹',
+    'ja-JP': '🇯🇵', 'ko-KR': '🇰🇷', 'de-DE': '🇩🇪',
+    'th-TH': '🇹🇭', 'vi-VN': '🇻🇳', 'id-ID': '🇮🇩',
+  };
+
+  if (NativeTTS && nativeTtsVoices.length > 0) {
+    // 原生模式：用 AVSpeechSynthesizer 的完整語音清單
+    const matches = nativeTtsVoices.filter(v => v.lang.startsWith(langPrefix));
+
+    // 只顯示 Premium 和 Enhanced（隱藏機械音 compact 語音）
+    const goodVoices = matches.filter(v => /premium|enhanced/i.test(v.name));
+    const displayVoices = goodVoices.length > 0 ? goodVoices : matches;
+
+    // 推薦排前面
+    const recommended = ['Lilian', 'Han', 'Yun', 'Limu', 'Meijia', 'Kyoko', 'Otoya', 'O-ren', 'Ava', 'Yuna'];
+    const sorted = [...displayVoices].sort((a, b) => {
+      // ① 推薦的排前面
+      const recA = recommended.some(n => a.name.includes(n)) ? 1 : 0;
+      const recB = recommended.some(n => b.name.includes(n)) ? 1 : 0;
+      if (recA !== recB) return recB - recA;
+      // ② 完全匹配語言優先
+      const exactA = a.lang === sttLang ? 1 : 0;
+      const exactB = b.lang === sttLang ? 1 : 0;
+      if (exactA !== exactB) return exactB - exactA;
+      // ③ 品質排序
+      const score = v => /premium/i.test(v.name) ? 3 : /enhanced/i.test(v.name) ? 2 : 1;
+      return score(b) - score(a);
+    });
+
+    const savedIdx = localStorage.getItem('kaitalk.ttsVoiceIdx');
+    sel.innerHTML = sorted.map(v => {
+      const idx = nativeTtsVoices.indexOf(v);
+      const tier = /premium/i.test(v.name) ? ' ⭐' : /enhanced/i.test(v.name) ? ' ✨' : '';
+      const flag = regionFlags[v.lang] || '';
+      // 清理名字：去掉 (Premium) (Enhanced) 標記，改用 emoji
+      const cleanName = v.name.replace(/\s*\((Premium|Enhanced|Compact)\)/gi, '');
+      const label = `${flag} ${cleanName}${tier}`.trim();
+      return `<option value="${idx}" ${String(idx) === savedIdx ? 'selected' : ''}>${label}</option>`;
+    }).join('');
+
+    if (sorted.length === 0) {
+      sel.innerHTML = `<option value="">(系統無此語言語音)</option>`;
+    }
+    console.log(`[kaitalk] 原生語音 ${langPrefix}: ${matches.length} 個（顯示 ${sorted.length} 個高品質）`, sorted.map(v => `${v.name} [${v.lang}]`));
+  } else {
+    // 瀏覽器 fallback
+    const voices = speechSynthesis.getVoices();
+    const matches = voices.filter(v => v.lang.startsWith(langPrefix));
+    const sorted = [...matches].sort((a, b) => {
+      const exactA = a.lang === sttLang ? 1 : 0;
+      const exactB = b.lang === sttLang ? 1 : 0;
+      if (exactA !== exactB) return exactB - exactA;
+      const score = v => /\(Premium\)/i.test(v.name) ? 2 : /\(Enhanced\)/i.test(v.name) ? 1 : 0;
+      return score(b) - score(a);
+    });
+
+    const savedURI = localStorage.getItem('kaitalk.ttsVoiceURI');
+    sel.innerHTML = sorted.map(v => {
+      const tier = /\(Premium\)/i.test(v.name) ? ' ⭐最佳' : /\(Enhanced\)/i.test(v.name) ? ' ✨高品質' : '';
+      const flag = regionFlags[v.lang] || '';
+      const label = `${flag} ${v.name}${tier}`.trim();
+      return `<option value="${v.voiceURI}" ${v.voiceURI === savedURI ? 'selected' : ''}>${label}</option>`;
+    }).join('');
+
+    if (sorted.length === 0) {
+      sel.innerHTML = `<option value="">(系統無此語言語音)</option>`;
+    }
+    console.log(`[kaitalk] 瀏覽器語音 ${langPrefix} (${sorted.length}):`, sorted.map(v => `${v.name} [${v.lang}]`));
+  }
+}
+
+// 檢查用戶是否有高品質語音，沒有的話提示下載
+let ttsVoiceCheckDone = false;
+function checkVoiceQuality(lang) {
+  if (ttsVoiceCheckDone || !isIOS) return;
+  const voices = speechSynthesis.getVoices();
+  const langPrefix = lang.split('-')[0];
+  const matches = voices.filter(v => v.lang.startsWith(langPrefix) || v.lang.startsWith(lang));
+  const hasGoodVoice = matches.some(v => /\(Premium\)|\(Enhanced\)/i.test(v.name));
+
+  if (!hasGoodVoice && matches.length > 0) {
+    ttsVoiceCheckDone = true;
+    const langName = { zh: '中文', ja: '日本語', en: 'English', ko: '한국어', es: 'Español', fr: 'Français', de: 'Deutsch' }[langPrefix] || langPrefix;
+    showToast(`💡 下載高品質語音讓翻譯更自然！\n設定 → 輔助使用 → 朗讀內容 → 語音 → ${langName} → 選擇 Premium 或 Enhanced 版本`, 8000);
+  }
+}
+
+// 簡易 toast 提示
+function showToast(msg, duration = 4000) {
+  const el = document.createElement('div');
+  el.textContent = msg;
+  Object.assign(el.style, {
+    position: 'fixed', bottom: '80px', left: '50%', transform: 'translateX(-50%)',
+    background: 'rgba(0,0,0,0.85)', color: '#fff', padding: '12px 20px',
+    borderRadius: '12px', fontSize: '13px', lineHeight: '1.5',
+    maxWidth: '90vw', zIndex: '99999', textAlign: 'center', whiteSpace: 'pre-line',
+  });
+  document.body.appendChild(el);
+  setTimeout(() => el.remove(), duration);
+}
 
 function ttsSpeak(text, lang) {
   if (!ttsMode || !text) return;
@@ -1282,18 +1425,21 @@ function ttsProcessQueue() {
   const remoteAudio = document.getElementById('remote-audio');
 
   if (isPremiumUser()) {
-    // 付費用戶：Edge TTS 自然人聲（所有平台）
+    // 付費用戶（所有平台）：Edge TTS 自然人聲
     edgeTtsSpeak(text, lang, remoteAudio);
+  } else if (NativeTTS) {
+    // iOS 免費用戶：原生 TTS（AVSpeechSynthesizer）
+    nativeTtsSpeak(text, lang, remoteAudio);
   } else {
-    // 免費用戶：瀏覽器內建 TTS
+    // 非 iOS 免費用戶：瀏覽器內建 TTS
     fallbackBrowserTts(text, lang, remoteAudio);
   }
 }
 
 async function edgeTtsSpeak(text, lang, remoteAudio) {
   try {
-    // 壓低對方音量
     if (remoteAudio) remoteAudio.volume = 0.15;
+    pauseSTTForTTS();
 
     const resp = await fetch(API_BASE + '/api/tts', {
       method: 'POST',
@@ -1319,26 +1465,100 @@ async function edgeTtsSpeak(text, lang, remoteAudio) {
     audio.onended = () => {
       URL.revokeObjectURL(url);
       if (remoteAudio) remoteAudio.volume = 1.0;
+      resumeSTTAfterTTS();
       setTimeout(() => ttsProcessQueue(), 200);
     };
 
     audio.onerror = () => {
       URL.revokeObjectURL(url);
       if (remoteAudio) remoteAudio.volume = 1.0;
+      resumeSTTAfterTTS();
       setTimeout(() => ttsProcessQueue(), 200);
     };
 
     audio.play().catch(() => {
-      // autoplay 被擋，fallback
       URL.revokeObjectURL(url);
+      resumeSTTAfterTTS();
       fallbackBrowserTts(text, lang, remoteAudio);
     });
   } catch {
+    resumeSTTAfterTTS();
     fallbackBrowserTts(text, lang, remoteAudio);
   }
 }
 
+// ─── TTS 播放時暫停 STT（防止迴圈：TTS→麥克風→STT→翻譯→TTS）───
+let sttWasPaused = false;
+function pauseSTTForTTS() {
+  if (sttActive && recognition) {
+    sttWasPaused = true;
+    try { recognition.stop(); } catch {}
+  }
+}
+function resumeSTTAfterTTS() {
+  if (sttWasPaused) {
+    sttWasPaused = false;
+    setTimeout(() => { if (sttActive) startSTT(); }, 300);
+  }
+}
+
+// ─── 原生 TTS（Capacitor plugin，iOS AVSpeechSynthesizer）───
+async function nativeTtsSpeak(text, lang, remoteAudio) {
+  try {
+    if (remoteAudio) remoteAudio.volume = 0.15;
+    pauseSTTForTTS();
+
+    const savedVoiceIdx = localStorage.getItem('kaitalk.ttsVoiceIdx');
+    const opts = {
+      text,
+      lang: lang || sttLang,
+      rate: 1.0,
+      volume: 1.0,
+      category: 'playback',
+    };
+
+    if (savedVoiceIdx !== null) {
+      opts.voice = parseInt(savedVoiceIdx, 10);
+    } else if (nativeTtsVoices.length > 0) {
+      const recommended = ['Lilian', 'Han', 'Yun', 'Limu', 'Meijia', 'Kyoko', 'Otoya', 'O-ren', 'Ava', 'Yuna'];
+      const langPrefix = (lang || sttLang).split('-')[0];
+      const matches = nativeTtsVoices.filter(v => v.lang.startsWith(langPrefix));
+      const best = matches.find(v => recommended.some(n => v.name.includes(n)) && /premium/i.test(v.name))
+                || matches.find(v => recommended.some(n => v.name.includes(n)) && /enhanced/i.test(v.name))
+                || matches.find(v => /premium/i.test(v.name))
+                || matches.find(v => /enhanced/i.test(v.name));
+      if (best) opts.voice = nativeTtsVoices.indexOf(best);
+    }
+
+    await NativeTTS.speak(opts);
+
+    if (remoteAudio) remoteAudio.volume = 1.0;
+    resumeSTTAfterTTS();
+    setTimeout(() => ttsProcessQueue(), 200);
+  } catch (err) {
+    console.warn('[kaitalk] 原生 TTS 失敗:', err);
+    if (remoteAudio) remoteAudio.volume = 1.0;
+    resumeSTTAfterTTS();
+    fallbackBrowserTts(text, lang, remoteAudio);
+  }
+}
+
+// 載入原生語音清單
+async function loadNativeVoices() {
+  if (!NativeTTS) return;
+  try {
+    const result = await NativeTTS.getSupportedVoices();
+    nativeTtsVoices = result.voices || [];
+    console.log(`[kaitalk] 原生語音數量: ${nativeTtsVoices.length}`);
+  } catch (err) {
+    console.warn('[kaitalk] 載入原生語音失敗:', err);
+  }
+}
+loadNativeVoices();
+
 function fallbackBrowserTts(text, lang, remoteAudio) {
+  pauseSTTForTTS();
+
   const utter = new SpeechSynthesisUtterance(text);
   utter.lang = lang || sttLang;
   utter.rate = 1.05;
@@ -1350,10 +1570,12 @@ function fallbackBrowserTts(text, lang, remoteAudio) {
 
   utter.onend = () => {
     if (remoteAudio) remoteAudio.volume = 1.0;
+    resumeSTTAfterTTS();
     setTimeout(() => ttsProcessQueue(), 200);
   };
   utter.onerror = () => {
     if (remoteAudio) remoteAudio.volume = 1.0;
+    resumeSTTAfterTTS();
     setTimeout(() => ttsProcessQueue(), 200);
   };
 
@@ -1362,6 +1584,7 @@ function fallbackBrowserTts(text, lang, remoteAudio) {
 }
 
 function ttsStop() {
+  if (NativeTTS) NativeTTS.stop().catch(() => {});
   speechSynthesis.cancel();
   ttsQueue.length = 0;
   ttsSpeaking = false;
@@ -1784,10 +2007,8 @@ function updateAccountUI() {
 
   if (!kaitalkUserId) {
     el.innerHTML = `
-      <h4>${t('settings') || '帳號'}</h4>
-      <p style="font-size:12px;color:var(--muted);margin-bottom:8px;">${t('login_hint')}</p>
-      <button class="btn-oauth btn-apple" onclick="signInWithApple()"> Apple 登入</button>
-      <button class="btn-oauth btn-email" onclick="signInWithEmail()">✉️ Email 登入</button>
+      <p style="font-size:13px;color:var(--muted);margin-bottom:8px;">${t('login_hint')}</p>
+      <div style="display:flex;gap:8px;"><button class="btn-oauth btn-apple" onclick="signInWithApple()" style="flex:1;margin:0;"> Apple</button><button class="btn-oauth btn-email" onclick="signInWithEmail()" style="flex:1;margin:0;">✉️ Email</button></div>
     `;
     return;
   }
@@ -1797,30 +2018,29 @@ function updateAccountUI() {
     const provider = user?.app_metadata?.provider || 'anonymous';
     const email = user?.email || '';
 
+    const dailyLimit = isSponsor() ? SPONSOR_DAILY_LIMIT : FREE_DAILY_LIMIT;
+    const remainingHtml = `<div style="padding:8px 12px;background:var(--card-2);border-radius:10px;font-size:13px;font-weight:600;text-align:center;">${t('sponsor_remaining')}：${getRemainingUsage()} / ${dailyLimit}</div>`;
+
     const premiumHtml = isSponsor()
-      ? `<div style="padding:10px;background:linear-gradient(135deg,#ffe08c,#ffb347);border-radius:12px;text-align:center;margin-top:12px;">
+      ? `<div style="padding:10px;background:linear-gradient(135deg,#ffe08c,#ffb347);border-radius:12px;text-align:center;margin-top:8px;">
            <div style="font-size:14px;font-weight:700;">${t('sponsor_thanks')}</div>
            <div style="font-size:11px;margin-top:2px;">${SPONSOR_DAILY_LIMIT} ${t('sponsor_features')}</div>
-           <div style="font-size:11px;margin-top:4px;">${t('sponsor_remaining')}：${getRemainingUsage()} / ${SPONSOR_DAILY_LIMIT}</div>
          </div>`
-      : `<div style="padding:12px;background:var(--card-2);border-radius:12px;margin-top:12px;border:1px solid var(--border);">
-           <div style="font-size:13px;font-weight:700;margin-bottom:4px;">${t('sponsor_title')}</div>
-           <div style="font-size:11px;color:var(--muted);margin-bottom:8px;">${t('sponsor_desc')}</div>
-           <div style="font-size:11px;color:var(--muted);margin-bottom:8px;">${t('sponsor_remaining')}：${getRemainingUsage()} / ${FREE_DAILY_LIMIT}</div>
-           <button class="btn-oauth" onclick="purchasePremium()" style="background:linear-gradient(135deg,#ffe08c,#ffb347);color:#333;">${t('sponsor_btn')}</button>
+      : `<div style="margin-top:8px;">
+           <button class="btn-oauth" onclick="purchasePremium()" style="background:linear-gradient(135deg,#ffe08c,#ffb347);color:#333;margin:0;width:100%;">${t('sponsor_btn')}</button>
          </div>`;
 
     if (provider === 'anonymous') {
       el.innerHTML = `
-        <h4>帳號</h4>
-        <p style="font-size:12px;color:var(--muted);margin-bottom:8px;">${t('login_hint')}</p>
+        ${remainingHtml}
+        <p style="font-size:13px;color:var(--muted);margin:8px 0;">${t('login_hint')}</p>
         <div style="display:flex;gap:8px;"><button class="btn-oauth btn-apple" onclick="signInWithApple()" style="flex:1;margin:0;"> Apple</button><button class="btn-oauth btn-email" onclick="signInWithEmail()" style="flex:1;margin:0;">✉️ Email</button></div>
         ${premiumHtml}
       `;
     } else {
       el.innerHTML = `
-        <h4>帳號</h4>
-        <div style="display:flex;align-items:center;gap:8px;padding:10px;background:var(--card-2);border-radius:12px;">
+        ${remainingHtml}
+        <div style="display:flex;align-items:center;gap:8px;padding:10px;background:var(--card-2);border-radius:12px;margin-top:8px;">
           <span style="font-size:20px;">${provider === 'apple' ? '' : '✉️'}</span>
           <div>
             <div style="font-size:13px;font-weight:600;">${provider === 'apple' ? 'Apple' : 'Email'} 帳號</div>
@@ -1836,32 +2056,32 @@ function updateAccountUI() {
 // ─── 購買 Premium ─────────────────────────────────────
 const isNativeApp = !!window.Capacitor?.isNativePlatform?.();
 
-async function purchasePremium() {
-  if (isNativeApp) {
+function purchasePremium() {
+  const overlay = document.getElementById('sponsor-overlay');
+  if (overlay) overlay.classList.add('active');
+}
+
+function closeSponsorOverlay() {
+  const overlay = document.getElementById('sponsor-overlay');
+  if (overlay) overlay.classList.remove('active');
+}
+
+async function selectSponsorPlan(amount) {
+  closeSponsorOverlay();
+  if (isNativeApp && window.Capacitor?.Plugins?.InAppPurchase) {
     // iOS App → Apple IAP
-    // TODO: 接 @capgo/capacitor-purchases
-    if (window.Capacitor?.Plugins?.InAppPurchase) {
-      try {
-        await window.Capacitor.Plugins.InAppPurchase.purchase({ productId: 'com.kaitalk.premium.monthly' });
-        localStorage.setItem('kaitalk.premium', 'true');
-        updateAccountUI();
-        alert('🎉 Premium 啟用成功！');
-      } catch (err) {
-        log(`購買失敗: ${err.message}`);
-      }
-    } else {
-      alert('購買功能準備中，敬請期待！');
+    const productId = amount === 99 ? 'com.kaitalk.sponsor.99' : 'com.kaitalk.sponsor.199';
+    try {
+      await window.Capacitor.Plugins.InAppPurchase.purchase({ productId });
+      localStorage.setItem('kaitalk.premium', 'true');
+      updateAccountUI();
+      alert('🎉 感謝贊助！全功能已解鎖');
+    } catch (err) {
+      log(`購買失敗: ${err.message}`);
     }
   } else {
-    // PWA / 網頁 → 導到下載 App
-    await showConfirm({
-      icon: '📱',
-      text: '下載 KaiTalk App 贊助解鎖全功能\n\n• 每日 100 次翻譯\n• 自然語音翻譯\n• 信件功能',
-      okLabel: '前往下載',
-      cancelLabel: '稍後',
-    }).then(yes => {
-      if (yes) window.open('https://kaitalk.zeabur.app/about.html', '_blank');
-    });
+    // TODO: 接金流，先顯示提示
+    alert(`感謝選擇 NT$${amount} 贊助方案！金流功能開發中，敬請期待。`);
   }
 }
 
@@ -1897,7 +2117,7 @@ function connectSocket() {
     isHost = hostFlag;
     log(`配對成功！房號 ${roomCode}, 對方 ${peer.name} ${peerGender || '?'}, 我是 ${isHost ? 'host' : 'guest'}`);
     setStatus(`🎉 已配對到 ${peer.name}，建立連線中...`, true);
-    showPeerCard(peer.name, roomCode, isHost ? 'host' : 'guest', peerVerified, peerGender);
+    showPeerCard(peer.name, roomCode, isHost ? 'host' : 'guest', peerVerified, peerGender, peer.avatar);
     setPeerLangBadge(null); // 對方語言一開始未知
     showButtons('in-call');
     // 話題優先，沒話題才顯示豆知識
@@ -2097,6 +2317,22 @@ async function setupPeerConnection() {
 // nearby = 自己的大區（從 localStorage 讀）
 // specific = 用戶選的目標大區
 async function startMatching(opts = {}) {
+  // 防呆：socket 還沒連好就點配對
+  if (!socket || !socket.connected) {
+    log('⚠️ Socket 尚未連線，嘗試重連...');
+    setStatus('連線中，請稍候...');
+    connectSocket();
+    // 等 socket 連好再繼續
+    await new Promise((resolve, reject) => {
+      const timeout = setTimeout(() => reject(new Error('連線逾時')), 5000);
+      socket.once('connect', () => { clearTimeout(timeout); resolve(); });
+    }).catch(err => {
+      log(`❌ ${err.message}`);
+      setStatus('無法連線，請檢查網路後重試');
+      return;
+    });
+  }
+
   const mode = opts.mode || 'quick';
   const targetRegion = opts.targetRegion || null;
   const reunionCode = opts.reunionCode || null;
@@ -2473,7 +2709,7 @@ const BIG_REGIONS = [
 ];
 
 const onboardingEl = $('onboarding');
-const ONB_TOTAL_STEPS = 6;
+const ONB_TOTAL_STEPS = 7;
 const onbStepEls = Array.from({ length: ONB_TOTAL_STEPS }, (_, i) => $(`step-${i + 1}`));
 const onbDotEls = Array.from({ length: ONB_TOTAL_STEPS }, (_, i) => $(`dot-${i + 1}`));
 const onbNameInput = $('onb-name');
@@ -2617,6 +2853,11 @@ function onbWireGenderGrid() {
 
 function onbStart() {
   if (!onboardingEl) return;
+  // 非 iOS 隱藏 step 7 的 dot
+  if (!isIOS) {
+    const dot7 = $('dot-7');
+    if (dot7) dot7.style.display = 'none';
+  }
   onbBuildRegionGrid();
   onbBuildLangGrid();
   onbWireGenderGrid();
@@ -2664,9 +2905,74 @@ onbStep4Next?.addEventListener('click', () => onbShowStep(5));
 onbStep5Next?.addEventListener('click', () => onbShowStep(6));
 const onbStep6Next = $('onb-step6-next');
 onbStep6Next?.addEventListener('click', () => {
+  if (isIOS) {
+    onbShowStep(7);
+    onbCheckVoices();
+  } else {
+    // 非 iOS 跳過語音引導
+    localStorage.setItem(ONB_AVATAR_KEY, onbSelectedAvatar);
+    onbFinish();
+  }
+});
+
+// Step 7: 語音品質引導
+const onbStep7Next = $('onb-step7-next');
+const onbStep7Skip = $('onb-step7-skip');
+onbStep7Next?.addEventListener('click', () => {
   localStorage.setItem(ONB_AVATAR_KEY, onbSelectedAvatar);
   onbFinish();
 });
+onbStep7Skip?.addEventListener('click', () => {
+  localStorage.setItem(ONB_AVATAR_KEY, onbSelectedAvatar);
+  onbFinish();
+});
+
+function onbCheckVoices() {
+  const el = $('onb-voice-status');
+  if (!el) return;
+
+  const voices = speechSynthesis.getVoices();
+  // 如果語音還沒載入，等一下再試
+  if (voices.length === 0) {
+    speechSynthesis.onvoiceschanged = () => {
+      ttsVoiceCache = {};
+      onbCheckVoices();
+    };
+    el.innerHTML = '<div style="text-align:center;color:var(--muted);">正在偵測語音...</div>';
+    return;
+  }
+
+  // 偵測用戶選的語言
+  const userLang = onbSelectedLang || sttLang || 'zh-TW';
+  const langPrefix = userLang.split('-')[0];
+
+  const langMatches = voices.filter(v => v.lang.startsWith(langPrefix));
+  const premium = langMatches.filter(v => /\(Premium\)/i.test(v.name));
+  const enhanced = langMatches.filter(v => /\(Enhanced\)/i.test(v.name));
+  const basic = langMatches.filter(v => !/\(Premium\)|\(Enhanced\)/i.test(v.name));
+
+  const langLabel = { zh: '中文', ja: '日本語', en: 'English', ko: '한국어', es: 'Español', fr: 'Français', de: 'Deutsch', pt: 'Português', it: 'Italiano', ru: 'Русский', th: 'ไทย', vi: 'Tiếng Việt', ar: 'العربية', hi: 'हिन्दी', id: 'Indonesia', ms: 'Melayu' }[langPrefix] || langPrefix;
+
+  let html = `<div style="font-weight:700;margin-bottom:8px;">🔍 偵測到的 ${langLabel} 語音：</div>`;
+
+  if (premium.length > 0) {
+    html += `<div style="color:#16a34a;">✅ Premium（最高品質）：${premium.map(v => v.name).join('、')}</div>`;
+  }
+  if (enhanced.length > 0) {
+    html += `<div style="color:#2563eb;">✅ Enhanced（高品質）：${enhanced.map(v => v.name).join('、')}</div>`;
+  }
+  if (basic.length > 0) {
+    html += `<div style="color:#888;">📦 基本：${basic.map(v => v.name).join('、')}</div>`;
+  }
+
+  if (premium.length > 0 || enhanced.length > 0) {
+    html += `<div style="margin-top:10px;padding:8px;background:#dcfce7;border-radius:8px;font-weight:600;color:#16a34a;text-align:center;">🎉 你已經有高品質語音了！翻譯會很自然</div>`;
+  } else {
+    html += `<div style="margin-top:10px;padding:8px;background:#fef3c7;border-radius:8px;font-weight:600;color:#b45309;text-align:center;">⚠️ 建議下載高品質語音，翻譯聽起來會更像真人</div>`;
+  }
+
+  el.innerHTML = html;
+}
 
 // ─── Wire up ─────────────────────────────────────────
 btnStart.addEventListener('click', () => startMatching({ mode: 'quick' }));
@@ -3416,8 +3722,96 @@ function openSettings() {
     settingsTargetLangEl.value = curTargetLangs.length === 1 ? curTargetLangs[0] : '';
   }
 
+  // 更新語音設定區塊（僅 iOS）
+  updateSettingsVoice();
+
   settingsOverlay.classList.add('active');
 }
+
+async function updateSettingsVoice() {
+  const section = document.getElementById('settings-voice-section');
+  const el = document.getElementById('settings-voice-status');
+  if (!section || !el) return;
+
+  // 顯示語音設定（iOS 原生或任何平台都顯示）
+  if (!isIOS && !NativeTTS) { section.style.display = 'none'; return; }
+  section.style.display = 'block';
+
+  // 確保原生語音已載入
+  if (NativeTTS && nativeTtsVoices.length === 0) {
+    el.innerHTML = `<div style="color:#888;">正在載入語音...</div>`;
+    await loadNativeVoices();
+  }
+
+  // 填充語音下拉選單
+  refreshSettingsVoiceList();
+
+  // 顯示語音數量
+  const langPrefix = sttLang.split('-')[0];
+  if (NativeTTS && nativeTtsVoices.length > 0) {
+    const matches = nativeTtsVoices.filter(v => v.lang.startsWith(langPrefix));
+    const premium = matches.filter(v => /premium/i.test(v.name));
+    const enhanced = matches.filter(v => /enhanced/i.test(v.name));
+    el.innerHTML = `<div style="color:#16a34a;">🎙️ 偵測到 ${matches.length} 個語音</div>
+      <div style="font-size:11px;color:#666;margin-top:2px;">${premium.length} 個最佳品質 · ${enhanced.length} 個高品質</div>
+      <div style="font-size:11px;color:#888;margin-top:2px;">選一個然後按試聽聽看效果！</div>`;
+  } else {
+    const voices = speechSynthesis.getVoices();
+    if (voices.length === 0) {
+      el.innerHTML = `<div style="color:#888;">正在載入語音...</div>`;
+      speechSynthesis.addEventListener('voiceschanged', () => updateSettingsVoice(), { once: true });
+      return;
+    }
+    const matches = voices.filter(v => v.lang.startsWith(langPrefix));
+    el.innerHTML = `<div>偵測到 ${matches.length} 個語音</div>`;
+  }
+}
+
+// 語音選擇變更 → 存到 localStorage
+document.getElementById('settings-tts-voice-select')?.addEventListener('change', (e) => {
+  if (NativeTTS && nativeTtsVoices.length > 0) {
+    localStorage.setItem('kaitalk.ttsVoiceIdx', e.target.value);
+  } else {
+    localStorage.setItem('kaitalk.ttsVoiceURI', e.target.value);
+  }
+  ttsVoiceCache = {};
+  updateSettingsVoice();
+});
+
+// 試聽按鈕
+document.getElementById('btn-voice-test')?.addEventListener('click', () => {
+  const sel = document.getElementById('settings-tts-voice-select');
+  const val = sel?.value;
+
+  const testTexts = {
+    zh: '你好！歡迎使用 KaiTalk，這是你選擇的翻譯語音。',
+    ja: 'こんにちは！KaiTalkへようこそ。これはあなたが選んだ翻訳音声です。',
+    en: 'Hello! Welcome to KaiTalk. This is the translation voice you selected.',
+    ko: '안녕하세요! KaiTalk에 오신 것을 환영합니다.',
+    es: '¡Hola! Bienvenido a KaiTalk.',
+    fr: 'Bonjour ! Bienvenue sur KaiTalk.',
+    de: 'Hallo! Willkommen bei KaiTalk.',
+  };
+  const langPrefix = sttLang.split('-')[0];
+  const text = testTexts[langPrefix] || testTexts.en;
+
+  if (NativeTTS) {
+    // 原生試聽
+    const opts = { text, lang: sttLang, rate: 1.0, volume: 1.0, category: 'playback' };
+    if (val) opts.voice = parseInt(val, 10);
+    NativeTTS.stop().then(() => NativeTTS.speak(opts)).catch(console.warn);
+  } else {
+    // 瀏覽器試聽
+    speechSynthesis.cancel();
+    const utter = new SpeechSynthesisUtterance(text);
+    utter.lang = sttLang;
+    utter.rate = 1.05;
+    const voices = speechSynthesis.getVoices();
+    const voice = voices.find(v => v.voiceURI === val);
+    if (voice) utter.voice = voice;
+    speechSynthesis.speak(utter);
+  }
+});
 
 function closeSettings() {
   settingsOverlay?.classList.remove('active');
@@ -3445,9 +3839,9 @@ function saveSettings() {
     }
   }
 
-  // 儲存想找的語言（從多選下拉讀取）
-  const selectedTargetLangs = settingsTargetLangChecks
-    ? Array.from(settingsTargetLangChecks.querySelectorAll('input:checked')).map(cb => cb.value)
+  // 儲存想找的語言（從下拉選單讀取）
+  const selectedTargetLangs = settingsTargetLangEl?.value
+    ? [settingsTargetLangEl.value]
     : settingsTempTargetLangs;
   if (selectedTargetLangs.length === 0) {
     localStorage.removeItem(TARGET_LANGS_KEY);

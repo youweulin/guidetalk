@@ -867,6 +867,23 @@
       color: var(--text);
       border: 1px solid rgba(155, 152, 176, 0.2);
     }
+    .sponsor-plan-btn {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      width: 100%;
+      padding: 16px 20px;
+      border-radius: 14px;
+      border: 1.5px solid var(--border);
+      background: var(--card-2);
+      color: var(--text);
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .sponsor-plan-btn:hover, .sponsor-plan-btn:active {
+      border-color: #ffb347;
+      background: linear-gradient(135deg, rgba(255,224,140,0.15), rgba(255,179,71,0.15));
+    }
     .btn-tts {
       background: rgba(96,205,255,0.1);
       color: #60cdff;
@@ -2392,6 +2409,7 @@
         <span class="progress-dot" id="dot-4"></span>
         <span class="progress-dot" id="dot-5"></span>
         <span class="progress-dot" id="dot-6"></span>
+        <span class="progress-dot" id="dot-7"></span>
       </div>
 
       <!-- Step 1: 暱稱 -->
@@ -2466,7 +2484,27 @@
         <h2 data-i18n="your_language">你講什麼語言？💬</h2>
         <p class="step-hint" data-i18n="lang_hint">會用來辨識你的語音、轉成文字。對方看不懂的話會自動翻譯。</p>
         <div class="lang-grid" id="onb-lang-grid"></div>
-        <button id="onb-step6-next" class="btn-primary" disabled data-i18n="start_using">開始使用 🚀</button>
+        <button id="onb-step6-next" class="btn-primary" disabled data-i18n="next">下一步</button>
+      </div>
+
+      <!-- Step 7: 語音品質引導（僅 iOS 顯示） -->
+      <div class="onboarding-step" id="step-7">
+        <h2>讓翻譯聲音更自然 🗣️</h2>
+        <p class="step-hint">KaiTalk 會把對方說的話翻譯成你的語言，並用語音念出來。<br>下載高品質語音包，聽起來就像真人在跟你說話！</p>
+        <div id="onb-voice-status" style="margin:16px 0;padding:14px;background:var(--card-2);border-radius:12px;text-align:left;font-size:13px;line-height:1.6;"></div>
+        <div style="margin:12px 0;padding:14px;background:linear-gradient(135deg,#e8f4fd,#f0e6ff);border-radius:12px;text-align:left;">
+          <div style="font-size:13px;font-weight:700;margin-bottom:8px;">📱 下載方式（2 分鐘）</div>
+          <div style="font-size:12px;line-height:1.8;color:#333;">
+            1️⃣ iPhone <b>設定</b> → <b>輔助使用</b><br>
+            2️⃣ <b>朗讀內容</b> → <b>語音</b><br>
+            3️⃣ 選語言 → 下載「高音質」版本
+          </div>
+          <div style="font-size:11px;color:#666;margin-top:6px;line-height:1.6;">
+            👍 推薦：<b>Lilian</b>（女）· <b>Han</b>（男）· <b>Yun</b>（女）· <b>Limu</b>（男）
+          </div>
+        </div>
+        <button id="onb-step7-next" class="btn-primary" data-i18n="start_using">開始使用 🚀</button>
+        <button id="onb-step7-skip" class="btn-link" style="margin-top:8px;font-size:13px;color:var(--muted);background:none;border:none;cursor:pointer;">之後再說</button>
       </div>
     </div>
   </div>
@@ -2492,8 +2530,9 @@
     <!-- 對方 + 自己（精簡兩行 bar） -->
     <div id="peer-card" class="peer-card call-bar">
       <span id="connection-indicator" class="conn-indicator" style="display:none"></span>
-      <div class="call-bar-row">
-        <span class="cb-left"><span id="peer-gender-icon"></span> <span id="peer-name">—</span></span>
+      <div class="call-bar-row" style="display:flex;align-items:center;gap:8px;">
+        <img id="peer-avatar-img" src="" style="width:36px;height:36px;border-radius:50%;object-fit:cover;display:none;">
+        <span class="cb-left" style="flex:1;"><span id="peer-gender-icon"></span> <span id="peer-name">—</span></span>
         <span class="cb-divider">|</span>
         <span class="cb-right"><span id="user-display">—</span></span>
       </div>
@@ -2683,6 +2722,8 @@
         </div>
       </div>
 
+      <!-- 帳號登入 -->
+      <div class="settings-section" id="account-section" style="margin-top:0;"></div>
 
       <!-- 想跟誰聊（可改） -->
       <div class="settings-section">
@@ -2712,8 +2753,24 @@
         <select id="settings-target-lang-select" class="settings-select"></select>
       </div>
 
-      <!-- 帳號登入 -->
-      <div class="settings-section" id="account-section"></div>
+      <!-- 翻譯語音設定（僅 iOS） -->
+      <div class="settings-section" id="settings-voice-section" style="display:none;">
+        <h4>翻譯語音 🗣️</h4>
+        <div id="settings-voice-status" style="padding:10px;background:var(--card-2);border-radius:10px;font-size:12px;line-height:1.6;margin-bottom:10px;"></div>
+        <select id="settings-tts-voice-select" class="settings-select" style="margin-bottom:10px;"></select>
+        <button id="btn-voice-test" style="width:100%;padding:8px;border:1px solid var(--border);border-radius:8px;background:var(--card-2);font-size:12px;cursor:pointer;margin-bottom:10px;">🔊 試聽</button>
+        <div style="padding:12px;background:linear-gradient(135deg,#e8f4fd,#f0e6ff);border-radius:10px;">
+          <div style="font-size:12px;font-weight:700;margin-bottom:6px;">如何取得更多好聽的聲音？</div>
+          <div style="font-size:11px;line-height:1.7;color:#333;">
+            iPhone 設定 → <b>輔助使用</b> → <b>朗讀內容</b> → <b>語音</b><br>
+            → 選語言 → 下載「<b>高音質</b>」或「<b>增強音質</b>」版本
+          </div>
+          <div style="font-size:11px;color:#666;margin-top:8px;line-height:1.6;">
+            👍 推薦下載：<b>Lilian</b>（女）· <b>Han</b>（男）· <b>Yun</b>（女）· <b>Limu</b>（男）<br>
+            💡 下載後回到 KaiTalk 設定就能選擇
+          </div>
+        </div>
+      </div>
 
       </div><!-- end settings-scroll -->
       <div class="settings-footer-links" style="text-align:center;margin-bottom:12px;font-size:11px;color:var(--muted);">
@@ -2724,6 +2781,27 @@
       <div class="settings-actions">
         <button id="btn-settings-save" class="btn-primary" data-i18n="save">儲存</button>
         <button id="btn-settings-cancel" class="btn-secondary" data-i18n="cancel">取消</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 贊助 overlay -->
+  <div id="sponsor-overlay" class="settings-overlay">
+    <div class="settings-overlay-content" style="max-width:360px;padding:24px 20px;">
+      <h3 style="margin-bottom:8px;">贊助 KaiTalk</h3>
+      <p style="font-size:12px;color:var(--muted);text-align:center;margin-bottom:16px;">贊助金額未來可全額抵扣正式版費用</p>
+      <div id="sponsor-plans" style="display:flex;flex-direction:column;gap:10px;">
+        <button class="sponsor-plan-btn" data-amount="99" onclick="selectSponsorPlan(99)">
+          <span style="font-size:18px;font-weight:700;">NT$ 99</span>
+          <span style="font-size:12px;color:var(--muted);">輕量贊助</span>
+        </button>
+        <button class="sponsor-plan-btn" data-amount="199" onclick="selectSponsorPlan(199)">
+          <span style="font-size:18px;font-weight:700;">NT$ 199</span>
+          <span style="font-size:12px;color:var(--muted);">進階贊助</span>
+        </button>
+      </div>
+      <div style="margin-top:16px;">
+        <button class="btn-secondary" onclick="closeSponsorOverlay()" style="width:100%;">取消</button>
       </div>
     </div>
   </div>
@@ -2782,7 +2860,7 @@
 
   <audio id="remote-audio" autoplay playsinline></audio>
 
-  <script src="/socket.io/socket.io.js"></script>
+  <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.74.0/dist/umd/supabase.min.js"></script>
   <script src="/main.js"></script>
 </body>
