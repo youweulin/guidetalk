@@ -1718,32 +1718,34 @@ function updateAccountUI() {
 }
 
 // ─── 購買 Premium ─────────────────────────────────────
+const isNativeApp = !!window.Capacitor?.isNativePlatform?.();
+
 async function purchasePremium() {
-  // TODO: 接 Apple IAP（Capacitor plugin）
-  // 目前先用 placeholder
-  if (window.Capacitor?.Plugins?.InAppPurchase) {
-    // iOS native IAP
-    try {
-      await window.Capacitor.Plugins.InAppPurchase.purchase({ productId: 'com.kaitalk.premium.monthly' });
-      localStorage.setItem('kaitalk.premium', 'true');
-      updateAccountUI();
-      alert('🎉 Premium 啟用成功！');
-    } catch (err) {
-      log(`購買失敗: ${err.message}`);
+  if (isNativeApp) {
+    // iOS App → Apple IAP
+    // TODO: 接 @capgo/capacitor-purchases
+    if (window.Capacitor?.Plugins?.InAppPurchase) {
+      try {
+        await window.Capacitor.Plugins.InAppPurchase.purchase({ productId: 'com.kaitalk.premium.monthly' });
+        localStorage.setItem('kaitalk.premium', 'true');
+        updateAccountUI();
+        alert('🎉 Premium 啟用成功！');
+      } catch (err) {
+        log(`購買失敗: ${err.message}`);
+      }
+    } else {
+      alert('購買功能準備中，敬請期待！');
     }
   } else {
-    // Web fallback — 暫時手動啟用（測試用）
-    const yes = await showConfirm({
-      icon: '⭐',
-      text: 'Premium 功能（NT$199/月）\n\n• 無限翻譯\n• 自然語音翻譯\n• 信件功能\n• 優先配對\n\n目前為測試版，確認啟用？',
-      okLabel: '啟用 Premium',
-      cancelLabel: '取消',
+    // PWA / 網頁 → 導到下載 App
+    await showConfirm({
+      icon: '📱',
+      text: '下載 KaiTalk App 即可升級 Premium\n\n• 無限翻譯\n• 自然語音翻譯\n• 信件功能\n• 優先配對',
+      okLabel: '前往下載',
+      cancelLabel: '稍後',
+    }).then(yes => {
+      if (yes) window.open('https://kaitalk.zeabur.app/about.html', '_blank');
     });
-    if (yes) {
-      localStorage.setItem('kaitalk.premium', 'true');
-      updateAccountUI();
-      log('⭐ Premium 已啟用（測試）');
-    }
   }
 }
 
