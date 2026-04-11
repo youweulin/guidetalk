@@ -474,6 +474,40 @@ function applyI18n() {
 const _capNative = window.Capacitor?.nativePromise;
 const isCapacitorNative = !!_capNative;
 
+// ─── PWA: Service Worker + Install Prompt ──────────────
+if ('serviceWorker' in navigator && !isCapacitorNative) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js').then((reg) => {
+      console.log('[kaitalk] SW registered, scope:', reg.scope);
+    }).catch((err) => {
+      console.warn('[kaitalk] SW registration failed:', err);
+    });
+  });
+}
+
+// PWA install prompt（Android Chrome / Edge）
+let deferredInstallPrompt = null;
+window.addEventListener('beforeinstallprompt', (e) => {
+  e.preventDefault();
+  deferredInstallPrompt = e;
+  // 顯示自訂安裝按鈕
+  const btn = document.getElementById('btn-pwa-install');
+  if (btn) btn.style.display = 'block';
+});
+
+function installPwa() {
+  if (!deferredInstallPrompt) return;
+  deferredInstallPrompt.prompt();
+  deferredInstallPrompt.userChoice.then((choice) => {
+    if (choice.outcome === 'accepted') {
+      console.log('[kaitalk] PWA installed');
+      const btn = document.getElementById('btn-pwa-install');
+      if (btn) btn.style.display = 'none';
+    }
+    deferredInstallPrompt = null;
+  });
+}
+
 // 原生 TTS plugin（Capacitor）
 const NativeTTS = window.Capacitor?.Plugins?.TextToSpeech;
 let nativeTtsVoices = []; // 快取原生語音清單

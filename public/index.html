@@ -12,6 +12,7 @@
   <link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png">
   <link rel="icon" type="image/png" sizes="16x16" href="favicon-16.png">
   <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
+  <link rel="manifest" href="/manifest.json">
   <style>
     :root {
       /* ─── 共用底色 ─── */
@@ -2667,6 +2668,13 @@
   </div>
 
   <!-- 對話 / 好友 tab（主畫面下方）-->
+  <!-- PWA 安裝提示 -->
+  <div id="btn-pwa-install" style="display:none;padding:8px 16px;margin:0 auto 8px;max-width:480px;">
+    <button onclick="installPwa()" style="width:100%;padding:12px;border:none;border-radius:12px;background:linear-gradient(135deg,#7c6dd8,#4a90d9);color:#fff;font-size:14px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;">
+      <span style="font-size:18px;">📲</span> 安裝 KaiTalk App
+    </button>
+  </div>
+
   <div id="bottom-tabs" class="bottom-tabs" style="display:none">
     <div class="tab-bar">
       <button class="tab-btn active" data-tab="history" data-i18n="tab_chat">💬 對話</button>
