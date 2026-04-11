@@ -2423,15 +2423,13 @@ function buildSettingsRegionGrid() {
 buildSettingsRegionGrid();
 
 function wireSettingsLangButtons() {
-  document.querySelectorAll('.settings-lang-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
-      document.querySelectorAll('.settings-lang-btn').forEach(b => b.classList.remove('selected'));
-      btn.classList.add('selected');
-      settingsTempLang = btn.dataset.lang;
-    });
-  });
 }
-wireSettingsLangButtons();
+
+// 我的語言下拉選單
+const settingsLangSelect = document.getElementById('settings-lang-select');
+settingsLangSelect?.addEventListener('change', () => {
+  settingsTempLang = settingsLangSelect.value;
+});
 
 function wireSettingsAvatarButtons() {
   document.querySelectorAll('.avatar-option').forEach(btn => {
@@ -2461,17 +2459,8 @@ document.querySelectorAll('.settings-tgender-btn').forEach(btn => {
 });
 
 // 想找講什麼語言（多選 toggle）
-document.querySelectorAll('.settings-target-lang-btn').forEach(btn => {
-  btn.addEventListener('click', () => {
-    btn.classList.toggle('selected');
-    const lang = btn.dataset.tlang;
-    if (btn.classList.contains('selected')) {
-      if (!settingsTempTargetLangs.includes(lang)) settingsTempTargetLangs.push(lang);
-    } else {
-      settingsTempTargetLangs = settingsTempTargetLangs.filter(l => l !== lang);
-    }
-  });
-});
+// 想找語言多選下拉
+const settingsTargetLangSelect = document.getElementById('settings-target-lang-select');
 
 function openSettings() {
   if (!settingsOverlay) return;
@@ -2507,18 +2496,18 @@ function openSettings() {
     b.classList.toggle('selected', b.dataset.region === currentRegion);
   });
 
-  // 預選當前語言
+  // 預選當前語言（下拉選單）
   settingsTempLang = sttLang;
-  document.querySelectorAll('.settings-lang-btn').forEach(b => {
-    b.classList.toggle('selected', b.dataset.lang === sttLang);
-  });
+  if (settingsLangSelect) settingsLangSelect.value = sttLang;
 
-  // 預選想找的語言（多選）
+  // 預選想找的語言（多選下拉）
   const curTargetLangs = getTargetLangs();
   settingsTempTargetLangs = [...curTargetLangs];
-  document.querySelectorAll('.settings-target-lang-btn').forEach(b => {
-    b.classList.toggle('selected', curTargetLangs.includes(b.dataset.tlang));
-  });
+  if (settingsTargetLangSelect) {
+    Array.from(settingsTargetLangSelect.options).forEach(opt => {
+      opt.selected = curTargetLangs.includes(opt.value);
+    });
+  }
 
   settingsOverlay.classList.add('active');
 }
@@ -2549,11 +2538,14 @@ function saveSettings() {
     }
   }
 
-  // 儲存想找的語言
-  if (settingsTempTargetLangs.length === 0) {
+  // 儲存想找的語言（從多選下拉讀取）
+  const selectedTargetLangs = settingsTargetLangSelect
+    ? Array.from(settingsTargetLangSelect.selectedOptions).map(o => o.value)
+    : settingsTempTargetLangs;
+  if (selectedTargetLangs.length === 0) {
     localStorage.removeItem(TARGET_LANGS_KEY);
   } else {
-    localStorage.setItem(TARGET_LANGS_KEY, JSON.stringify(settingsTempTargetLangs));
+    localStorage.setItem(TARGET_LANGS_KEY, JSON.stringify(selectedTargetLangs));
   }
 
   log(`設定已儲存`);

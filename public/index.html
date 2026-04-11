@@ -1465,6 +1465,36 @@
       letter-spacing: 0.08em;
       margin-bottom: 8px;
     }
+    .settings-select {
+      width: 100%;
+      padding: 12px 14px;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      background: var(--card-2);
+      color: var(--text);
+      font-size: 15px;
+      font-weight: 600;
+      font-family: inherit;
+      outline: none;
+      appearance: none;
+      -webkit-appearance: none;
+      cursor: pointer;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2386868b' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 14px center;
+    }
+    .settings-select:focus {
+      border-color: var(--primary);
+    }
+    .settings-select[multiple] {
+      padding: 8px;
+      background-image: none;
+    }
+    .settings-select[multiple] option {
+      padding: 8px 10px;
+      border-radius: 8px;
+      margin-bottom: 2px;
+    }
     .settings-locked-row {
       display: flex;
       align-items: center;
@@ -2303,28 +2333,29 @@
         <div class="region-grid" id="settings-region-grid"></div>
       </div>
 
-      <!-- 我的語言（可改） -->
+      <!-- 我的語言（下拉選單） -->
       <div class="settings-section">
         <h4>我講的語言</h4>
-        <div class="lang-grid">
-          <button class="grid-btn settings-lang-btn" data-lang="zh-TW">🇹🇼 中文（繁）</button>
-          <button class="grid-btn settings-lang-btn" data-lang="ja-JP">🇯🇵 日本語</button>
-          <button class="grid-btn settings-lang-btn" data-lang="en-US">🇺🇸 English</button>
-          <button class="grid-btn settings-lang-btn" data-lang="ko-KR">🇰🇷 한국어</button>
-          <button class="grid-btn settings-lang-btn" data-lang="zh-CN">🇨🇳 简中</button>
-        </div>
+        <select id="settings-lang-select" class="settings-select">
+          <option value="zh-TW">🇹🇼 中文（繁）</option>
+          <option value="ja-JP">🇯🇵 日本語</option>
+          <option value="en-US">🇺🇸 English</option>
+          <option value="ko-KR">🇰🇷 한국어</option>
+          <option value="zh-CN">🇨🇳 简中</option>
+        </select>
       </div>
 
-      <!-- 想找講什麼語言的人（可多選） -->
+      <!-- 想找講什麼語言的人（多選下拉） -->
       <div class="settings-section">
         <h4>想找講什麼語言的人</h4>
-        <p style="font-size:11px;color:var(--muted);margin-bottom:8px;">可多選，不選 = 所有語言</p>
-        <div class="lang-grid">
-          <button class="grid-btn settings-target-lang-btn" data-tlang="zh-TW">🇹🇼 中文（繁）</button>
-          <button class="grid-btn settings-target-lang-btn" data-tlang="ja-JP">🇯🇵 日本語</button>
-          <button class="grid-btn settings-target-lang-btn" data-tlang="en-US">🇺🇸 English</button>
-          <button class="grid-btn settings-target-lang-btn" data-tlang="ko-KR">🇰🇷 한국어</button>
-          <button class="grid-btn settings-target-lang-btn" data-tlang="zh-CN">🇨🇳 简中</button>
+        <select id="settings-target-lang-select" class="settings-select" multiple size="5">
+          <option value="zh-TW">🇹🇼 中文（繁）</option>
+          <option value="ja-JP">🇯🇵 日本語</option>
+          <option value="en-US">🇺🇸 English</option>
+          <option value="ko-KR">🇰🇷 한국어</option>
+          <option value="zh-CN">🇨🇳 简中</option>
+        </select>
+        <p style="font-size:11px;color:var(--muted);margin-top:6px;">不選 = 所有語言</p>
         </div>
       </div>
 
