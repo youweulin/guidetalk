@@ -473,6 +473,7 @@ function applyI18n() {
 if (window.Capacitor?.registerPlugin) {
   window.Capacitor.registerPlugin('AppleSignIn');
   window.Capacitor.registerPlugin('TextToSpeech');
+  window.Capacitor.registerPlugin('AppleTranslation');
 }
 
 // 原生 TTS plugin（Capacitor）
@@ -729,11 +730,25 @@ class GoogleFreeTranslator extends TranslationProvider {
     const from = langCodeForGoogle(fromLang);
     const to = langCodeForGoogle(toLang);
     if (from === to) return text;
-    const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=${from}&tl=${to}&dt=t&q=${encodeURIComponent(text)}`;
-    const res = await fetch(url);
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    const data = await res.json();
-    return data[0].map(seg => seg[0]).join('');
+
+    if (isLocalCapacitor) {
+      // iOS App：透過 server proxy 翻譯（CapacitorHttp 會破壞直接呼叫 Google Translate）
+      const resp = await fetch(API_BASE + '/api/translate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text, from, to }),
+      });
+      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+      const data = await resp.json();
+      return data.translated;
+    } else {
+      // PWA 網頁：直接呼叫 Google Translate
+      const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=${from}&tl=${to}&dt=t&q=${encodeURIComponent(text)}`;
+      const res = await fetch(url);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+      return data[0].map(seg => seg[0]).join('');
+    }
   }
 }
 
@@ -745,9 +760,22 @@ class MyMemoryTranslator extends TranslationProvider {
     const to = langCodeForMyMemory(toLang);
     if (from === to) return text;
     const url = `https://api.mymemory.translated.net/get?q=${encodeURIComponent(text)}&langpair=${from}|${to}`;
-    const res = await fetch(url);
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    const data = await res.json();
+
+    const data = await new Promise((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
+      xhr.open('GET', url);
+      xhr.onload = () => {
+        if (xhr.status >= 200 && xhr.status < 300) {
+          try { resolve(JSON.parse(xhr.responseText)); }
+          catch (e) { reject(new Error('JSON parse failed')); }
+        } else {
+          reject(new Error(`HTTP ${xhr.status}`));
+        }
+      };
+      xhr.onerror = () => reject(new Error('Network error'));
+      xhr.send();
+    });
+
     return data?.responseData?.translatedText || text;
   }
 }

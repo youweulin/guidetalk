@@ -545,6 +545,25 @@ app.post('/api/tts', express.json(), async (req, res) => {
   }
 });
 
+// POST /api/translate — 翻譯 proxy（解決 CapacitorHttp 破壞 Google Translate 回傳的問題）
+app.post('/api/translate', express.json(), async (req, res) => {
+  const { text, from, to } = req.body;
+  if (!text || !from || !to) return res.status(400).json({ error: 'missing params' });
+  if (from === to) return res.json({ translated: text });
+
+  try {
+    const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=${from}&tl=${to}&dt=t&q=${encodeURIComponent(text.slice(0, 1000))}`;
+    const resp = await fetch(url);
+    if (!resp.ok) throw new Error(`Google HTTP ${resp.status}`);
+    const data = await resp.json();
+    const translated = data[0].map(seg => seg[0]).join('');
+    res.json({ translated });
+  } catch (err) {
+    console.error(`[翻譯] Google Translate error: ${err.message}`);
+    res.status(500).json({ error: 'translate failed' });
+  }
+});
+
 // ─── 信件 API ────────────────────────────────────────
 
 // POST /api/letters/send — 寄信給好友
