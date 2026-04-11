@@ -2801,6 +2801,7 @@ async function loadTrivia() {
   try {
     const r = await fetch('/content/trivia.json');
     triviaData = await r.json();
+    window._triviaData = triviaData; // 給 loadTrends 用
     log(`📚 載入 ${triviaData.length} 條豆知識`);
   } catch (err) {
     log(`豆知識載入失敗: ${err.message}`);
@@ -2854,10 +2855,9 @@ function hideTrivia() {
   if (cardEl) cardEl.classList.remove('active');
 }
 
-loadTrivia();
 renderBottomTabs();
 applyGenderTheme();
-loadTrends();
+loadTrivia().then(() => loadTrends());
 
 // ─── 熱門話題 ─────────────────────────────────────
 async function loadTrends() {
@@ -2867,14 +2867,18 @@ async function loadTrends() {
     const section = document.getElementById('trends-section');
     if (!section) return;
 
-    // 台日混合，交錯排列，共取 6 個
-    const tw = (data.tw || []).slice(0, 3);
-    const jp = (data.jp || []).slice(0, 3);
-    const mixed = [];
-    for (let i = 0; i < 3; i++) {
-      if (tw[i]) mixed.push(tw[i]);
-      if (jp[i]) mixed.push(jp[i]);
-    }
+    // 熱門話題 2 個（台日各 1）+ 我們的破冰話題 4 個
+    const tw = (data.tw || []).slice(0, 1);
+    const jp = (data.jp || []).slice(0, 1);
+
+    // 從 trivia 的 intro/fun/challenge 隨機抽 4 個
+    const icebreakers = (window._triviaData || [])
+      .filter(t => t.cat && ['intro', 'fun', 'challenge'].includes(t.cat))
+      .sort(() => Math.random() - 0.5)
+      .slice(0, 4)
+      .map(t => ({ title: t.zh.replace(/^[💬🎲🗣️🧠🌏]\s*/, '') }));
+
+    const mixed = [...tw, ...icebreakers, ...jp].slice(0, 6);
     if (mixed.length === 0) return;
 
     section.style.display = 'block';
