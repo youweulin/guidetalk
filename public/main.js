@@ -843,6 +843,15 @@ const showButtons = (state) => {
   const ub = document.getElementById('user-bar');
   if (ub) ub.style.display = state === 'idle' ? 'flex' : 'none';
 
+  // 話題區只在 idle 顯示
+  document.querySelectorAll('.trends-section').forEach(el => {
+    el.style.display = state === 'idle' ? el.dataset.wasVisible || 'block' : 'none';
+  });
+
+  // 隱私/條款連結只在 idle 顯示
+  const footerLinks = document.querySelector('.footer-links');
+  if (footerLinks) footerLinks.style.display = state === 'idle' ? 'block' : 'none';
+
   // 歷史對話區只在 idle 顯示（有紀錄時）
   const bottomTabs = document.getElementById('bottom-tabs');
   if (bottomTabs) {
