@@ -1732,19 +1732,19 @@ const GENDER_SVGS = {
 const GENDER_ICONS = { male: '♂', female: '♀', other: '⚥' };
 
 const BIG_REGIONS = [
-  { id: 'tw-north',    flag: '🇹🇼', name: '北部' },
-  { id: 'tw-central',  flag: '🇹🇼', name: '中部' },
-  { id: 'tw-south',    flag: '🇹🇼', name: '南部' },
-  { id: 'tw-east',     flag: '🇹🇼', name: '東部' },
-  { id: 'tw-island',   flag: '🇹🇼', name: '離島' },
-  { id: 'jp-hokkaido', flag: '🇯🇵', name: '北海道' },
-  { id: 'jp-tohoku',   flag: '🇯🇵', name: '東北' },
-  { id: 'jp-kanto',    flag: '🇯🇵', name: '関東' },
-  { id: 'jp-chubu',    flag: '🇯🇵', name: '中部' },
-  { id: 'jp-kansai',   flag: '🇯🇵', name: '関西' },
-  { id: 'jp-chugoku',  flag: '🇯🇵', name: '中国' },
-  { id: 'jp-shikoku',  flag: '🇯🇵', name: '四国' },
-  { id: 'jp-kyushu',   flag: '🇯🇵', name: '九州' },
+  { id: 'tw-north',    flag: '📍', name: 'TW 北部' },
+  { id: 'tw-central',  flag: '📍', name: 'TW 中部' },
+  { id: 'tw-south',    flag: '📍', name: 'TW 南部' },
+  { id: 'tw-east',     flag: '📍', name: 'TW 東部' },
+  { id: 'tw-island',   flag: '📍', name: 'TW 離島' },
+  { id: 'jp-hokkaido', flag: '📍', name: 'JP 北海道' },
+  { id: 'jp-tohoku',   flag: '📍', name: 'JP 東北' },
+  { id: 'jp-kanto',    flag: '📍', name: 'JP 関東' },
+  { id: 'jp-chubu',    flag: '📍', name: 'JP 中部' },
+  { id: 'jp-kansai',   flag: '📍', name: 'JP 関西' },
+  { id: 'jp-chugoku',  flag: '📍', name: 'JP 中国' },
+  { id: 'jp-shikoku',  flag: '📍', name: 'JP 四国' },
+  { id: 'jp-kyushu',   flag: '📍', name: 'JP 九州' },
 ];
 
 const onboardingEl = $('onboarding');
