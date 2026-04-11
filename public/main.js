@@ -2889,13 +2889,14 @@ async function loadTrends() {
     const grid = document.getElementById('trends-grid');
     if (!grid) return;
 
-    grid.innerHTML = mixed.map(t =>
-      `<div class="trend-chip" data-topic="${encodeURIComponent(t.title)}">${t.title}</div>`
+    grid.innerHTML = mixed.map((t, i) =>
+      `<div class="trend-chip" data-idx="${i}">${t.title}</div>`
     ).join('');
 
     grid.querySelectorAll('.trend-chip').forEach(chip => {
       chip.addEventListener('click', () => {
-        startMatching({ mode: 'quick', topicId: decodeURIComponent(chip.dataset.topic) });
+        const topic = mixed[parseInt(chip.dataset.idx)]?.title;
+        if (topic) startMatching({ mode: 'quick', topicId: topic });
       });
     });
   } catch (err) {
