@@ -383,6 +383,7 @@ app.post('/api/report', express.json(), async (req, res) => {
     console.log(`[🚨] Report: ${userId.slice(0, 8)} reported ${reportedId.slice(0, 8)} for ${reason}`);
     // Karma: 被檢舉 -10 + 自動懲罰檢查
     onReport(db, reportedId);
+    trackReport();
     res.json({ ok: true });
   } catch (err) {
     console.error(`[🚨] Report failed: ${err.message}`);
@@ -632,6 +633,92 @@ app.get('/api/letters/thread/:friendId', async (req, res) => {
   }
 });
 
+// ─── 分析追蹤（in-memory + 定期寫 DB）────────────────
+const analyticsToday = {
+  date: new Date().toISOString().slice(0, 10),
+  uniqueUsers: new Set(),
+  totalCalls: 0,
+  totalCallSeconds: 0,
+  peakOnline: 0,
+  newUsers: 0,
+  reports: 0,
+};
+
+function resetAnalyticsIfNewDay() {
+  const today = new Date().toISOString().slice(0, 10);
+  if (analyticsToday.date !== today) {
+    flushAnalytics(); // 先存昨天的
+    analyticsToday.date = today;
+    analyticsToday.uniqueUsers = new Set();
+    analyticsToday.totalCalls = 0;
+    analyticsToday.totalCallSeconds = 0;
+    analyticsToday.peakOnline = 0;
+    analyticsToday.newUsers = 0;
+    analyticsToday.reports = 0;
+  }
+}
+
+function trackUser(userId) {
+  resetAnalyticsIfNewDay();
+  if (userId) analyticsToday.uniqueUsers.add(userId);
+  const online = io.engine?.clientsCount || 0;
+  if (online > analyticsToday.peakOnline) analyticsToday.peakOnline = online;
+}
+
+function trackCall(durationSec) {
+  resetAnalyticsIfNewDay();
+  analyticsToday.totalCalls++;
+  analyticsToday.totalCallSeconds += durationSec || 0;
+}
+
+function trackReport() {
+  resetAnalyticsIfNewDay();
+  analyticsToday.reports++;
+}
+
+async function flushAnalytics() {
+  const db = getDbClient();
+  if (!db) return;
+  try {
+    await db.execute({
+      sql: `INSERT INTO kaitalk_daily_stats (date, unique_users, total_calls, total_call_seconds, peak_online, new_users, reports)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+            ON CONFLICT(date) DO UPDATE SET
+              unique_users = ?, total_calls = ?, total_call_seconds = ?,
+              peak_online = MAX(peak_online, ?), reports = ?`,
+      args: [
+        analyticsToday.date,
+        analyticsToday.uniqueUsers.size, analyticsToday.totalCalls, analyticsToday.totalCallSeconds, analyticsToday.peakOnline, analyticsToday.newUsers, analyticsToday.reports,
+        analyticsToday.uniqueUsers.size, analyticsToday.totalCalls, analyticsToday.totalCallSeconds, analyticsToday.peakOnline, analyticsToday.reports,
+      ],
+    });
+
+    // 每小時在線統計
+    const hour = new Date().getHours();
+    const online = io.engine?.clientsCount || 0;
+    await db.execute({
+      sql: `INSERT INTO kaitalk_hourly_online (date, hour, online_count, call_count)
+            VALUES (?, ?, ?, ?)
+            ON CONFLICT(date, hour) DO UPDATE SET online_count = ?, call_count = ?`,
+      args: [analyticsToday.date, hour, online, analyticsToday.totalCalls, online, analyticsToday.totalCalls],
+    });
+  } catch (err) {
+    console.warn(`[📊] Analytics flush failed: ${err.message}`);
+  }
+}
+
+// 每 5 分鐘寫一次 DB
+setInterval(flushAnalytics, 5 * 60 * 1000);
+
+// 在線人數 API（給主畫面顯示）
+app.get('/api/stats/online', (req, res) => {
+  res.json({
+    online: io.engine?.clientsCount || 0,
+    todayCalls: analyticsToday.totalCalls,
+    todayUsers: analyticsToday.uniqueUsers.size,
+  });
+});
+
 // ─── 配對佇列（in-memory）─────────────────────────────
 // queue[gameType] = [{ socket, name }]
 const queues = new Map();
@@ -700,6 +787,8 @@ function endActiveCall(roomCode, endReason) {
     durationSec,
     endReason,
   }).catch(() => {});
+
+  trackCall(durationSec);
 
   // Karma: 通話結束事件
   onCallEnd(getDbClient(), {
@@ -828,6 +917,7 @@ io.on('connection', (socket) => {
     ? `${socket.id.slice(0, 6)}/u:${socket.data.userId.slice(0, 6)}${socket.data.isAnonymous ? '*' : ''}`
     : socket.id.slice(0, 8);
   console.log(`[+] ${tag} connected`);
+  trackUser(socket.data.userId || socket.id);
 
   // 如果驗證過，順手 upsert users 表（不阻塞、失敗也沒差）
   // nickname 之後 main.js 會在 find_match 帶上來，這裡先用占位
