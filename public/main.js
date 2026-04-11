@@ -2176,9 +2176,12 @@ function onbShowStep(n) {
 
 function onbBuildRegionGrid() {
   if (!onbRegionGrid) return;
-  onbRegionGrid.innerHTML = BIG_REGIONS.map(r =>
-    `<button class="grid-btn" data-region="${r.id}">${r.flag} ${r.name}</button>`
-  ).join('');
+  onbRegionGrid.innerHTML = BIG_REGIONS.map(r => {
+    // onboarding 只顯示簡短名稱（去掉 📍）
+    const shortName = r.name.replace(/^(TW|JP)\s*/, '');
+    const countryFlag = r.id.startsWith('tw') ? '🇹🇼' : '🇯🇵';
+    return `<button class="grid-btn" data-region="${r.id}">${countryFlag} ${shortName}</button>`;
+  }).join('');
   onbRegionGrid.querySelectorAll('.grid-btn').forEach(btn => {
     btn.addEventListener('click', () => {
       onbRegionGrid.querySelectorAll('.grid-btn').forEach(b => b.classList.remove('selected'));
