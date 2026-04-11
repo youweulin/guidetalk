@@ -1182,6 +1182,7 @@ function connectSocket() {
     isHost = hostFlag;
     log(`配對成功！房號 ${roomCode}, 對方 ${peer.name} ${peerGender || '?'}, 我是 ${isHost ? 'host' : 'guest'}`);
     setStatus(`🎉 已配對到 ${peer.name}，建立連線中...`, true);
+    updateConnectionUI('checking');
     showPeerCard(peer.name, roomCode, isHost ? 'host' : 'guest', peerVerified, peerGender);
     setPeerLangBadge(null); // 對方語言一開始未知
     // 在地化豆知識：根據雙方地區選
@@ -1346,16 +1347,33 @@ async function setupPeerConnection() {
   };
 
   pc.oniceconnectionstatechange = () => {
-    log(`ICE state: ${pc.iceConnectionState}`);
-    if (pc.iceConnectionState === 'connected') {
-      setStatus(`🎙️ 與 ${peerName} P2P 連線成功，正在通話`, true);
-    } else if (pc.iceConnectionState === 'failed') {
-      setStatus('連線失敗（可能需要 TURN）');
+    const state = pc.iceConnectionState;
+    log(`ICE state: ${state}`);
+    updateConnectionUI(state);
+
+    if (state === 'connected' || state === 'completed') {
+      setStatus(`🎙️ 與 ${peerName} 通話中`, true);
+      reconnectAttempts = 0;
+    } else if (state === 'disconnected') {
+      // 短暫斷線（Wi-Fi 切換等）→ 顯示重連中，等幾秒看會不會恢復
+      setStatus('⏳ 連線中斷，嘗試重新連線...', true);
+      log('🔄 連線暫時中斷，等待恢復...');
+      // 5 秒後如果還是 disconnected，嘗試 ICE restart
+      setTimeout(() => {
+        if (pc && pc.iceConnectionState === 'disconnected') {
+          attemptReconnect();
+        }
+      }, 5000);
+    } else if (state === 'failed') {
+      attemptReconnect();
     }
   };
 
   pc.onconnectionstatechange = () => {
     log(`PC state: ${pc.connectionState}`);
+    if (pc.connectionState === 'failed') {
+      attemptReconnect();
+    }
   };
 
   // host 主動發 offer
@@ -1366,6 +1384,63 @@ async function setupPeerConnection() {
     log(`已發送 offer 給 ${peerId.slice(0, 8)}`);
   }
   // guest 等對方的 offer
+}
+
+// ─── 自動重連 ─────────────────────────────────────────
+let reconnectAttempts = 0;
+const MAX_RECONNECT = 3;
+
+async function attemptReconnect() {
+  if (!pc || !peerId) return;
+  reconnectAttempts++;
+
+  if (reconnectAttempts > MAX_RECONNECT) {
+    setStatus('❌ 連線失敗，請重新配對');
+    log(`重連失敗（已嘗試 ${MAX_RECONNECT} 次）`);
+    updateConnectionUI('failed');
+    return;
+  }
+
+  log(`🔄 嘗試重連 (${reconnectAttempts}/${MAX_RECONNECT})...`);
+  setStatus(`🔄 重新連線中 (${reconnectAttempts}/${MAX_RECONNECT})...`, true);
+  updateConnectionUI('reconnecting');
+
+  try {
+    // ICE restart：重新協商連線路徑
+    const offer = await pc.createOffer({ iceRestart: true });
+    await pc.setLocalDescription(offer);
+    socket.emit('webrtc_signal', { target: peerId, signal: offer });
+    log('🔄 已發送 ICE restart offer');
+  } catch (err) {
+    log(`🔄 重連失敗: ${err.message}`);
+    // 等 3 秒再試
+    setTimeout(() => {
+      if (pc && pc.iceConnectionState !== 'connected') {
+        attemptReconnect();
+      }
+    }, 3000);
+  }
+}
+
+// ─── 連線狀態 UI ─────────────────────────────────────
+function updateConnectionUI(state) {
+  const indicator = document.getElementById('connection-indicator');
+  if (!indicator) return;
+
+  const states = {
+    'new':           { text: '準備中', color: 'var(--muted)', anim: false },
+    'checking':      { text: '連線中', color: 'var(--warning)', anim: true },
+    'connecting':    { text: '連線中', color: 'var(--warning)', anim: true },
+    'connected':     { text: '已連線', color: 'var(--success)', anim: false },
+    'completed':     { text: '已連線', color: 'var(--success)', anim: false },
+    'disconnected':  { text: '重連中', color: 'var(--warning)', anim: true },
+    'reconnecting':  { text: '重連中', color: 'var(--warning)', anim: true },
+    'failed':        { text: '已斷線', color: 'var(--danger)', anim: false },
+  };
+
+  const s = states[state] || states['new'];
+  indicator.innerHTML = `<span class="conn-dot ${s.anim ? 'conn-pulse' : ''}" style="background:${s.color}"></span> ${s.text}`;
+  indicator.style.display = 'inline-flex';
 }
 
 // ─── Actions ─────────────────────────────────────────
@@ -1691,6 +1766,9 @@ function cleanup() {
   stopSTT();
   ttsStop();
   stopMeterLoop();
+  reconnectAttempts = 0;
+  const ci = document.getElementById('connection-indicator');
+  if (ci) ci.style.display = 'none';
   if (subtitleDC) {
     try { subtitleDC.close(); } catch {}
     subtitleDC = null;
