@@ -1661,27 +1661,14 @@ async function initSupabaseAnonAuth() {
 async function signInWithApple() {
   if (!supabaseClient) return;
 
-  // Debug: 檢查 Capacitor 是否存在
-  console.log('Capacitor:', typeof window.Capacitor);
-  console.log('Capacitor.Plugins:', window.Capacitor?.Plugins ? Object.keys(window.Capacitor.Plugins) : 'none');
-  console.log('SignInWithApple:', !!window.Capacitor?.Plugins?.SignInWithApple);
-  console.log('isNativePlatform:', window.Capacitor?.isNativePlatform?.());
-  alert(`Capacitor: ${typeof window.Capacitor}\nPlugins: ${window.Capacitor?.Plugins ? Object.keys(window.Capacitor.Plugins).join(', ') : 'none'}\nNative: ${window.Capacitor?.isNativePlatform?.()}`);
-
-  // iOS native: 用 Capacitor plugin（不跳 Safari）
-  if (window.Capacitor?.Plugins?.SignInWithApple) {
+  // iOS native: 用自訂 Capacitor plugin
+  if (window.Capacitor?.Plugins?.AppleSignIn) {
     try {
-      // 用 Services ID（因為 Capacitor 載入遠端 URL，走 web context）
-      const result = await window.Capacitor.Plugins.SignInWithApple.authorize({
-        clientId: 'com.kaitalk.web',
-        redirectURI: 'https://snzyltibimkbxshkzhyr.supabase.co/auth/v1/callback',
-        scopes: 'email name',
-      });
+      const result = await window.Capacitor.Plugins.AppleSignIn.authorize();
 
       console.log('Apple Sign In result:', JSON.stringify(result));
 
-      // 拿到 Apple ID token，傳給 Supabase
-      const idToken = result.response?.identityToken;
+      const idToken = result.identityToken;
       if (!idToken) {
         log('Apple 登入：沒有收到 identityToken');
         alert('Apple 登入失敗：沒有收到 token');
@@ -1691,7 +1678,6 @@ async function signInWithApple() {
       const { data, error } = await supabaseClient.auth.signInWithIdToken({
         provider: 'apple',
         token: idToken,
-        nonce: result.response?.nonce || undefined,
       });
 
       if (error) {
