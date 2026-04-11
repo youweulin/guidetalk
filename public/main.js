@@ -1562,6 +1562,90 @@ async function initSupabaseAnonAuth() {
   }
 }
 
+// ─── OAuth 登入（Apple / Google）─────────────────────
+async function signInWithApple() {
+  if (!supabaseClient) return;
+  try {
+    const { error } = await supabaseClient.auth.signInWithOAuth({
+      provider: 'apple',
+      options: { redirectTo: window.location.origin },
+    });
+    if (error) log(`Apple 登入失敗: ${error.message}`);
+  } catch (err) {
+    log(`Apple 登入錯誤: ${err.message}`);
+  }
+}
+
+async function signInWithGoogle() {
+  if (!supabaseClient) return;
+  try {
+    const { error } = await supabaseClient.auth.signInWithOAuth({
+      provider: 'google',
+      options: { redirectTo: window.location.origin },
+    });
+    if (error) log(`Google 登入失敗: ${error.message}`);
+  } catch (err) {
+    log(`Google 登入錯誤: ${err.message}`);
+  }
+}
+
+async function signOut() {
+  if (!supabaseClient) return;
+  await supabaseClient.auth.signOut();
+  kaitalkUserId = null;
+  kaitalkAccessToken = null;
+  log('已登出');
+  updateAccountUI();
+}
+
+function isLoggedInWithProvider() {
+  // 檢查是否用 Apple/Google 登入（不是匿名）
+  return supabaseClient?.auth?.getSession?.()
+    .then(({ data }) => data?.session?.user?.app_metadata?.provider !== 'anonymous')
+    .catch(() => false);
+}
+
+function updateAccountUI() {
+  const el = document.getElementById('account-section');
+  if (!el) return;
+
+  if (!kaitalkUserId) {
+    el.innerHTML = `
+      <h4>${t('settings') || '帳號'}</h4>
+      <p style="font-size:12px;color:var(--muted);margin-bottom:8px;">登入以保留好友和資料</p>
+      <button class="btn-oauth btn-apple" onclick="signInWithApple()"> Apple 登入</button>
+      <button class="btn-oauth btn-google" onclick="signInWithGoogle()"> Google 登入</button>
+    `;
+    return;
+  }
+
+  supabaseClient?.auth?.getSession?.().then(({ data }) => {
+    const user = data?.session?.user;
+    const provider = user?.app_metadata?.provider || 'anonymous';
+    const email = user?.email || '';
+
+    if (provider === 'anonymous') {
+      el.innerHTML = `
+        <h4>帳號</h4>
+        <p style="font-size:12px;color:var(--muted);margin-bottom:8px;">目前為匿名帳號，登入以保留資料</p>
+        <button class="btn-oauth btn-apple" onclick="signInWithApple()"> Apple 登入</button>
+        <button class="btn-oauth btn-google" onclick="signInWithGoogle()"> Google 登入</button>
+      `;
+    } else {
+      el.innerHTML = `
+        <h4>帳號</h4>
+        <div style="display:flex;align-items:center;gap:8px;padding:10px;background:var(--card-2);border-radius:12px;">
+          <span style="font-size:20px;">${provider === 'apple' ? '' : '🔵'}</span>
+          <div>
+            <div style="font-size:13px;font-weight:600;">${provider === 'apple' ? 'Apple' : 'Google'} 帳號</div>
+            <div style="font-size:11px;color:var(--muted);">${email || '已連結'}</div>
+          </div>
+        </div>
+      `;
+    }
+  }).catch(() => {});
+}
+
 function connectSocket() {
   // 連 socket.io 時把 JWT 帶上去（沒 token 也 OK，server 會 fallback）
   const opts = { transports: ['websocket', 'polling'] };
@@ -3066,6 +3150,7 @@ function openSettings() {
 
   // 確保語言下拉有填充
   onbBuildLangGrid();
+  updateAccountUI();
 
   // 顯示當前暱稱
   if (settingsNicknameDisplay) {
