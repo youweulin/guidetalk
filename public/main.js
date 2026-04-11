@@ -469,6 +469,11 @@ function applyI18n() {
   });
 }
 
+// ─── 註冊本地 Capacitor Plugin ────────────────────────
+if (window.Capacitor?.registerPlugin) {
+  window.Capacitor.registerPlugin('AppleSignIn');
+}
+
 // ─── API Base URL ────────────────────────────────────
 // 本地模式（Capacitor iOS）：URL 不是 http/https 開頭 → 打遠端 server
 // 網頁模式：正常 http/https → 用相對路徑
