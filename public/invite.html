@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>KaiTalk 好友邀請</title>
+  <meta name="description" content="有人邀請你成為 KaiTalk 好友！">
+  <meta property="og:title" content="KaiTalk 好友邀請">
+  <meta property="og:description" content="有人邀請你成為 KaiTalk 好友！即時語音翻譯交友 App">
+  <meta property="og:type" content="website">
+  <link rel="icon" href="/favicon-32.png" sizes="32x32">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Hiragino Sans', 'Noto Sans JP', sans-serif;
+      color: #1d1d1f;
+      line-height: 1.7;
+      background: #f5f5f7;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+    }
+    .card {
+      background: #fff;
+      border-radius: 20px;
+      padding: 40px 28px;
+      max-width: 380px;
+      width: 100%;
+      text-align: center;
+      box-shadow: 0 4px 24px rgba(0,0,0,0.08);
+    }
+    .avatar {
+      width: 80px;
+      height: 80px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #7c6dd8, #4a90d9);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 36px;
+      color: #fff;
+      margin: 0 auto 16px;
+    }
+    .inviter-name {
+      font-size: 24px;
+      font-weight: 800;
+      margin-bottom: 4px;
+    }
+    .inviter-country {
+      font-size: 14px;
+      color: #86868b;
+      margin-bottom: 20px;
+    }
+    .message {
+      font-size: 16px;
+      color: #333;
+      margin-bottom: 28px;
+    }
+    .btn {
+      display: block;
+      width: 100%;
+      padding: 14px;
+      border: none;
+      border-radius: 12px;
+      font-size: 16px;
+      font-weight: 700;
+      cursor: pointer;
+      margin-bottom: 10px;
+      transition: opacity 0.2s;
+    }
+    .btn:hover { opacity: 0.85; }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    .btn-primary {
+      background: linear-gradient(135deg, #7c6dd8, #4a90d9);
+      color: #fff;
+    }
+    .btn-secondary {
+      background: #f0f0f5;
+      color: #333;
+    }
+    .status {
+      margin-top: 16px;
+      font-size: 14px;
+      color: #86868b;
+    }
+    .status.success { color: #34c759; }
+    .status.error { color: #ff3b30; }
+    .logo {
+      font-size: 14px;
+      color: #86868b;
+      margin-top: 24px;
+    }
+    .logo a { color: #7c6dd8; text-decoration: none; }
+    #loading { color: #86868b; }
+    #invite-content { display: none; }
+    #error-content { display: none; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <!-- Loading -->
+    <div id="loading">
+      <p>載入中...</p>
+    </div>
+
+    <!-- Error -->
+    <div id="error-content">
+      <div class="avatar">?</div>
+      <p class="message" id="error-msg">邀請連結無效或已過期</p>
+      <a href="https://kaitalk.zeabur.app/" class="btn btn-secondary">前往 KaiTalk</a>
+    </div>
+
+    <!-- Invite -->
+    <div id="invite-content">
+      <div class="avatar" id="invite-avatar">👤</div>
+      <div class="inviter-name" id="invite-name"></div>
+      <div class="inviter-country" id="invite-country"></div>
+      <p class="message">邀請你成為 KaiTalk 好友</p>
+
+      <button class="btn btn-primary" id="btn-accept" onclick="acceptInvite()">
+        同意加好友
+      </button>
+      <a href="https://kaitalk.zeabur.app/" class="btn btn-secondary">
+        先不要
+      </a>
+
+      <div class="status" id="status-msg"></div>
+    </div>
+  </div>
+
+  <div class="logo">
+    <a href="https://kaitalk.zeabur.app/">KaiTalk</a> — 跨語言即時語音交友
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.74.0/dist/umd/supabase.min.js"></script>
+  <script>
+    const token = window.location.pathname.split('/invite/')[1];
+    let supabaseClient = null;
+
+    // Country flag helper
+    const countryFlags = {
+      TW: '🇹🇼', JP: '🇯🇵', US: '🇺🇸', KR: '🇰🇷', CN: '🇨🇳',
+      HK: '🇭🇰', TH: '🇹🇭', VN: '🇻🇳', PH: '🇵🇭', MY: '🇲🇾',
+    };
+
+    async function init() {
+      if (!token) return showError('邀請連結無效');
+
+      try {
+        // 1. 查邀請者資訊
+        const resp = await fetch(`/api/invite/${token}`);
+        if (!resp.ok) {
+          const data = await resp.json().catch(() => ({}));
+          if (data.error === 'invite_not_found') return showError('邀請連結無效或已過期');
+          return showError('載入失敗');
+        }
+
+        const { inviterName, inviterCountry } = await resp.json();
+
+        // 2. 顯示邀請卡
+        document.getElementById('invite-name').textContent = inviterName;
+        const flag = countryFlags[inviterCountry] || '';
+        document.getElementById('invite-country').textContent = flag ? `${flag} ${inviterCountry}` : '';
+        document.getElementById('invite-avatar').textContent = inviterName.slice(0, 1).toUpperCase();
+
+        document.getElementById('loading').style.display = 'none';
+        document.getElementById('invite-content').style.display = 'block';
+
+        // 3. 初始化 Supabase
+        const config = await fetch('/config.json').then(r => r.json());
+        if (config.supabaseUrl && config.supabaseAnonKey) {
+          supabaseClient = supabase.createClient(config.supabaseUrl, config.supabaseAnonKey, {
+            auth: { persistSession: true, storageKey: 'kaitalk.supabase.session' }
+          });
+        }
+      } catch (err) {
+        showError('載入失敗，請稍後再試');
+      }
+    }
+
+    function showError(msg) {
+      document.getElementById('loading').style.display = 'none';
+      document.getElementById('error-msg').textContent = msg;
+      document.getElementById('error-content').style.display = 'block';
+    }
+
+    function showStatus(msg, type) {
+      const el = document.getElementById('status-msg');
+      el.textContent = msg;
+      el.className = 'status ' + (type || '');
+    }
+
+    async function acceptInvite() {
+      const btn = document.getElementById('btn-accept');
+      btn.disabled = true;
+      btn.textContent = '處理中...';
+
+      try {
+        // 確保有登入（至少匿名）
+        if (!supabaseClient) {
+          showStatus('無法連線，請稍後再試', 'error');
+          btn.disabled = false;
+          btn.textContent = '同意加好友';
+          return;
+        }
+
+        let { data: { session } } = await supabaseClient.auth.getSession();
+        if (!session) {
+          const { data, error } = await supabaseClient.auth.signInAnonymously();
+          if (error) throw error;
+          session = data.session;
+        }
+
+        // 送出接受請求
+        const resp = await fetch(`/api/invite/${token}/accept`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${session.access_token}`,
+            'Content-Type': 'application/json',
+          },
+        });
+
+        const result = await resp.json();
+
+        if (result.status === 'ok') {
+          showStatus('已成為好友！', 'success');
+          btn.textContent = '已加好友 ✓';
+          btn.style.background = '#34c759';
+        } else if (result.status === 'already_friends') {
+          showStatus('你們已經是好友了！', 'success');
+          btn.textContent = '已是好友';
+          btn.style.background = '#34c759';
+        } else if (result.error === 'cannot_invite_self') {
+          showStatus('不能加自己為好友', 'error');
+          btn.disabled = false;
+          btn.textContent = '同意加好友';
+        } else if (result.error === 'blocked') {
+          showStatus('無法加為好友', 'error');
+        } else {
+          showStatus('發生錯誤，請稍後再試', 'error');
+          btn.disabled = false;
+          btn.textContent = '同意加好友';
+        }
+      } catch (err) {
+        console.error('Accept failed:', err);
+        showStatus('發生錯誤，請稍後再試', 'error');
+        btn.disabled = false;
+        btn.textContent = '同意加好友';
+      }
+    }
+
+    init();
+  </script>
+</body>
+</html>

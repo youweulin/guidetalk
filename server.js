@@ -26,6 +26,7 @@ import { upsertUser, dbConfigured, startCall, endCall, getDbClient } from './lib
 import { lookupIp, extractClientIp } from './lib/geo.js';
 import { MsEdgeTTS, OUTPUT_FORMAT } from 'msedge-tts';
 import { readFileSync, unlinkSync, mkdirSync, existsSync } from 'fs';
+import { randomBytes } from 'crypto';
 import { onReport, onBlock, onCallEnd, isBanned } from './lib/karma.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -477,6 +478,122 @@ app.get('/api/friends', async (req, res) => {
     res.json({ friends });
   } catch (err) {
     console.error(`[👥] Friends list failed: ${err.message}`);
+    res.status(500).json({ error: 'internal' });
+  }
+});
+
+// ─── 邀請好友 API ────────────────────────────────────
+
+// POST /api/invite/generate — 產生/重新產生邀請 token
+app.post('/api/invite/generate', async (req, res) => {
+  const userId = await authenticateRequest(req);
+  if (!userId) return res.status(401).json({ error: 'unauthorized' });
+
+  try {
+    const db = getDbClient();
+    if (!db) return res.status(503).json({ error: 'db unavailable' });
+
+    const token = randomBytes(9).toString('base64url'); // 12 chars, URL-safe
+    await db.execute({
+      sql: `UPDATE users SET invite_token = ?, invite_token_created_at = CURRENT_TIMESTAMP WHERE id = ?`,
+      args: [token, userId],
+    });
+
+    res.json({ token, url: `https://kaitalk.zeabur.app/invite/${token}` });
+  } catch (err) {
+    console.error(`[📎] Generate invite failed: ${err.message}`);
+    res.status(500).json({ error: 'internal' });
+  }
+});
+
+// GET /api/invite/:token — 查邀請者資訊（公開，不需登入）
+app.get('/api/invite/:token', async (req, res) => {
+  const { token } = req.params;
+  if (!token || token.length < 8) return res.status(400).json({ error: 'invalid token' });
+
+  try {
+    const db = getDbClient();
+    if (!db) return res.status(503).json({ error: 'db unavailable' });
+
+    const result = await db.execute({
+      sql: `SELECT id, nickname, home_country FROM users WHERE invite_token = ?`,
+      args: [token],
+    });
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'invite_not_found' });
+    }
+
+    const inviter = result.rows[0];
+    res.json({
+      inviterId: inviter.id,
+      inviterName: inviter.nickname || '匿名用戶',
+      inviterCountry: inviter.home_country || null,
+    });
+  } catch (err) {
+    console.error(`[📎] Invite lookup failed: ${err.message}`);
+    res.status(500).json({ error: 'internal' });
+  }
+});
+
+// POST /api/invite/:token/accept — 接受邀請，建立好友關係
+app.post('/api/invite/:token/accept', async (req, res) => {
+  const userId = await authenticateRequest(req);
+  if (!userId) return res.status(401).json({ error: 'unauthorized' });
+
+  const { token } = req.params;
+
+  try {
+    const db = getDbClient();
+    if (!db) return res.status(503).json({ error: 'db unavailable' });
+
+    // 1. 查 token 對應的用戶
+    const result = await db.execute({
+      sql: `SELECT id, nickname FROM users WHERE invite_token = ?`,
+      args: [token],
+    });
+    if (result.rows.length === 0) return res.status(404).json({ error: 'invite_not_found' });
+
+    const inviterId = result.rows[0].id;
+    const inviterName = result.rows[0].nickname || '匿名用戶';
+    if (inviterId === userId) return res.status(400).json({ error: 'cannot_invite_self' });
+
+    // 2. 排序保證 user_a < user_b
+    const [a, b] = [userId, inviterId].sort();
+
+    // 3. 檢查是否已封鎖
+    const existing = await db.execute({
+      sql: `SELECT matched, a_blocked_b, b_blocked_a FROM connections WHERE user_a = ? AND user_b = ?`,
+      args: [a, b],
+    });
+
+    if (existing.rows.length > 0) {
+      const row = existing.rows[0];
+      if (row.a_blocked_b || row.b_blocked_a) {
+        return res.status(403).json({ error: 'blocked' });
+      }
+      if (row.matched) {
+        return res.json({ status: 'already_friends', inviterName });
+      }
+    }
+
+    // 4. Upsert connection as matched
+    await db.execute({
+      sql: `
+        INSERT INTO connections (user_a, user_b, first_met_via, first_met_at, matched, matched_at, a_likes_b, b_likes_a)
+        VALUES (?, ?, 'invite', CURRENT_TIMESTAMP, 1, CURRENT_TIMESTAMP, 1, 1)
+        ON CONFLICT(user_a, user_b) DO UPDATE SET
+          matched = 1, matched_at = CURRENT_TIMESTAMP,
+          a_likes_b = 1, b_likes_a = 1,
+          last_interaction_at = CURRENT_TIMESTAMP
+      `,
+      args: [a, b],
+    });
+
+    console.log(`[📎] Friend added via invite: ${userId.slice(0, 8)} ↔ ${inviterId.slice(0, 8)}`);
+    res.json({ status: 'ok', inviterName });
+  } catch (err) {
+    console.error(`[📎] Accept invite failed: ${err.message}`);
     res.status(500).json({ error: 'internal' });
   }
 });
@@ -1245,6 +1362,11 @@ io.on('connection', (socket) => {
     }
     console.log(`[-] ${socket.id.slice(0, 8)} disconnected`);
   });
+});
+
+// 邀請頁（在 SPA fallback 之前）
+app.get('/invite/:token', (req, res) => {
+  res.sendFile(join(__dirname, 'public', 'invite.html'));
 });
 
 // SPA fallback

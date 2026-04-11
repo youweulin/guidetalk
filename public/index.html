@@ -2773,6 +2773,14 @@
         </div>
       </div>
 
+      <!-- 邀請好友 -->
+      <div class="settings-section" id="invite-section" style="display:none;">
+        <h4 style="margin-bottom:8px;">📎 邀請好友</h4>
+        <button id="btn-show-invite" style="width:100%;padding:10px;border:none;border-radius:10px;background:linear-gradient(135deg,#7c6dd8,#4a90d9);color:#fff;font-size:14px;font-weight:600;cursor:pointer;">
+          產生邀請連結 / QR Code
+        </button>
+      </div>
+
       </div><!-- end settings-scroll -->
       <div class="settings-footer-links" style="text-align:center;margin-bottom:12px;font-size:11px;color:var(--muted);">
         <a href="/privacy.html" target="_blank" style="color:var(--muted);text-decoration:none;" data-i18n="privacy">隱私政策</a>
@@ -2804,6 +2812,22 @@
       <div style="margin-top:16px;">
         <button class="btn-secondary" onclick="closeSponsorOverlay()" style="width:100%;">取消</button>
       </div>
+    </div>
+  </div>
+
+  <!-- 邀請 QR Code overlay -->
+  <div id="invite-overlay" class="settings-overlay">
+    <div class="settings-overlay-content" style="max-width:340px;padding:24px 20px;text-align:center;">
+      <h3 style="margin-bottom:4px;">📎 我的邀請連結</h3>
+      <p style="font-size:12px;color:var(--muted);margin:4px 0 16px;">分享連結或 QR Code，對方開啟就能加你好友</p>
+      <div id="invite-qr-container" style="display:inline-block;margin:0 auto 16px;"></div>
+      <div id="invite-link-display" style="word-break:break-all;font-size:11px;padding:10px;background:var(--card-2,#f5f5f7);border-radius:8px;margin-bottom:12px;user-select:all;"></div>
+      <div style="display:flex;gap:8px;">
+        <button id="btn-copy-invite" class="btn-primary" style="flex:1;padding:10px;font-size:13px;">複製連結</button>
+        <button id="btn-share-invite" class="btn-primary" style="flex:1;padding:10px;font-size:13px;display:none;">分享</button>
+        <button id="btn-regen-invite" class="btn-secondary" style="flex:1;padding:10px;font-size:13px;">重新產生</button>
+      </div>
+      <button class="btn-secondary" id="btn-close-invite" style="width:100%;margin-top:8px;padding:10px;">關閉</button>
     </div>
   </div>
 
@@ -2863,6 +2887,7 @@
 
   <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.74.0/dist/umd/supabase.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
   <script src="/main.js"></script>
 </body>
 </html>

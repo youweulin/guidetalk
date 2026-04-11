@@ -2083,6 +2083,10 @@ function updateAccountUI() {
       `;
     }
   }).catch(() => {});
+
+  // 邀請好友 section
+  const inviteSection = document.getElementById('invite-section');
+  if (inviteSection) inviteSection.style.display = kaitalkUserId ? 'block' : 'none';
 }
 
 // ─── 購買 Premium ─────────────────────────────────────
@@ -2097,6 +2101,103 @@ function closeSponsorOverlay() {
   const overlay = document.getElementById('sponsor-overlay');
   if (overlay) overlay.classList.remove('active');
 }
+
+// ─── 邀請好友（QR Code） ─────────────────────────────
+
+let currentInviteToken = null;
+
+async function generateInviteToken() {
+  try {
+    const resp = await fetch(API_BASE + '/api/invite/generate', {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${kaitalkAccessToken}` },
+    });
+    const data = await resp.json();
+    if (data.token) {
+      currentInviteToken = data.token;
+      return data.token;
+    }
+  } catch (err) {
+    console.warn('[invite] Generate failed:', err);
+  }
+  return null;
+}
+
+async function showInviteOverlay() {
+  const overlay = document.getElementById('invite-overlay');
+  if (!overlay) return;
+
+  if (!currentInviteToken) {
+    const token = await generateInviteToken();
+    if (!token) {
+      alert('產生邀請碼失敗，請確認已登入');
+      return;
+    }
+  }
+
+  const url = `https://kaitalk.zeabur.app/invite/${currentInviteToken}`;
+
+  // QR Code
+  const qrContainer = document.getElementById('invite-qr-container');
+  qrContainer.innerHTML = '';
+  if (typeof QRCode !== 'undefined') {
+    new QRCode(qrContainer, {
+      text: url,
+      width: 200,
+      height: 200,
+      colorDark: '#1d1d1f',
+      colorLight: '#ffffff',
+    });
+  }
+
+  // Link
+  document.getElementById('invite-link-display').textContent = url;
+
+  // Share button（iOS / 支援 navigator.share 才顯示）
+  const shareBtn = document.getElementById('btn-share-invite');
+  if (shareBtn) shareBtn.style.display = navigator.share ? 'block' : 'none';
+
+  overlay.classList.add('active');
+}
+
+function closeInviteOverlay() {
+  const overlay = document.getElementById('invite-overlay');
+  if (overlay) overlay.classList.remove('active');
+}
+
+// 邀請好友 — 事件綁定
+document.getElementById('btn-show-invite')?.addEventListener('click', showInviteOverlay);
+document.getElementById('btn-close-invite')?.addEventListener('click', closeInviteOverlay);
+
+document.getElementById('btn-copy-invite')?.addEventListener('click', () => {
+  const url = `https://kaitalk.zeabur.app/invite/${currentInviteToken}`;
+  navigator.clipboard?.writeText(url).then(() => {
+    const btn = document.getElementById('btn-copy-invite');
+    btn.textContent = '已複製 ✓';
+    setTimeout(() => { btn.textContent = '複製連結'; }, 2000);
+  }).catch(() => {
+    // fallback: select the text
+    const el = document.getElementById('invite-link-display');
+    if (el) { const r = document.createRange(); r.selectNodeContents(el); window.getSelection().removeAllRanges(); window.getSelection().addRange(r); }
+  });
+});
+
+document.getElementById('btn-share-invite')?.addEventListener('click', () => {
+  if (!navigator.share || !currentInviteToken) return;
+  const url = `https://kaitalk.zeabur.app/invite/${currentInviteToken}`;
+  navigator.share({ title: 'KaiTalk 好友邀請', text: '來加我 KaiTalk 好友！', url }).catch(() => {});
+});
+
+document.getElementById('btn-regen-invite')?.addEventListener('click', async () => {
+  const btn = document.getElementById('btn-regen-invite');
+  btn.textContent = '產生中...';
+  btn.disabled = true;
+  currentInviteToken = null;
+  await generateInviteToken();
+  btn.textContent = '重新產生';
+  btn.disabled = false;
+  if (currentInviteToken) showInviteOverlay();
+});
 
 async function selectSponsorPlan(amount) {
   closeSponsorOverlay();
