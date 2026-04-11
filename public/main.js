@@ -1656,8 +1656,9 @@ async function signInWithApple() {
   // iOS native: 用 Capacitor plugin（不跳 Safari）
   if (window.Capacitor?.Plugins?.SignInWithApple) {
     try {
+      // 用 Services ID（因為 Capacitor 載入遠端 URL，走 web context）
       const result = await window.Capacitor.Plugins.SignInWithApple.authorize({
-        clientId: 'com.kaitalk.app',
+        clientId: 'com.kaitalk.web',
         redirectURI: 'https://snzyltibimkbxshkzhyr.supabase.co/auth/v1/callback',
         scopes: 'email name',
       });

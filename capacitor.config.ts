@@ -5,9 +5,10 @@ const config: CapacitorConfig = {
   appName: 'KaiTalk',
   webDir: 'public',
   server: {
-    // 直接載入 Zeabur 上的 web app
     url: 'https://kaitalk.zeabur.app',
     cleartext: false,
+    // 允許 Capacitor bridge 注入到遠端 URL
+    allowNavigation: ['kaitalk.zeabur.app'],
   },
   ios: {
     contentInset: 'automatic',
