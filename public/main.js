@@ -2482,10 +2482,13 @@ document.querySelectorAll('.settings-tgender-btn').forEach(btn => {
 
 // 想找講什麼語言（多選 toggle）
 // 想找語言 checkbox group
-const settingsTargetLangChecks = document.getElementById('settings-target-lang-checks');
+const settingsTargetLangEl = document.getElementById('settings-target-lang-select');
 
 function openSettings() {
   if (!settingsOverlay) return;
+
+  // 確保語言下拉有填充
+  onbBuildLangGrid();
 
   // 顯示當前暱稱
   if (settingsNicknameDisplay) {
@@ -2528,10 +2531,8 @@ function openSettings() {
   // 預選想找的語言（多選下拉）
   const curTargetLangs = getTargetLangs();
   settingsTempTargetLangs = [...curTargetLangs];
-  if (settingsTargetLangChecks) {
-    settingsTargetLangChecks.querySelectorAll('input[type="checkbox"]').forEach(cb => {
-      cb.checked = curTargetLangs.includes(cb.value);
-    });
+  if (settingsTargetLangEl) {
+    settingsTargetLangEl.value = curTargetLangs.length === 1 ? curTargetLangs[0] : '';
   }
 
   settingsOverlay.classList.add('active');
