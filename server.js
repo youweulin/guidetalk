@@ -215,6 +215,58 @@ app.post('/admin/api/user/karma', requireAdmin, express.json(), async (req, res)
   }
 });
 
+// ─── Google Trends 熱門話題（每小時快取）───────────────
+let trendsCache = { tw: [], jp: [], updatedAt: 0 };
+const TRENDS_TTL = 60 * 60 * 1000; // 1 小時
+
+async function fetchTrendsRSS(geo) {
+  try {
+    const domain = geo === 'JP' ? 'google.co.jp' : 'google.com.tw';
+    const url = `https://trends.${domain}/trending/rss?geo=${geo}`;
+    const ctrl = new AbortController();
+    const t = setTimeout(() => ctrl.abort(), 5000);
+    const resp = await fetch(url, { signal: ctrl.signal });
+    clearTimeout(t);
+    const xml = await resp.text();
+
+    // 簡單解析 XML — 抓 <item><title> 和 <ht:approx_traffic>
+    const items = [];
+    const itemRegex = /<item>([\s\S]*?)<\/item>/g;
+    let match;
+    while ((match = itemRegex.exec(xml)) !== null && items.length < 10) {
+      const block = match[1];
+      const title = block.match(/<title>(.*?)<\/title>/)?.[1];
+      const traffic = block.match(/<ht:approx_traffic>(.*?)<\/ht:approx_traffic>/)?.[1];
+      const picture = block.match(/<ht:picture>(.*?)<\/ht:picture>/)?.[1];
+      if (title) {
+        items.push({ title, traffic: traffic || '', picture: picture || '', geo });
+      }
+    }
+    return items;
+  } catch (err) {
+    console.warn(`[📈] Trends fetch failed (${geo}): ${err.message}`);
+    return [];
+  }
+}
+
+async function refreshTrends() {
+  const [tw, jp] = await Promise.all([fetchTrendsRSS('TW'), fetchTrendsRSS('JP')]);
+  trendsCache = { tw, jp, updatedAt: Date.now() };
+  console.log(`[📈] Trends refreshed: TW=${tw.length}, JP=${jp.length}`);
+}
+
+// 啟動時抓一次，之後每小時
+refreshTrends();
+setInterval(refreshTrends, TRENDS_TTL);
+
+app.get('/api/trends', (req, res) => {
+  res.json({
+    tw: trendsCache.tw,
+    jp: trendsCache.jp,
+    updatedAt: trendsCache.updatedAt,
+  });
+});
+
 // ─── IP Geo lookup ────────────────────────────────────
 // 給 client 拿自己的位置（國家、地區、大區）。
 // 走 cache 優先，cache miss 才打 ipinfo.io。
@@ -701,16 +753,22 @@ const generateReunionCode = () => {
 //   我 specific  ✅(if 對方在我目標)  ✅(雙方相符)  ✅(雙方相符)
 //   * 上面所有 ✅ 都還要再過 targetLangs 檢查
 function aWillingToB(a, b) {
-  // 1. 模式條件
-  let modeOk = false;
-  if (a.mode === 'quick') {
-    modeOk = true;
-  } else if (a.mode === 'nearby') {
-    modeOk = !!a.myBigRegion && a.myBigRegion === b.myBigRegion;
-  } else if (a.mode === 'specific') {
-    modeOk = !!a.targetRegion && a.targetRegion === b.myBigRegion;
+  // 0. 話題模式：雙方必須選同一個話題
+  if (a.topicId || b.topicId) {
+    if (a.topicId !== b.topicId) return false;
+    // 話題配對跳過其他模式條件（不限地區），但仍走性別+語言過濾
+  } else {
+    // 1. 模式條件（非話題模式才檢查）
+    let modeOk = false;
+    if (a.mode === 'quick') {
+      modeOk = true;
+    } else if (a.mode === 'nearby') {
+      modeOk = !!a.myBigRegion && a.myBigRegion === b.myBigRegion;
+    } else if (a.mode === 'specific') {
+      modeOk = !!a.targetRegion && a.targetRegion === b.myBigRegion;
+    }
+    if (!modeOk) return false;
   }
-  if (!modeOk) return false;
 
   // 2. 想找講語言過濾（空陣列 = 不過濾）
   if (Array.isArray(a.targetLangs) && a.targetLangs.length > 0) {
@@ -797,7 +855,7 @@ io.on('connection', (socket) => {
   //   - 用「**雙向相容**」演算法：A 願意跟 B + B 願意跟 A 才配
   //   - 走 queue 找第一個 compatible 的對手
   //   - 找不到就留在 queue 裡等
-  socket.on('find_match', async ({ name, gender, targetGender, lang, mode, myBigRegion, targetRegion, targetLangs, avatar, reunionCode } = {}) => {
+  socket.on('find_match', async ({ name, gender, targetGender, lang, mode, myBigRegion, targetRegion, targetLangs, avatar, reunionCode, topicId } = {}) => {
     const game = 'voice';
     const q = getQueue(game);
 
@@ -820,6 +878,7 @@ io.on('connection', (socket) => {
       targetRegion: targetRegion || null,
       targetLangs: Array.isArray(targetLangs) ? targetLangs : [],
       avatar: avatar || 'avatar_mature.png',
+      topicId: topicId || null,
       reunionCode: reunionCode || null,
     };
 
@@ -921,7 +980,8 @@ io.on('connection', (socket) => {
           peerVerified: verifyResults[peerIdx],
           peerRegion: players[peerIdx].myBigRegion || null,
           peerGender: players[peerIdx].gender || null,
-          matchedMode: me.mode === other.mode ? me.mode : 'mixed',
+          matchedMode: me.topicId ? 'topic' : (me.mode === other.mode ? me.mode : 'mixed'),
+          topicId: me.topicId || other.topicId || null,
         });
       });
       console.log(`[★] Matched ${players[0].name}(${players[0].mode}) ↔ ${players[1].name}(${players[1].mode}) in room ${roomCode} [verify: ${verifyResults}]`);

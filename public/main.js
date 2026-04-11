@@ -1456,6 +1456,7 @@ async function startMatching(opts = {}) {
       gender: localStorage.getItem(ONB_GENDER_KEY) || null,
       targetGender: localStorage.getItem(ONB_TARGET_GENDER_KEY) || 'any',
       avatar: localStorage.getItem(ONB_AVATAR_KEY) || 'avatar_mature.png',
+      topicId: opts.topicId || null,
       reunionCode,
     };
 
@@ -3021,6 +3022,42 @@ function hideTrivia() {
 loadTrivia();
 renderBottomTabs();
 applyGenderTheme();
+loadTrends();
+
+// ─── 熱門話題 ─────────────────────────────────────
+async function loadTrends() {
+  try {
+    const resp = await fetch('/api/trends');
+    const data = await resp.json();
+    const grid = document.getElementById('trends-grid');
+    const section = document.getElementById('trends-section');
+    if (!grid || !section) return;
+
+    const all = [
+      ...(data.tw || []).slice(0, 5).map(t => ({ ...t, flag: '🇹🇼' })),
+      ...(data.jp || []).slice(0, 5).map(t => ({ ...t, flag: '🇯🇵' })),
+    ];
+
+    if (all.length === 0) return;
+
+    section.style.display = 'block';
+    grid.innerHTML = all.map(t =>
+      `<div class="trend-chip" data-topic="${encodeURIComponent(t.title)}">
+        <span class="trend-flag">${t.flag}</span>${t.title}
+      </div>`
+    ).join('');
+
+    // 點話題 → 用話題配對
+    grid.querySelectorAll('.trend-chip').forEach(chip => {
+      chip.addEventListener('click', () => {
+        const topic = decodeURIComponent(chip.dataset.topic);
+        startMatching({ mode: 'quick', topicId: topic });
+      });
+    });
+  } catch (err) {
+    console.log('Trends load failed:', err.message);
+  }
+}
 
 // 沒做過 onboarding → 顯示
 if (!onboardingDone) {
