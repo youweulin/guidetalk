@@ -470,9 +470,10 @@ function applyI18n() {
 }
 
 // ─── API Base URL ────────────────────────────────────
-// 本地模式（Capacitor iOS）時，API 打遠端 server
-// 網頁模式時，API 用相對路徑（同 origin）
-const API_BASE = window.Capacitor?.isNativePlatform?.() ? 'https://kaitalk.zeabur.app' : '';
+// 本地模式（Capacitor iOS）：URL 不是 http/https 開頭 → 打遠端 server
+// 網頁模式：正常 http/https → 用相對路徑
+const isLocalCapacitor = !window.location.href.startsWith('http');
+const API_BASE = isLocalCapacitor ? 'https://kaitalk.zeabur.app' : '';
 
 // ─── Cloudflare Images CDN ───────────────────────────
 const CF_IMG = 'https://imagedelivery.net/8vYNanmJriUCfsABJIN-Gw';
