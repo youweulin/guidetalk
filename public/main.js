@@ -1653,6 +1653,13 @@ async function initSupabaseAnonAuth() {
 async function signInWithApple() {
   if (!supabaseClient) return;
 
+  // Debug: 檢查 Capacitor 是否存在
+  console.log('Capacitor:', typeof window.Capacitor);
+  console.log('Capacitor.Plugins:', window.Capacitor?.Plugins ? Object.keys(window.Capacitor.Plugins) : 'none');
+  console.log('SignInWithApple:', !!window.Capacitor?.Plugins?.SignInWithApple);
+  console.log('isNativePlatform:', window.Capacitor?.isNativePlatform?.());
+  alert(`Capacitor: ${typeof window.Capacitor}\nPlugins: ${window.Capacitor?.Plugins ? Object.keys(window.Capacitor.Plugins).join(', ') : 'none'}\nNative: ${window.Capacitor?.isNativePlatform?.()}`);
+
   // iOS native: 用 Capacitor plugin（不跳 Safari）
   if (window.Capacitor?.Plugins?.SignInWithApple) {
     try {
