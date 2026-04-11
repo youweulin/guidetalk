@@ -85,6 +85,16 @@ const I18N = {
     pets: '🐾 寵物', sports: '⚽ 運動', lang_learn: '📚 語言學習', life: '☕ 生活',
     detected: '系統偵測到',
     gender_label: '性別',
+    login_hint: '登入以保留好友和資料',
+    sponsor_title: '☕ 贊助測試版',
+    sponsor_desc: '贊助可解鎖全功能測試，未來可抵扣正式費用',
+    sponsor_btn: '☕ 贊助我們',
+    sponsor_thanks: '☕ 感謝贊助！',
+    sponsor_features: '次翻譯/天 · 自然語音 · 全功能開放',
+    sponsor_remaining: '今日剩餘',
+    usage_depleted: '今日翻譯次數已用完',
+    usage_depleted_hint: '贊助我們即可解鎖更多次數 + 自然語音',
+    usage_depleted_btn: '☕ 贊助測試版',
   },
   'ja-JP': {
     welcome: 'KaiTalk へようこそ',
@@ -148,6 +158,16 @@ const I18N = {
     pets: '🐾 ペット', sports: '⚽ スポーツ', lang_learn: '📚 語学', life: '☕ 生活',
     detected: '自動検出',
     gender_label: '性別',
+    login_hint: 'ログインして友達とデータを保持',
+    sponsor_title: '☕ ベータ版を応援',
+    sponsor_desc: '応援すると全機能をお試しいただけます。正式版で割引適用。',
+    sponsor_btn: '☕ 応援する',
+    sponsor_thanks: '☕ ご支援ありがとうございます！',
+    sponsor_features: '回翻訳/日 · 自然な音声 · 全機能開放',
+    sponsor_remaining: '本日の残り',
+    usage_depleted: '本日の翻訳回数を使い切りました',
+    usage_depleted_hint: '応援して追加回数＋自然音声を解放',
+    usage_depleted_btn: '☕ ベータ版を応援',
   },
   'en-US': {
     welcome: 'Welcome to KaiTalk',
@@ -211,6 +231,16 @@ const I18N = {
     pets: '🐾 Pets', sports: '⚽ Sports', lang_learn: '📚 Languages', life: '☕ Life',
     detected: 'Detected',
     gender_label: 'Gender',
+    login_hint: 'Sign in to keep your friends & data',
+    sponsor_title: '☕ Sponsor Beta',
+    sponsor_desc: 'Sponsor to unlock all features. Credits apply to future plans.',
+    sponsor_btn: '☕ Sponsor Us',
+    sponsor_thanks: '☕ Thank you for sponsoring!',
+    sponsor_features: 'translations/day · Natural voice · All features',
+    sponsor_remaining: 'Remaining today',
+    usage_depleted: 'Daily translation limit reached',
+    usage_depleted_hint: 'Sponsor us to unlock more + natural voice',
+    usage_depleted_btn: '☕ Sponsor Beta',
   },
   'zh-CN': {
     welcome: '欢迎来到 KaiTalk', slogan: '说你的语言，和全世界聊天',
@@ -1221,8 +1251,8 @@ function getDailyLimit() {
 function showUpgradePrompt() {
   showConfirm({
     icon: '☕',
-    text: `今日翻譯次數已用完（${getDailyLimit()}次）\n\n贊助我們即可解鎖更多次數 + 自然語音`,
-    okLabel: '☕ 贊助測試版',
+    text: `${t('usage_depleted')}（${getDailyLimit()}）\n\n${t('usage_depleted_hint')}`,
+    okLabel: t('usage_depleted_btn'),
     cancelLabel: '明天再來',
   }).then(yes => {
     if (yes) openSettings();
@@ -1676,7 +1706,7 @@ function updateAccountUI() {
   if (!kaitalkUserId) {
     el.innerHTML = `
       <h4>${t('settings') || '帳號'}</h4>
-      <p style="font-size:12px;color:var(--muted);margin-bottom:8px;">登入以保留好友和資料</p>
+      <p style="font-size:12px;color:var(--muted);margin-bottom:8px;">${t('login_hint')}</p>
       <button class="btn-oauth btn-apple" onclick="signInWithApple()"> Apple 登入</button>
       <button class="btn-oauth btn-email" onclick="signInWithEmail()">✉️ Email 登入</button>
     `;
@@ -1690,21 +1720,21 @@ function updateAccountUI() {
 
     const premiumHtml = isSponsor()
       ? `<div style="padding:10px;background:linear-gradient(135deg,#ffe08c,#ffb347);border-radius:12px;text-align:center;margin-top:12px;">
-           <div style="font-size:14px;font-weight:700;">☕ 感謝贊助！</div>
-           <div style="font-size:11px;margin-top:2px;">每日 ${SPONSOR_DAILY_LIMIT} 次翻譯 · Edge 自然語音 · 全功能開放</div>
-           <div style="font-size:11px;margin-top:4px;">今日剩餘：${getRemainingUsage()} / ${SPONSOR_DAILY_LIMIT}</div>
+           <div style="font-size:14px;font-weight:700;">${t('sponsor_thanks')}</div>
+           <div style="font-size:11px;margin-top:2px;">${SPONSOR_DAILY_LIMIT} ${t('sponsor_features')}</div>
+           <div style="font-size:11px;margin-top:4px;">${t('sponsor_remaining')}：${getRemainingUsage()} / ${SPONSOR_DAILY_LIMIT}</div>
          </div>`
       : `<div style="padding:12px;background:var(--card-2);border-radius:12px;margin-top:12px;border:1px solid var(--border);">
-           <div style="font-size:13px;font-weight:700;margin-bottom:4px;">☕ 贊助測試版</div>
-           <div style="font-size:11px;color:var(--muted);margin-bottom:8px;">贊助可解鎖全功能測試，未來可抵扣正式費用</div>
-           <div style="font-size:11px;color:var(--muted);margin-bottom:8px;">今日剩餘：${getRemainingUsage()} / ${FREE_DAILY_LIMIT} 次翻譯</div>
-           <button class="btn-oauth" onclick="purchasePremium()" style="background:linear-gradient(135deg,#ffe08c,#ffb347);color:#333;">☕ 贊助我們</button>
+           <div style="font-size:13px;font-weight:700;margin-bottom:4px;">${t('sponsor_title')}</div>
+           <div style="font-size:11px;color:var(--muted);margin-bottom:8px;">${t('sponsor_desc')}</div>
+           <div style="font-size:11px;color:var(--muted);margin-bottom:8px;">${t('sponsor_remaining')}：${getRemainingUsage()} / ${FREE_DAILY_LIMIT}</div>
+           <button class="btn-oauth" onclick="purchasePremium()" style="background:linear-gradient(135deg,#ffe08c,#ffb347);color:#333;">${t('sponsor_btn')}</button>
          </div>`;
 
     if (provider === 'anonymous') {
       el.innerHTML = `
         <h4>帳號</h4>
-        <p style="font-size:12px;color:var(--muted);margin-bottom:8px;">登入以保留好友和資料</p>
+        <p style="font-size:12px;color:var(--muted);margin-bottom:8px;">${t('login_hint')}</p>
         <div style="display:flex;gap:8px;"><button class="btn-oauth btn-apple" onclick="signInWithApple()" style="flex:1;margin:0;"> Apple</button><button class="btn-oauth btn-email" onclick="signInWithEmail()" style="flex:1;margin:0;">✉️ Email</button></div>
         ${premiumHtml}
       `;
