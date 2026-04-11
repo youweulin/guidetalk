@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>KaiTalk — 會講你的語言，就能跟全世界聊天</title>
+  <meta name="description" content="KaiTalk 是一款即時語音翻譯交友 App。你說中文，對方說日文，雙方都能聽得懂、看得懂。">
+  <link rel="icon" href="/favicon-32.png" sizes="32x32">
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Hiragino Sans', 'Noto Sans JP', sans-serif;
+      color: #1d1d1f;
+      line-height: 1.7;
+      background: #fff;
+    }
+
+    /* ─── Hero ─── */
+    .hero {
+      background: linear-gradient(135deg, #7c6dd8 0%, #4a90d9 50%, #ff6b9d 100%);
+      color: #fff;
+      text-align: center;
+      padding: 80px 24px 60px;
+    }
+    .hero img {
+      width: 100px;
+      height: 100px;
+      border-radius: 24px;
+      box-shadow: 0 12px 40px rgba(0,0,0,0.2);
+      margin-bottom: 24px;
+    }
+    .hero h1 {
+      font-size: 36px;
+      font-weight: 800;
+      margin-bottom: 12px;
+    }
+    .hero .slogan {
+      font-size: 18px;
+      opacity: 0.9;
+      margin-bottom: 32px;
+    }
+    .hero .cta-row {
+      display: flex;
+      gap: 12px;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+    .hero .cta-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 14px 28px;
+      border-radius: 14px;
+      font-size: 16px;
+      font-weight: 700;
+      text-decoration: none;
+      transition: transform 0.1s;
+    }
+    .cta-btn:active { transform: scale(0.97); }
+    .cta-btn-primary { background: #fff; color: #7c6dd8; }
+    .cta-btn-secondary { background: rgba(255,255,255,0.15); color: #fff; border: 1px solid rgba(255,255,255,0.3); }
+
+    /* ─── Sections ─── */
+    .section {
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 60px 24px;
+    }
+    .section h2 {
+      font-size: 28px;
+      font-weight: 800;
+      text-align: center;
+      margin-bottom: 12px;
+      background: linear-gradient(135deg, #7c6dd8, #4a90d9);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .section .subtitle {
+      text-align: center;
+      color: #86868b;
+      font-size: 15px;
+      margin-bottom: 40px;
+    }
+
+    /* ─── How it works ─── */
+    .steps {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 24px;
+    }
+    .step {
+      text-align: center;
+      padding: 24px;
+      border-radius: 20px;
+      background: #f8f8fa;
+    }
+    .step .num {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #7c6dd8, #4a90d9);
+      color: #fff;
+      font-size: 18px;
+      font-weight: 800;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 12px;
+    }
+    .step h3 { font-size: 16px; margin-bottom: 6px; }
+    .step p { font-size: 13px; color: #86868b; }
+
+    /* ─── Features ─── */
+    .features {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 20px;
+    }
+    .feature {
+      padding: 24px;
+      border-radius: 20px;
+      border: 1px solid #f0f0f0;
+      background: #fff;
+    }
+    .feature .icon { font-size: 32px; margin-bottom: 12px; }
+    .feature h3 { font-size: 16px; margin-bottom: 6px; }
+    .feature p { font-size: 13px; color: #86868b; line-height: 1.6; }
+
+    /* ─── Languages ─── */
+    .lang-grid {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      justify-content: center;
+    }
+    .lang-chip {
+      padding: 8px 16px;
+      border-radius: 12px;
+      background: #f8f8fa;
+      font-size: 14px;
+      font-weight: 600;
+    }
+
+    /* ─── Safety ─── */
+    .safety-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 16px;
+    }
+    .safety-item {
+      padding: 20px;
+      border-radius: 16px;
+      background: #f8f8fa;
+      text-align: center;
+    }
+    .safety-item .icon { font-size: 28px; margin-bottom: 8px; }
+    .safety-item h4 { font-size: 14px; margin-bottom: 4px; }
+    .safety-item p { font-size: 12px; color: #86868b; }
+
+    /* ─── Privacy ─── */
+    .privacy-highlights {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 16px;
+    }
+    .privacy-item {
+      text-align: center;
+      padding: 20px;
+    }
+    .privacy-item .icon { font-size: 36px; margin-bottom: 8px; }
+    .privacy-item h4 { font-size: 14px; margin-bottom: 4px; }
+    .privacy-item p { font-size: 12px; color: #86868b; }
+
+    /* ─── CTA Bottom ─── */
+    .cta-bottom {
+      background: #f8f8fa;
+      text-align: center;
+      padding: 60px 24px;
+    }
+    .cta-bottom h2 { font-size: 28px; font-weight: 800; margin-bottom: 12px; }
+    .cta-bottom p { color: #86868b; margin-bottom: 24px; }
+    .cta-bottom .cta-btn-primary {
+      display: inline-block;
+      padding: 16px 40px;
+      border-radius: 14px;
+      background: linear-gradient(135deg, #7c6dd8, #4a90d9);
+      color: #fff;
+      font-size: 18px;
+      font-weight: 700;
+      text-decoration: none;
+    }
+
+    /* ─── Footer ─── */
+    footer {
+      text-align: center;
+      padding: 30px 24px;
+      font-size: 12px;
+      color: #86868b;
+    }
+    footer a { color: #7c6dd8; text-decoration: none; }
+
+    @media (max-width: 600px) {
+      .hero h1 { font-size: 28px; }
+      .hero .slogan { font-size: 16px; }
+      .section h2 { font-size: 22px; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Hero -->
+  <div class="hero">
+    <img src="/icon-512.png" alt="KaiTalk">
+    <h1>KaiTalk</h1>
+    <p class="slogan">會講你的語言，就能跟全世界聊天</p>
+    <div class="cta-row">
+      <a href="https://kaitalk.zeabur.app" class="cta-btn cta-btn-primary">立即體驗</a>
+      <a href="#" class="cta-btn cta-btn-secondary">App Store 下載</a>
+    </div>
+  </div>
+
+  <!-- How it works -->
+  <div class="section">
+    <h2>怎麼用？</h2>
+    <p class="subtitle">三步驟，30 秒開始</p>
+    <div class="steps">
+      <div class="step">
+        <div class="num">1</div>
+        <h3>按下開聊</h3>
+        <p>不用註冊，不用加好友。按一個按鈕就開始。</p>
+      </div>
+      <div class="step">
+        <div class="num">2</div>
+        <h3>開口說話</h3>
+        <p>你說你的語言。字幕自動出現，翻譯自動完成。</p>
+      </div>
+      <div class="step">
+        <div class="num">3</div>
+        <h3>聊得來？再見面</h3>
+        <p>互按「想再遇」成為好友，下次一鍵重新連線。</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Features -->
+  <div class="section" style="background:#f8f8fa;">
+    <h2>核心功能</h2>
+    <p class="subtitle">不只是翻譯，是真正的跨語言社交</p>
+    <div class="features">
+      <div class="feature">
+        <div class="icon">🎙️</div>
+        <h3>即時語音配對</h3>
+        <p>隨機配對全球用戶，或選話題找同好。支援附近配對和指定地區。</p>
+      </div>
+      <div class="feature">
+        <div class="icon">💬</div>
+        <h3>即時字幕 + 翻譯</h3>
+        <p>說話自動轉文字，對方的話即時翻成你的語言。支援 16 種語言。</p>
+      </div>
+      <div class="feature">
+        <div class="icon">🔊</div>
+        <h3>語音翻譯</h3>
+        <p>翻譯結果自動朗讀給你聽。付費用戶享有自然人聲（Edge TTS）。</p>
+      </div>
+      <div class="feature">
+        <div class="icon">🔥</div>
+        <h3>話題配對</h3>
+        <p>選美食、旅行、音樂等話題，配到同樣想聊的人。加上即時熱搜話題。</p>
+      </div>
+      <div class="feature">
+        <div class="icon">💚</div>
+        <h3>好友 + 重逢碼</h3>
+        <p>互按「想再遇」成為好友，獲得重逢碼。下次一鍵找回對方。</p>
+      </div>
+      <div class="feature">
+        <div class="icon">✉️</div>
+        <h3>信件系統</h3>
+        <p>寫信給好友，附帶翻譯功能。就像跨國筆友。</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Languages -->
+  <div class="section">
+    <h2>支援 16 種語言</h2>
+    <p class="subtitle">說你的語言，遇見全世界</p>
+    <div class="lang-grid">
+      <span class="lang-chip">🇹🇼 中文（繁）</span>
+      <span class="lang-chip">🇨🇳 简中</span>
+      <span class="lang-chip">🇯🇵 日本語</span>
+      <span class="lang-chip">🇰🇷 한국어</span>
+      <span class="lang-chip">🇺🇸 English</span>
+      <span class="lang-chip">🇻🇳 Tiếng Việt</span>
+      <span class="lang-chip">🇮🇩 Indonesia</span>
+      <span class="lang-chip">🇹🇭 ภาษาไทย</span>
+      <span class="lang-chip">🇵🇭 Tagalog</span>
+      <span class="lang-chip">🇮🇳 हिन्दी</span>
+      <span class="lang-chip">🇵🇰 اردو</span>
+      <span class="lang-chip">🇫🇷 Français</span>
+      <span class="lang-chip">🇪🇸 Español</span>
+      <span class="lang-chip">🇧🇷 Português</span>
+      <span class="lang-chip">🇷🇺 Русский</span>
+      <span class="lang-chip">🇺🇦 Українська</span>
+    </div>
+  </div>
+
+  <!-- Safety -->
+  <div class="section" style="background:#f8f8fa;">
+    <h2>安全機制</h2>
+    <p class="subtitle">讓你安心聊天</p>
+    <div class="safety-grid">
+      <div class="safety-item">
+        <div class="icon">🚫</div>
+        <h4>一鍵封鎖</h4>
+        <p>封鎖後永遠不會再配到此人</p>
+      </div>
+      <div class="safety-item">
+        <div class="icon">🚨</div>
+        <h4>檢舉系統</h4>
+        <p>附帶對話證據，自動封鎖</p>
+      </div>
+      <div class="safety-item">
+        <div class="icon">⭐</div>
+        <h4>信用評分</h4>
+        <p>壞人自動被隔離和封禁</p>
+      </div>
+      <div class="safety-item">
+        <div class="icon">🔒</div>
+        <h4>匿名安全</h4>
+        <p>無需真實姓名或電話</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Privacy -->
+  <div class="section">
+    <h2>隱私保障</h2>
+    <p class="subtitle">你的對話，只屬於你</p>
+    <div class="privacy-highlights">
+      <div class="privacy-item">
+        <div class="icon">🎤</div>
+        <h4>不錄音</h4>
+        <p>語音 P2P 直連<br>不經過伺服器</p>
+      </div>
+      <div class="privacy-item">
+        <div class="icon">📝</div>
+        <h4>不存對話</h4>
+        <p>字幕和翻譯<br>只在你的裝置上</p>
+      </div>
+      <div class="privacy-item">
+        <div class="icon">👤</div>
+        <h4>匿名帳號</h4>
+        <p>不要求真實身份<br>無需 Email 或電話</p>
+      </div>
+      <div class="privacy-item">
+        <div class="icon">🗑️</div>
+        <h4>隨時刪除</h4>
+        <p>清除瀏覽器資料<br>即可刪除所有紀錄</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- CTA Bottom -->
+  <div class="cta-bottom">
+    <h2>準備好了嗎？</h2>
+    <p>打開 KaiTalk，按一個按鈕，就能跟全世界聊天。</p>
+    <a href="https://kaitalk.zeabur.app" class="cta-btn-primary">立即開始</a>
+  </div>
+
+  <!-- Footer -->
+  <footer>
+    <p>KaiTalk &copy; 2026</p>
+    <p>
+      <a href="/privacy.html">隱私政策</a> ·
+      <a href="/terms.html">使用條款</a> ·
+      <a href="mailto:gosavor2026@gmail.com">聯繫我們</a>
+    </p>
+  </footer>
+
+</body>
+</html>
