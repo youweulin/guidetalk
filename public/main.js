@@ -2492,7 +2492,9 @@ const settingsTargetLangSelect = document.getElementById('settings-target-lang-s
 function populateLangSelects() {
   const opts = LANGS.map(l => `<option value="${l.code}">${l.flag} ${l.label}</option>`).join('');
   if (settingsLangSelect) settingsLangSelect.innerHTML = opts;
-  if (settingsTargetLangSelect) settingsTargetLangSelect.innerHTML = opts;
+  if (settingsTargetLangSelect) {
+    settingsTargetLangSelect.innerHTML = `<option value="">🌐 所有語言</option>` + opts;
+  }
   // onboarding 語言 grid
   const onbLangGrid = document.getElementById('onb-lang-grid');
   if (onbLangGrid) {
@@ -2548,9 +2550,7 @@ function openSettings() {
   const curTargetLangs = getTargetLangs();
   settingsTempTargetLangs = [...curTargetLangs];
   if (settingsTargetLangSelect) {
-    Array.from(settingsTargetLangSelect.options).forEach(opt => {
-      opt.selected = curTargetLangs.includes(opt.value);
-    });
+    settingsTargetLangSelect.value = curTargetLangs.length === 1 ? curTargetLangs[0] : '';
   }
 
   settingsOverlay.classList.add('active');
@@ -2583,13 +2583,12 @@ function saveSettings() {
   }
 
   // 儲存想找的語言（從多選下拉讀取）
-  const selectedTargetLangs = settingsTargetLangSelect
-    ? Array.from(settingsTargetLangSelect.selectedOptions).map(o => o.value)
-    : settingsTempTargetLangs;
-  if (selectedTargetLangs.length === 0) {
+  // 儲存想找的語言（單選下拉，空 = 所有語言）
+  const targetVal = settingsTargetLangSelect ? settingsTargetLangSelect.value : '';
+  if (!targetVal) {
     localStorage.removeItem(TARGET_LANGS_KEY);
   } else {
-    localStorage.setItem(TARGET_LANGS_KEY, JSON.stringify(selectedTargetLangs));
+    localStorage.setItem(TARGET_LANGS_KEY, JSON.stringify([targetVal]));
   }
 
   log(`設定已儲存`);
