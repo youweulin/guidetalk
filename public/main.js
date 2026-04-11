@@ -51,7 +51,7 @@ const I18N = {
     trends_title: '🔥 熱搜',
     tab_chat: '💬 對話',
     tab_friends: '👥 好友',
-    tab_inbox: '✉️ 信箱',
+    tab_inbox: '✉️ 信箱', tab_inbox_text: '信箱',
     no_history: '還沒有對話紀錄',
     no_friends: '還沒有好友',
     no_friends_hint: '通話時互按「💚 想再遇」就能成為好友',
@@ -114,7 +114,7 @@ const I18N = {
     trends_title: '🔥 トレンド',
     tab_chat: '💬 トーク',
     tab_friends: '👥 友達',
-    tab_inbox: '✉️ 受信箱',
+    tab_inbox: '✉️ 受信箱', tab_inbox_text: '受信箱',
     no_history: 'まだトーク履歴がありません',
     no_friends: 'まだ友達がいません',
     no_friends_hint: '通話中に「💚 また会いたい」を押すと友達になれます',
@@ -177,7 +177,7 @@ const I18N = {
     trends_title: '🔥 Trending',
     tab_chat: '💬 Chats',
     tab_friends: '👥 Friends',
-    tab_inbox: '✉️ Inbox',
+    tab_inbox: '✉️ Inbox', tab_inbox_text: 'Inbox',
     no_history: 'No chat history yet',
     no_friends: 'No friends yet',
     no_friends_hint: 'Tap "💚 Meet again" during a call to become friends',
@@ -224,7 +224,7 @@ const I18N = {
     your_language: '你讲什么语言？💬', lang_hint: '用于语音识别和自动翻译。', start_using: '开始使用 🚀',
     cta_title: '开始聊天！', cta_subtitle: '开聊！', nearby: '📍 附近的人', specific: '🌏 指定地方',
     topics_title: '💬 选话题聊', trends_title: '🔥 热搜',
-    tab_chat: '💬 对话', tab_friends: '👥 好友', tab_inbox: '✉️ 信箱',
+    tab_chat: '💬 对话', tab_friends: '👥 好友', tab_inbox: '✉️ 信箱', tab_inbox_text: '信箱',
     no_history: '还没有对话记录', no_friends: '还没有好友', no_friends_hint: '通话时互按「💚 想再遇」就能成为好友',
     settings: '⚙️ 设定', change_avatar: '更换头像', upgrade_hint: '升级会员可改昵称',
     want_to_chat: '想跟谁聊', my_region: '我的地区', my_language: '我讲的语言',
@@ -249,7 +249,7 @@ const I18N = {
     your_language: '어떤 언어를 사용하시나요? 💬', lang_hint: '음성 인식 및 자동 번역에 사용됩니다.', start_using: '시작하기 🚀',
     cta_title: '대화하자!', cta_subtitle: '시작!', nearby: '📍 근처', specific: '🌏 지역 선택',
     topics_title: '💬 토픽 선택', trends_title: '🔥 인기',
-    tab_chat: '💬 대화', tab_friends: '👥 친구', tab_inbox: '✉️ 편지함',
+    tab_chat: '💬 대화', tab_friends: '👥 친구', tab_inbox: '✉️ 편지함', tab_inbox_text: '편지함',
     no_history: '대화 기록이 없습니다', no_friends: '아직 친구가 없습니다', no_friends_hint: '통화 중 "💚 다시 만나기"를 누르면 친구가 됩니다',
     settings: '⚙️ 설정', change_avatar: '변경', upgrade_hint: '프리미엄으로 닉네임 변경',
     save: '저장', cancel: '취소', meet_again: '💚 다시 만나기', hangup: '📞 종료',
@@ -271,7 +271,7 @@ const I18N = {
     your_language: 'Bạn nói ngôn ngữ gì? 💬', lang_hint: 'Dùng cho nhận diện giọng nói và dịch tự động.', start_using: 'Bắt đầu 🚀',
     cta_title: 'Trò chuyện nào!', cta_subtitle: 'Bắt đầu!', nearby: '📍 Gần đây', specific: '🌏 Chọn vùng',
     topics_title: '💬 Chọn chủ đề', trends_title: '🔥 Xu hướng',
-    tab_chat: '💬 Trò chuyện', tab_friends: '👥 Bạn bè', tab_inbox: '✉️ Hộp thư',
+    tab_chat: '💬 Trò chuyện', tab_friends: '👥 Bạn bè', tab_inbox: '✉️ Hộp thư', tab_inbox_text: 'Hộp thư',
     save: 'Lưu', cancel: 'Hủy', meet_again: '💚 Gặp lại', hangup: '📞 Kết thúc',
     block: '🚫 Chặn', report: '🚨 Báo cáo',
     food: '🍜 Ẩm thực', travel: '✈️ Du lịch', music: '🎵 Âm nhạc', movie: '🎬 Phim',
@@ -290,7 +290,7 @@ const I18N = {
     your_language: 'Bahasa apa yang kamu gunakan? 💬', lang_hint: 'Untuk pengenalan suara dan terjemahan otomatis.', start_using: 'Mulai 🚀',
     cta_title: 'Ayo ngobrol!', cta_subtitle: 'Mulai!', nearby: '📍 Sekitar', specific: '🌏 Pilih wilayah',
     topics_title: '💬 Pilih topik', trends_title: '🔥 Trending',
-    tab_chat: '💬 Obrolan', tab_friends: '👥 Teman', tab_inbox: '✉️ Kotak masuk',
+    tab_chat: '💬 Obrolan', tab_friends: '👥 Teman', tab_inbox: '✉️ Kotak masuk', tab_inbox_text: 'Kotak masuk',
     save: 'Simpan', cancel: 'Batal', meet_again: '💚 Bertemu lagi', hangup: '📞 Tutup',
     block: '🚫 Blokir', report: '🚨 Laporkan',
     food: '🍜 Kuliner', travel: '✈️ Wisata', music: '🎵 Musik', movie: '🎬 Film',
@@ -305,7 +305,7 @@ const I18N = {
     where_are_you: 'คุณอยู่ที่ไหน? 🌏', your_language: 'คุณพูดภาษาอะไร? 💬', start_using: 'เริ่มใช้งาน 🚀',
     cta_title: 'มาคุยกัน!', cta_subtitle: 'เริ่มเลย!', nearby: '📍 ใกล้เคียง', specific: '🌏 เลือกภูมิภาค',
     topics_title: '💬 เลือกหัวข้อ', trends_title: '🔥 มาแรง',
-    tab_chat: '💬 แชท', tab_friends: '👥 เพื่อน', tab_inbox: '✉️ กล่องจดหมาย',
+    tab_chat: '💬 แชท', tab_friends: '👥 เพื่อน', tab_inbox: '✉️ กล่องจดหมาย', tab_inbox_text: 'กล่องจดหมาย',
     save: 'บันทึก', cancel: 'ยกเลิก', meet_again: '💚 เจอกันอีก', hangup: '📞 วางสาย',
     food: '🍜 อาหาร', travel: '✈️ ท่องเที่ยว', music: '🎵 เพลง', movie: '🎬 หนัง',
     pets: '🐾 สัตว์เลี้ยง', sports: '⚽ กีฬา', lang_learn: '📚 ภาษา', life: '☕ ชีวิต',
@@ -317,7 +317,7 @@ const I18N = {
     pick_avatar: 'Pumili ng avatar 🎭', who_to_chat: 'Sino ang gusto mong kausapin?', any_gender: '⚥ Kahit sino',
     where_are_you: 'Nasaan ka? 🌏', your_language: 'Anong wika mo? 💬', start_using: 'Simulan 🚀',
     cta_title: 'Mag-chat tayo!', cta_subtitle: 'Simulan!', nearby: '📍 Malapit', specific: '🌏 Pumili ng lugar',
-    tab_chat: '💬 Chat', tab_friends: '👥 Kaibigan', tab_inbox: '✉️ Inbox',
+    tab_chat: '💬 Chat', tab_friends: '👥 Kaibigan', tab_inbox: '✉️ Inbox', tab_inbox_text: 'Inbox',
     save: 'I-save', cancel: 'Kanselahin', meet_again: '💚 Magkita ulit', hangup: '📞 Ibaba',
     food: '🍜 Pagkain', travel: '✈️ Byahe', music: '🎵 Musika', movie: '🎬 Pelikula',
     pets: '🐾 Alagang hayop', sports: '⚽ Sports', lang_learn: '📚 Wika', life: '☕ Buhay',
@@ -329,7 +329,7 @@ const I18N = {
     pick_avatar: 'अवतार चुनें 🎭', who_to_chat: 'किससे बात करना चाहते हैं?', any_gender: '⚥ कोई भी',
     where_are_you: 'आप कहाँ हैं? 🌏', your_language: 'आप कौन सी भाषा बोलते हैं? 💬', start_using: 'शुरू करें 🚀',
     cta_title: 'बात करें!', cta_subtitle: 'शुरू!', nearby: '📍 आस-पास', specific: '🌏 क्षेत्र चुनें',
-    tab_chat: '💬 चैट', tab_friends: '👥 दोस्त', tab_inbox: '✉️ इनबॉक्स',
+    tab_chat: '💬 चैट', tab_friends: '👥 दोस्त', tab_inbox: '✉️ इनबॉक्स', tab_inbox_text: 'इनबॉक्स',
     save: 'सहेजें', cancel: 'रद्द', meet_again: '💚 फिर मिलें', hangup: '📞 काटें',
     food: '🍜 खाना', travel: '✈️ यात्रा', music: '🎵 संगीत', movie: '🎬 फ़िल्म',
     pets: '🐾 पालतू', sports: '⚽ खेल', lang_learn: '📚 भाषा', life: '☕ जीवन',
@@ -339,7 +339,7 @@ const I18N = {
     nickname_hint: 'ایک عرفی نام چنیں', nickname_placeholder: 'عرفی نام (زیادہ سے زیادہ 12)', next: 'اگلا',
     your_gender: 'صنف', male: '♂ مرد', female: '♀ عورت', other: '⚥ دیگر',
     cta_title: '!بات کریں', cta_subtitle: '!شروع', nearby: '📍 قریب', specific: '🌏 علاقہ منتخب کریں',
-    tab_chat: '💬 چیٹ', tab_friends: '👥 دوست', tab_inbox: '✉️ ان باکس',
+    tab_chat: '💬 چیٹ', tab_friends: '👥 دوست', tab_inbox: '✉️ ان باکس', tab_inbox_text: 'ان باکس',
     save: 'محفوظ', cancel: 'منسوخ', meet_again: '💚 پھر ملیں', hangup: '📞 ختم',
     food: '🍜 کھانا', travel: '✈️ سفر', music: '🎵 موسیقی', movie: '🎬 فلم',
   },
@@ -352,7 +352,7 @@ const I18N = {
     where_are_you: 'Où êtes-vous? 🌏', your_language: 'Quelle langue parlez-vous? 💬', start_using: 'Commencer 🚀',
     cta_title: 'Discutons!', cta_subtitle: 'C\'est parti!', nearby: '📍 À proximité', specific: '🌏 Choisir une région',
     topics_title: '💬 Choisir un sujet', trends_title: '🔥 Tendances',
-    tab_chat: '💬 Discussions', tab_friends: '👥 Amis', tab_inbox: '✉️ Messages',
+    tab_chat: '💬 Discussions', tab_friends: '👥 Amis', tab_inbox: '✉️ Messages', tab_inbox_text: 'Messages',
     save: 'Enregistrer', cancel: 'Annuler', meet_again: '💚 Se revoir', hangup: '📞 Raccrocher',
     block: '🚫 Bloquer', report: '🚨 Signaler',
     food: '🍜 Cuisine', travel: '✈️ Voyage', music: '🎵 Musique', movie: '🎬 Cinéma',
@@ -367,7 +367,7 @@ const I18N = {
     where_are_you: '¿Dónde estás? 🌏', your_language: '¿Qué idioma hablas? 💬', start_using: 'Empezar 🚀',
     cta_title: '¡Hablemos!', cta_subtitle: '¡Vamos!', nearby: '📍 Cerca', specific: '🌏 Elegir región',
     topics_title: '💬 Elige un tema', trends_title: '🔥 Tendencias',
-    tab_chat: '💬 Chats', tab_friends: '👥 Amigos', tab_inbox: '✉️ Bandeja',
+    tab_chat: '💬 Chats', tab_friends: '👥 Amigos', tab_inbox: '✉️ Bandeja', tab_inbox_text: 'Bandeja',
     save: 'Guardar', cancel: 'Cancelar', meet_again: '💚 Reencontrarse', hangup: '📞 Colgar',
     block: '🚫 Bloquear', report: '🚨 Reportar',
     food: '🍜 Comida', travel: '✈️ Viajes', music: '🎵 Música', movie: '🎬 Cine',
@@ -380,7 +380,7 @@ const I18N = {
     pick_avatar: 'Escolha um avatar 🎭', who_to_chat: 'Com quem quer conversar?', any_gender: '⚥ Qualquer um',
     where_are_you: 'Onde você está? 🌏', your_language: 'Que idioma você fala? 💬', start_using: 'Começar 🚀',
     cta_title: 'Vamos conversar!', cta_subtitle: 'Começar!', nearby: '📍 Perto', specific: '🌏 Escolher região',
-    tab_chat: '💬 Conversas', tab_friends: '👥 Amigos', tab_inbox: '✉️ Caixa',
+    tab_chat: '💬 Conversas', tab_friends: '👥 Amigos', tab_inbox: '✉️ Caixa', tab_inbox_text: 'Caixa',
     save: 'Salvar', cancel: 'Cancelar', meet_again: '💚 Reencontrar', hangup: '📞 Desligar',
     food: '🍜 Comida', travel: '✈️ Viagem', music: '🎵 Música', movie: '🎬 Cinema',
     pets: '🐾 Pets', sports: '⚽ Esportes', lang_learn: '📚 Idiomas', life: '☕ Vida',
@@ -392,7 +392,7 @@ const I18N = {
     pick_avatar: 'Выберите аватар 🎭', who_to_chat: 'С кем хотите поговорить?', any_gender: '⚥ Любой',
     where_are_you: 'Где вы? 🌏', your_language: 'На каком языке говорите? 💬', start_using: 'Начать 🚀',
     cta_title: 'Давай поговорим!', cta_subtitle: 'Начать!', nearby: '📍 Рядом', specific: '🌏 Выбрать регион',
-    tab_chat: '💬 Чаты', tab_friends: '👥 Друзья', tab_inbox: '✉️ Почта',
+    tab_chat: '💬 Чаты', tab_friends: '👥 Друзья', tab_inbox: '✉️ Почта', tab_inbox_text: 'Почта',
     save: 'Сохранить', cancel: 'Отмена', meet_again: '💚 Встретиться снова', hangup: '📞 Завершить',
     food: '🍜 Еда', travel: '✈️ Путешествия', music: '🎵 Музыка', movie: '🎬 Кино',
     pets: '🐾 Питомцы', sports: '⚽ Спорт', lang_learn: '📚 Языки', life: '☕ Жизнь',
@@ -404,7 +404,7 @@ const I18N = {
     pick_avatar: 'Оберіть аватар 🎭', who_to_chat: 'З ким хочете поговорити?', any_gender: '⚥ Будь-хто',
     where_are_you: 'Де ви? 🌏', your_language: 'Якою мовою говорите? 💬', start_using: 'Почати 🚀',
     cta_title: 'Давай поговоримо!', cta_subtitle: 'Почати!', nearby: '📍 Поруч', specific: '🌏 Обрати регіон',
-    tab_chat: '💬 Чати', tab_friends: '👥 Друзі', tab_inbox: '✉️ Пошта',
+    tab_chat: '💬 Чати', tab_friends: '👥 Друзі', tab_inbox: '✉️ Пошта', tab_inbox_text: 'Пошта',
     save: 'Зберегти', cancel: 'Скасувати', meet_again: '💚 Зустрітися знову', hangup: '📞 Завершити',
     food: '🍜 Їжа', travel: '✈️ Подорожі', music: '🎵 Музика', movie: '🎬 Кіно',
     pets: '🐾 Тварини', sports: '⚽ Спорт', lang_learn: '📚 Мови', life: '☕ Життя',
@@ -2107,6 +2107,7 @@ function cleanup() {
   stopSTT();
   ttsStop();
   stopMeterLoop();
+  hideTopicHint();
   if (subtitleDC) {
     try { subtitleDC.close(); } catch { }
     subtitleDC = null;
@@ -3362,24 +3363,26 @@ async function loadTrivia() {
 }
 
 function showTopicHint(myTopic, peerTopic, peer) {
-  const cardEl = document.getElementById('trivia-card');
-  if (!cardEl) return;
-  if (!myTopic && !peerTopic) return; // 都沒選話題就不顯示
+  const el = document.getElementById('topic-hint');
+  if (!el) return;
+  if (!myTopic && !peerTopic) { el.style.display = 'none'; return; }
 
-  const headerEl = cardEl.querySelector('.trivia-header');
-  const bodyEl = cardEl.querySelector('.trivia-body');
-  if (!headerEl || !bodyEl) return;
-
-  headerEl.textContent = '💬 話題';
   let html = '';
   if (myTopic && peerTopic && myTopic === peerTopic) {
-    html = `<div style="font-size:14px;font-weight:700;color:var(--primary);">你們都想聊「${myTopic}」！</div>`;
+    html = `💬 你們都想聊「<strong>${myTopic}</strong>」！`;
   } else {
-    if (myTopic) html += `<div style="font-size:12px;margin-bottom:4px;">你想聊：<strong>${myTopic}</strong></div>`;
-    if (peerTopic) html += `<div style="font-size:12px;">${peer || '對方'}想聊：<strong>${peerTopic}</strong></div>`;
+    const parts = [];
+    if (myTopic) parts.push(`你：<strong>${myTopic}</strong>`);
+    if (peerTopic) parts.push(`${peer || '對方'}：<strong>${peerTopic}</strong>`);
+    html = '💬 ' + parts.join(' · ');
   }
-  bodyEl.innerHTML = html;
-  cardEl.classList.add('active', 'expanded');
+  el.innerHTML = html;
+  el.style.display = 'block';
+}
+
+function hideTopicHint() {
+  const el = document.getElementById('topic-hint');
+  if (el) el.style.display = 'none';
 }
 
 function showRandomTrivia(myRegion, peerRegion) {
