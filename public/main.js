@@ -3682,6 +3682,23 @@ applyGenderTheme();
 onbBuildLangGrid();
 applyI18n(); // 填充語言選單（onboarding + 設定頁）
 loadTrivia().finally(() => loadTrends());
+loadOnlineStatus();
+
+async function loadOnlineStatus() {
+  try {
+    const resp = await fetch('/api/stats/online');
+    const data = await resp.json();
+    const el = document.getElementById('online-status');
+    if (!el) return;
+    const online = data.online || 0;
+    if (online > 0) {
+      el.innerHTML = `<span class="online-dot"></span>${online} 人在線`;
+      el.style.display = 'block';
+    }
+  } catch {}
+  // 每 30 秒更新
+  setTimeout(loadOnlineStatus, 30000);
+}
 
 // ─── 話題配對（固定分類）─────────────────────────────
 document.querySelectorAll('.topic-cat').forEach(chip => {
