@@ -2064,6 +2064,36 @@
       padding: 32px 28px;
       box-shadow: 0 20px 60px rgba(0,0,0,0.4);
     }
+    .onb-logo {
+      text-align: center;
+      margin-bottom: 12px;
+    }
+    .onb-icon {
+      width: 80px;
+      height: 80px;
+      border-radius: 20px;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+    }
+    .onb-title {
+      text-align: center;
+      font-size: 24px;
+      font-weight: 800;
+      background: var(--gradient-text);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      margin-bottom: 6px;
+    }
+    .onb-slogan {
+      text-align: center;
+      font-size: 13px;
+      color: var(--muted);
+      margin-bottom: 16px;
+    }
+    .onb-divider {
+      height: 1px;
+      background: var(--border);
+      margin: 0 20px 16px;
+    }
     .onboarding-step {
       display: none;
     }
@@ -2194,10 +2224,15 @@
 
       <!-- Step 1: 暱稱 -->
       <div class="onboarding-step" id="step-1">
-        <h2>歡迎來 KaiTalk 👋</h2>
-        <p class="step-hint">先取個暱稱，讓對方知道怎麼稱呼你。</p>
+        <div class="onb-logo">
+          <img src="/icon-192.png" class="onb-icon" alt="KaiTalk">
+        </div>
+        <h2 class="onb-title">歡迎來到 KaiTalk</h2>
+        <p class="onb-slogan">會講你的語言，就能跟全世界聊天</p>
+        <div class="onb-divider"></div>
+        <p class="step-hint">先取個暱稱，讓對方知道怎麼稱呼你</p>
         <input id="onb-name" class="input" placeholder="你的暱稱（12 字內）" maxlength="12">
-        <p class="step-warning">⚠️ 暱稱設定後不能修改（除非升級會員）</p>
+        <p class="step-warning">暱稱設定後不能修改（除非升級會員）</p>
         <button id="onb-step1-next" class="btn-primary" disabled>下一步</button>
       </div>
 
