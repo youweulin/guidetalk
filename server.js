@@ -753,12 +753,10 @@ const generateReunionCode = () => {
 //   我 specific  ✅(if 對方在我目標)  ✅(雙方相符)  ✅(雙方相符)
 //   * 上面所有 ✅ 都還要再過 targetLangs 檢查
 function aWillingToB(a, b) {
-  // 0. 話題模式：雙方必須選同一個話題
-  if (a.topicId || b.topicId) {
-    if (a.topicId !== b.topicId) return false;
-    // 話題配對跳過其他模式條件（不限地區），但仍走性別+語言過濾
-  } else {
-    // 1. 模式條件（非話題模式才檢查）
+  // 0. 話題模式不再擋配對 — 話題只是破冰提示
+  //    （配對優先找同話題，找不到就配一般人，由 find_match 處理）
+  {
+    // 1. 模式條件
     let modeOk = false;
     if (a.mode === 'quick') {
       modeOk = true;
@@ -922,7 +920,13 @@ io.on('connection', (socket) => {
           other.reunionPartnerId === socket.data.userId
         );
       }
-      // 再用一般相容性配對
+      // 話題優先：先找同話題 + 相容的人
+      if (otherIdx === -1 && me.topicId) {
+        otherIdx = q.findIndex(other =>
+          other.topicId === me.topicId && isCompatible(me, other)
+        );
+      }
+      // 再用一般相容性配對（不管話題）
       if (otherIdx === -1) {
         otherIdx = q.findIndex(other => isCompatible(me, other));
       }
@@ -980,8 +984,9 @@ io.on('connection', (socket) => {
           peerVerified: verifyResults[peerIdx],
           peerRegion: players[peerIdx].myBigRegion || null,
           peerGender: players[peerIdx].gender || null,
-          matchedMode: me.topicId ? 'topic' : (me.mode === other.mode ? me.mode : 'mixed'),
-          topicId: me.topicId || other.topicId || null,
+          matchedMode: (me.topicId || other.topicId) ? 'topic' : (me.mode === other.mode ? me.mode : 'mixed'),
+          myTopicId: p.topicId || null,
+          peerTopicId: players[peerIdx].topicId || null,
         });
       });
       console.log(`[★] Matched ${players[0].name}(${players[0].mode}) ↔ ${players[1].name}(${players[1].mode}) in room ${roomCode} [verify: ${verifyResults}]`);

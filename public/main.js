@@ -1144,7 +1144,7 @@ function connectSocket() {
     startMatchTimeoutTimer();
   });
 
-  socket.on('match_found', async ({ roomCode, isHost: hostFlag, peer, peerVerified, peerRegion, peerGender }) => {
+  socket.on('match_found', async ({ roomCode, isHost: hostFlag, peer, peerVerified, peerRegion, peerGender, myTopicId, peerTopicId }) => {
     // 配對成功，停掉等待逾時
     stopMatchTimeoutTimer();
     peerId = peer.id;
@@ -1160,6 +1160,8 @@ function connectSocket() {
     // 在地化豆知識：根據雙方地區選
     const myRegion = localStorage.getItem(ONB_BIG_REGION_KEY) || null;
     showRandomTrivia(myRegion, peerRegion);
+    // 話題提示：顯示雙方選的話題
+    showTopicHint(myTopicId, peerTopicId, peerName);
     showButtons('in-call');
     showMeters();
     if (subtitlesEnabled) showSubtitles();
@@ -2806,6 +2808,27 @@ async function loadTrivia() {
   } catch (err) {
     log(`豆知識載入失敗: ${err.message}`);
   }
+}
+
+function showTopicHint(myTopic, peerTopic, peer) {
+  const cardEl = document.getElementById('trivia-card');
+  if (!cardEl) return;
+  if (!myTopic && !peerTopic) return; // 都沒選話題就不顯示
+
+  const headerEl = cardEl.querySelector('.trivia-header');
+  const bodyEl = cardEl.querySelector('.trivia-body');
+  if (!headerEl || !bodyEl) return;
+
+  headerEl.textContent = '💬 話題';
+  let html = '';
+  if (myTopic && peerTopic && myTopic === peerTopic) {
+    html = `<div style="font-size:14px;font-weight:700;color:var(--primary);">你們都想聊「${myTopic}」！</div>`;
+  } else {
+    if (myTopic) html += `<div style="font-size:12px;margin-bottom:4px;">你想聊：<strong>${myTopic}</strong></div>`;
+    if (peerTopic) html += `<div style="font-size:12px;">${peer || '對方'}想聊：<strong>${peerTopic}</strong></div>`;
+  }
+  bodyEl.innerHTML = html;
+  cardEl.classList.add('active', 'expanded');
 }
 
 function showRandomTrivia(myRegion, peerRegion) {
