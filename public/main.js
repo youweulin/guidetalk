@@ -1596,12 +1596,15 @@ function connectSocket() {
     setStatus(`🎉 已配對到 ${peer.name}，建立連線中...`, true);
     showPeerCard(peer.name, roomCode, isHost ? 'host' : 'guest', peerVerified, peerGender);
     setPeerLangBadge(null); // 對方語言一開始未知
-    // 在地化豆知識：根據雙方地區選
-    const myRegion = localStorage.getItem(ONB_BIG_REGION_KEY) || null;
-    showRandomTrivia(myRegion, peerRegion);
-    // 話題提示：顯示雙方選的話題
     showButtons('in-call');
-    showTopicHint(myTopicId, peerTopicId, peerName);
+    // 話題優先，沒話題才顯示豆知識
+    if (myTopicId || peerTopicId) {
+      showTopicHint(myTopicId, peerTopicId, peerName);
+      log(`💬 話題: 我=${myTopicId || '無'}, 對方=${peerTopicId || '無'}`);
+    } else {
+      const myRegion = localStorage.getItem(ONB_BIG_REGION_KEY) || null;
+      showRandomTrivia(myRegion, peerRegion);
+    }
     showMeters();
     if (subtitlesEnabled) showSubtitles();
     clearSubtitles();
