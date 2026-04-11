@@ -478,7 +478,7 @@ const showPeerCard = (name, room, role, peerVerified, peerGender) => {
   peerNameEl.textContent = name;
   // 顯示對方性別 icon
   const pgIcon = document.getElementById('peer-gender-icon');
-  if (pgIcon) pgIcon.textContent = GENDER_ICONS[peerGender] || '';
+  if (pgIcon) pgIcon.innerHTML = GENDER_SVGS[peerGender] || '';
   roomCodeEl.textContent = room;
   myRoleEl.textContent = role === 'host' ? 'HOST' : 'GUEST';
   myRoleEl.className = `role ${role}`;
@@ -1386,7 +1386,7 @@ async function startMatching(opts = {}) {
     }
     // 寫進通話畫面右半「自己」的名字
     const myGender = localStorage.getItem(ONB_GENDER_KEY);
-    const myGIcon = GENDER_ICONS[myGender] || '👤';
+    const myGIcon = GENDER_ICONS[myGender] || '';
     if (userDisplayEl) userDisplayEl.textContent = `${name} ${myGIcon}`;
 
     // 我自己的大區（onboarding 存的）
@@ -1699,7 +1699,12 @@ const ONB_BIG_REGION_KEY = 'kaitalk.bigRegion';
 const ONB_DONE_KEY = 'kaitalk.onboardingDone';
 const ONB_AVATAR_KEY = 'kaitalk.avatar';
 
-const GENDER_ICONS = { male: '👨', female: '👩', other: '😊' };
+const GENDER_SVGS = {
+  male: `<svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-0.15em"><circle cx="10" cy="14" r="5"/><path d="M19 5l-5.4 5.4M19 5h-5M19 5v5"/></svg>`,
+  female: `<svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-0.15em"><circle cx="12" cy="9" r="5"/><path d="M12 14v7M9 18h6"/></svg>`,
+  other: `<svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-0.15em"><circle cx="12" cy="12" r="5"/><path d="M12 7V2M12 17v5M7 12H2M17 12h5"/></svg>`,
+};
+const GENDER_ICONS = { male: '♂', female: '♀', other: '⚥' };
 
 const BIG_REGIONS = [
   { id: 'tw-north',    flag: '🇹🇼', name: '北部' },
@@ -2067,11 +2072,11 @@ function renderHistoryTab(history) {
     const regionTag = regionObj ? `<span class="tag tag-blue">${regionObj.flag} ${regionObj.name}</span>` : '';
     const li = h.peerLang ? langInfo(h.peerLang) : null;
     const langTag = li ? `<span class="tag tag-red">${li.flag} ${li.label}</span>` : '';
-    const gIcon = GENDER_ICONS[h.peerGender] || '';
+    const gSvg = GENDER_SVGS[h.peerGender] || '';
     return `
       <div class="history-item" data-id="${h.id}">
         <div class="hi-row">
-          <div class="hi-avatar">${gIcon || '👤'}</div>
+          <div class="hi-avatar">${gSvg || '👤'}</div>
           <div class="hi-info">
             <div class="hi-name">${escapeHtml(h.peerName)}</div>
             <div class="hi-tags">${regionTag}${langTag}</div>
@@ -2272,7 +2277,7 @@ function showHistoryDetail(h) {
   const regionTag = regionObj ? `${regionObj.flag} ${regionObj.name}` : '';
   const li = h.peerLang ? langInfo(h.peerLang) : null;
   const langTag = li ? `${li.flag} ${li.label}` : '';
-  const gIcon = GENDER_ICONS[h.peerGender] || '';
+  const gSvg = GENDER_SVGS[h.peerGender] || '';
 
   const msgs = h.messages.map(m => {
     const label = m.speaker === 'self' ? '你' : h.peerName;
@@ -2291,7 +2296,7 @@ function showHistoryDetail(h) {
 
   contentEl.innerHTML = `
     <div class="hd-header">
-      <span class="hd-avatar">${gIcon || '👤'}</span>
+      <span class="hd-avatar">${gSvg || '👤'}</span>
       <span class="hd-name">${escapeHtml(h.peerName)}</span>
       <span class="hd-info">${regionTag} ${langTag}</span>
     </div>
@@ -2583,8 +2588,6 @@ function renderUserBar() {
 
   // 暱稱（純名字，不帶性別 icon — icon 在 avatar 圈裡）
   const name = localStorage.getItem(ONB_NICKNAME_KEY) || '—';
-  const gender = localStorage.getItem(ONB_GENDER_KEY);
-  const gIcon = GENDER_ICONS[gender] || '👤';
   if (userBarNameEl) userBarNameEl.textContent = name;
 
   // Avatar image
@@ -2628,7 +2631,7 @@ function renderUserBar() {
   const targetEl = document.getElementById('user-bar-target');
   if (targetEl) {
     const tg = localStorage.getItem(ONB_TARGET_GENDER_KEY) || 'any';
-    const tgLabel = tg === 'male' ? '👨 男生' : tg === 'female' ? '👩 女生' : '😊 都可以';
+    const tgLabel = tg === 'male' ? '♂ 男生' : tg === 'female' ? '♀ 女生' : '⚥ 都可以';
     targetEl.textContent = `想找：${tgLabel}`;
   }
   const tlEl = document.getElementById('target-lang-value');
