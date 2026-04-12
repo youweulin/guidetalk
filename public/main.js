@@ -1027,12 +1027,8 @@ const showButtons = (state) => {
   //   - status 列（peer card 已經顯示「與你配對的是 X」）
   btnMute.style.display = 'none';
 
-  // TTS 按鈕：通話中才顯示
-  const btnTts = document.getElementById('btn-tts');
-  if (btnTts) {
-    btnTts.style.display = state === 'in-call' ? 'block' : 'none';
-    if (state === 'in-call') updateTtsBtn();
-  }
+  // TTS 按鈕：已移入 mic-toggle-bar，通話中由 bar 統一控制
+  if (state === 'in-call') updateTtsBtn();
 
   // 麥克風拉巴：通話中才顯示
   const micBar = document.getElementById('mic-toggle-bar');
@@ -1045,15 +1041,6 @@ const showButtons = (state) => {
     }
   }
 
-  // 文字聊天區：通話中才顯示
-  const textChat = document.getElementById('text-chat-area');
-  if (textChat) {
-    textChat.style.display = state === 'in-call' ? 'block' : 'none';
-    if (state === 'in-call') {
-      const msgArea = document.getElementById('text-chat-messages');
-      if (msgArea) msgArea.innerHTML = '';
-    }
-  }
 };
 
 const showPeerCard = (name, room, role, peerVerified, peerGender, peerAvatar) => {
@@ -1657,14 +1644,12 @@ async function nativeTtsSpeak(text, lang, remoteAudio) {
       category: 'playback',
     };
 
-    if (savedVoiceIdx !== null) {
-      opts.voice = parseInt(savedVoiceIdx, 10);
-    } else if (nativeTtsVoices.length > 0) {
+    if (nativeTtsVoices.length > 0) {
       const recommended = ['Lilian', 'Han', 'Yun', 'Limu', 'Meijia', 'Kyoko', 'Otoya', 'O-ren', 'Ava', 'Yuna'];
       const langPrefix = (lang || sttLang).split('-')[0];
       const matches = nativeTtsVoices.filter(v => v.lang.startsWith(langPrefix));
 
-      // 根據對方性別篩選語音
+      // 根據對方性別自動篩選語音（優先於手動設定）
       const targetGender = peerGenderStored || null;
       let genderMatches = matches;
       if (targetGender) {
@@ -1677,7 +1662,13 @@ async function nativeTtsSpeak(text, lang, remoteAudio) {
                 || genderMatches.find(v => /premium/i.test(v.name))
                 || genderMatches.find(v => /enhanced/i.test(v.name))
                 || genderMatches[0];
-      if (best) opts.voice = nativeTtsVoices.indexOf(best);
+      if (best) {
+        opts.voice = nativeTtsVoices.indexOf(best);
+        console.log(`[kaitalk] TTS 自動選聲: ${best.name} (對方性別=${targetGender || '未知'})`);
+      }
+    } else if (savedVoiceIdx !== null) {
+      // fallback：沒有語音清單時用手動設定
+      opts.voice = parseInt(savedVoiceIdx, 10);
     }
 
     await NativeTTS.speak(opts);
