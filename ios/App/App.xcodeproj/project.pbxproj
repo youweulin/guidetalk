@@ -16,6 +16,8 @@
 		504EC3121FED79650016851F /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 504EC3101FED79650016851F /* LaunchScreen.storyboard */; };
 		50B271D11FEDC1A000F3C39B /* public in Resources */ = {isa = PBXBuildFile; fileRef = 50B271D01FEDC1A000F3C39B /* public */; };
 		67FF48A82F8A520E00641455 /* AppleSignInPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = 67FF48A72F8A520E00641455 /* AppleSignInPlugin.swift */; };
+		67FF48B22F8A9ACF00641455 /* AppleTranslationPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = 67FF48B12F8A9ACF00641455 /* AppleTranslationPlugin.swift */; };
+		67FF48C02F9A000000641455 /* InAppPurchasePlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = 67FF48BF2F9A000000641455 /* InAppPurchasePlugin.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -30,6 +32,8 @@
 		50B271D01FEDC1A000F3C39B /* public */ = {isa = PBXFileReference; lastKnownFileType = folder; path = public; sourceTree = "<group>"; };
 		67FF48A62F8A3FA500641455 /* App.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = App.entitlements; sourceTree = "<group>"; };
 		67FF48A72F8A520E00641455 /* AppleSignInPlugin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppleSignInPlugin.swift; sourceTree = "<group>"; };
+		67FF48B12F8A9ACF00641455 /* AppleTranslationPlugin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppleTranslationPlugin.swift; sourceTree = "<group>"; };
+		67FF48BF2F9A000000641455 /* InAppPurchasePlugin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InAppPurchasePlugin.swift; sourceTree = "<group>"; };
 		958DCC722DB07C7200EA8C5F /* debug.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; name = debug.xcconfig; path = ../debug.xcconfig; sourceTree = SOURCE_ROOT; };
 /* End PBXFileReference section */
 
@@ -48,6 +52,7 @@
 		504EC2FB1FED79650016851F = {
 			isa = PBXGroup;
 			children = (
+				67FF48B12F8A9ACF00641455 /* AppleTranslationPlugin.swift */,
 				958DCC722DB07C7200EA8C5F /* debug.xcconfig */,
 				504EC3061FED79650016851F /* App */,
 				504EC3051FED79650016851F /* Products */,
@@ -66,6 +71,7 @@
 			isa = PBXGroup;
 			children = (
 				67FF48A72F8A520E00641455 /* AppleSignInPlugin.swift */,
+				67FF48BF2F9A000000641455 /* InAppPurchasePlugin.swift */,
 				67FF48A62F8A3FA500641455 /* App.entitlements */,
 				50379B222058CBB4000EE86E /* capacitor.config.json */,
 				504EC3071FED79650016851F /* AppDelegate.swift */,
@@ -160,8 +166,10 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				67FF48B22F8A9ACF00641455 /* AppleTranslationPlugin.swift in Sources */,
 				504EC3081FED79650016851F /* AppDelegate.swift in Sources */,
 				67FF48A82F8A520E00641455 /* AppleSignInPlugin.swift in Sources */,
+				67FF48C02F9A000000641455 /* InAppPurchasePlugin.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

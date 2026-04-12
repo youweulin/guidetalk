@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>KaiTalk — 安裝教學</title>
+  <meta name="theme-color" content="#7b2d8e">
+  <link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, 'Hiragino Sans', sans-serif; background: #f2f2f7; color: #1d1d1f; line-height: 1.7; padding: 20px; min-height: 100vh; }
+    .container { max-width: 480px; margin: 0 auto; }
+    .hero { text-align: center; padding: 32px 0 24px; }
+    .hero img { width: 80px; height: 80px; border-radius: 20px; box-shadow: 0 4px 16px rgba(0,0,0,0.1); }
+    .hero h1 { font-size: 24px; margin: 12px 0 4px; }
+    .hero p { color: #86868b; font-size: 14px; }
+    .card { background: #fff; border-radius: 16px; padding: 20px; margin-bottom: 16px; box-shadow: 0 2px 8px rgba(0,0,0,0.04); }
+    .card h2 { font-size: 16px; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
+    .step { display: flex; gap: 12px; margin-bottom: 12px; align-items: flex-start; }
+    .step-num { width: 24px; height: 24px; border-radius: 50%; background: linear-gradient(135deg, #9b8ce8, #7c6dd8); color: #fff; font-size: 13px; font-weight: 700; display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 2px; }
+    .step-text { font-size: 14px; }
+    .features { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .feat { background: #f8f8fa; border-radius: 12px; padding: 12px; text-align: center; font-size: 13px; }
+    .feat-icon { font-size: 24px; margin-bottom: 4px; }
+    .cta { display: block; width: 100%; padding: 14px; border: none; border-radius: 14px; background: linear-gradient(135deg, #9b8ce8, #7c6dd8); color: #fff; font-size: 16px; font-weight: 700; cursor: pointer; text-align: center; text-decoration: none; margin-top: 8px; }
+    .cta:active { opacity: 0.9; }
+    .lang-switch { text-align: center; margin-bottom: 16px; }
+    .lang-switch button { background: none; border: 1px solid #ddd; border-radius: 8px; padding: 4px 12px; font-size: 12px; cursor: pointer; margin: 0 2px; }
+    .lang-switch button.active { background: #7c6dd8; color: #fff; border-color: #7c6dd8; }
+    [data-lang]:not(.active-lang) { display: none; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="hero">
+      <img src="icon-192.png" alt="KaiTalk">
+      <h1>KaiTalk</h1>
+      <p>用你的語言，跟全世界聊天</p>
+    </div>
+
+    <div class="lang-switch">
+      <button class="active" onclick="switchLang('zh')">中文</button>
+      <button onclick="switchLang('ja')">日本語</button>
+      <button onclick="switchLang('en')">English</button>
+    </div>
+
+    <!-- 中文 -->
+    <div data-lang="zh" class="active-lang">
+      <div class="card">
+        <h2>✨ 主要功能</h2>
+        <div class="features">
+          <div class="feat"><div class="feat-icon">🎙️</div>隨機語音配對</div>
+          <div class="feat"><div class="feat-icon">🤖</div>AI 即時翻譯</div>
+          <div class="feat"><div class="feat-icon">💬</div>文字+貼圖聊天</div>
+          <div class="feat"><div class="feat-icon">👥</div>好友系統</div>
+        </div>
+      </div>
+      <div class="card">
+        <h2>📱 iPhone 安裝</h2>
+        <div class="step"><div class="step-num">1</div><div class="step-text">用 <b>Safari</b> 打開 kaitalk.zeabur.app</div></div>
+        <div class="step"><div class="step-num">2</div><div class="step-text">點底部 <b>分享按鈕</b>（方框+箭頭 ↑）</div></div>
+        <div class="step"><div class="step-num">3</div><div class="step-text">選 <b>「加入主畫面」</b></div></div>
+        <div class="step"><div class="step-num">4</div><div class="step-text">完成！桌面會出現 KaiTalk 圖示</div></div>
+      </div>
+      <div class="card">
+        <h2>🤖 Android 安裝</h2>
+        <div class="step"><div class="step-num">1</div><div class="step-text">用 <b>Chrome</b> 打開 kaitalk.zeabur.app</div></div>
+        <div class="step"><div class="step-num">2</div><div class="step-text">點右上角 <b>⋮</b> 選單</div></div>
+        <div class="step"><div class="step-num">3</div><div class="step-text">選 <b>「安裝應用程式」</b> 或 <b>「加到主畫面」</b></div></div>
+      </div>
+      <a href="/" class="cta">立即開始聊天</a>
+    </div>
+
+    <!-- 日本語 -->
+    <div data-lang="ja">
+      <div class="card">
+        <h2>✨ 主な機能</h2>
+        <div class="features">
+          <div class="feat"><div class="feat-icon">🎙️</div>ランダム音声マッチ</div>
+          <div class="feat"><div class="feat-icon">🤖</div>AIリアルタイム翻訳</div>
+          <div class="feat"><div class="feat-icon">💬</div>テキスト＆スタンプ</div>
+          <div class="feat"><div class="feat-icon">👥</div>フレンド機能</div>
+        </div>
+      </div>
+      <div class="card">
+        <h2>📱 iPhone インストール</h2>
+        <div class="step"><div class="step-num">1</div><div class="step-text"><b>Safari</b> で kaitalk.zeabur.app を開く</div></div>
+        <div class="step"><div class="step-num">2</div><div class="step-text">下の <b>共有ボタン</b>（□↑）をタップ</div></div>
+        <div class="step"><div class="step-num">3</div><div class="step-text"><b>「ホーム画面に追加」</b> を選択</div></div>
+        <div class="step"><div class="step-num">4</div><div class="step-text">完了！ホーム画面に KaiTalk が追加されます</div></div>
+      </div>
+      <div class="card">
+        <h2>🤖 Android インストール</h2>
+        <div class="step"><div class="step-num">1</div><div class="step-text"><b>Chrome</b> で kaitalk.zeabur.app を開く</div></div>
+        <div class="step"><div class="step-num">2</div><div class="step-text">右上の <b>⋮</b> メニューをタップ</div></div>
+        <div class="step"><div class="step-num">3</div><div class="step-text"><b>「アプリをインストール」</b> を選択</div></div>
+      </div>
+      <a href="/" class="cta">今すぐチャット開始</a>
+    </div>
+
+    <!-- English -->
+    <div data-lang="en">
+      <div class="card">
+        <h2>✨ Features</h2>
+        <div class="features">
+          <div class="feat"><div class="feat-icon">🎙️</div>Random Voice Match</div>
+          <div class="feat"><div class="feat-icon">🤖</div>AI Translation</div>
+          <div class="feat"><div class="feat-icon">💬</div>Text + Stickers</div>
+          <div class="feat"><div class="feat-icon">👥</div>Friends</div>
+        </div>
+      </div>
+      <div class="card">
+        <h2>📱 iPhone Install</h2>
+        <div class="step"><div class="step-num">1</div><div class="step-text">Open kaitalk.zeabur.app in <b>Safari</b></div></div>
+        <div class="step"><div class="step-num">2</div><div class="step-text">Tap the <b>Share button</b> (□↑) at the bottom</div></div>
+        <div class="step"><div class="step-num">3</div><div class="step-text">Select <b>"Add to Home Screen"</b></div></div>
+        <div class="step"><div class="step-num">4</div><div class="step-text">Done! KaiTalk icon will appear on your home screen</div></div>
+      </div>
+      <div class="card">
+        <h2>🤖 Android Install</h2>
+        <div class="step"><div class="step-num">1</div><div class="step-text">Open kaitalk.zeabur.app in <b>Chrome</b></div></div>
+        <div class="step"><div class="step-num">2</div><div class="step-text">Tap <b>⋮</b> menu at top right</div></div>
+        <div class="step"><div class="step-num">3</div><div class="step-text">Select <b>"Install app"</b> or <b>"Add to Home Screen"</b></div></div>
+      </div>
+      <a href="/" class="cta">Start chatting now</a>
+    </div>
+  </div>
+
+  <script>
+    function switchLang(lang) {
+      document.querySelectorAll('[data-lang]').forEach(el => el.classList.remove('active-lang'));
+      document.querySelector(`[data-lang="${lang}"]`)?.classList.add('active-lang');
+      document.querySelectorAll('.lang-switch button').forEach(b => b.classList.remove('active'));
+      event.target.classList.add('active');
+    }
+  </script>
+</body>
+</html>

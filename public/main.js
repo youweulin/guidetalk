@@ -1033,6 +1033,27 @@ const showButtons = (state) => {
     btnTts.style.display = state === 'in-call' ? 'block' : 'none';
     if (state === 'in-call') updateTtsBtn();
   }
+
+  // 麥克風拉巴：通話中才顯示
+  const micBar = document.getElementById('mic-toggle-bar');
+  if (micBar) {
+    micBar.style.display = state === 'in-call' ? 'block' : 'none';
+    // 進通話時重置拉巴為關（mic 預設靜音）
+    if (state === 'in-call') {
+      const micToggle = document.getElementById('mic-toggle');
+      if (micToggle) micToggle.checked = false;
+    }
+  }
+
+  // 文字聊天區：通話中才顯示
+  const textChat = document.getElementById('text-chat-area');
+  if (textChat) {
+    textChat.style.display = state === 'in-call' ? 'block' : 'none';
+    if (state === 'in-call') {
+      const msgArea = document.getElementById('text-chat-messages');
+      if (msgArea) msgArea.innerHTML = '';
+    }
+  }
 };
 
 const showPeerCard = (name, room, role, peerVerified, peerGender, peerAvatar) => {
@@ -1268,7 +1289,28 @@ function clearSubtitles() {
 // 對方說話 → STT → 翻譯 → SpeechSynthesis 朗讀翻譯
 // 朗讀時壓低對方音量，朗讀完恢復
 
+// ─── TTS 語音性別對照表（iOS / macOS 常見語音名 → 性別）───
+const VOICE_GENDER_MAP = {
+  // 女性語音
+  female: ['Lilian', 'Meijia', 'Kyoko', 'O-ren', 'Ava', 'Yuna', 'Samantha', 'Karen',
+           'Moira', 'Tessa', 'Fiona', 'Tingting', 'Sinji', 'Nanami', 'Siri Female',
+           'Nicky', 'Allison', 'Susan', 'Zoe', 'Joana', 'Monica', 'Paulina',
+           'Milena', 'Yelda', 'Damayanti', 'Kanya', 'Majed', 'Maged'],
+  // 男性語音
+  male: ['Han', 'Yun', 'Limu', 'Otoya', 'Alex', 'Daniel', 'Tom', 'Fred',
+         'Aaron', 'Arthur', 'Gordon', 'Rishi', 'Hattori', 'Siri Male',
+         'Eddy', 'Reed', 'Sandy', 'Grandma', 'Grandpa'],
+};
+
+function guessVoiceGender(voiceName) {
+  const name = voiceName || '';
+  if (VOICE_GENDER_MAP.female.some(n => name.includes(n))) return 'female';
+  if (VOICE_GENDER_MAP.male.some(n => name.includes(n))) return 'male';
+  return null; // 無法判斷
+}
+
 // 找最好的 TTS 語音（優先選 Premium > Enhanced > 特定人名 > 一般）
+// 如果有對方性別資訊且用戶未手動選聲音，會自動選配對方性別的語音
 let ttsVoiceCache = {};
 function getBestVoice(lang) {
   const savedVoiceURI = localStorage.getItem('kaitalk.ttsVoiceURI');
@@ -1281,7 +1323,8 @@ function getBestVoice(lang) {
     if (saved) return saved;
   }
 
-  const cacheKey = lang;
+  const targetGender = peerGenderStored || null;
+  const cacheKey = `${lang}_${targetGender || 'any'}`;
   if (ttsVoiceCache[cacheKey]) return ttsVoiceCache[cacheKey];
 
   const langPrefix = lang.split('-')[0];
@@ -1291,12 +1334,19 @@ function getBestVoice(lang) {
   // 頂級人名清單（iOS 18 推薦）
   const topNames = ['Lilian', 'Han', 'Yun', 'Limu', 'Meijia', 'Kyoko', 'Otoya', 'O-ren', 'Ava', 'Yuna'];
 
+  // 如果有對方性別，先篩選同性別語音
+  let genderMatches = matches;
+  if (targetGender) {
+    const filtered = matches.filter(v => guessVoiceGender(v.name) === targetGender);
+    if (filtered.length > 0) genderMatches = filtered;
+  }
+
   // 優先順序：人名匹配 + Premium > Premium > Enhanced > 一般
-  const topMatch = matches.find(v => topNames.some(name => v.name.includes(name)) && /\(Premium\)/i.test(v.name));
-  const premium = matches.find(v => /\(Premium\)/i.test(v.name));
-  const enhanced = matches.find(v => /\(Enhanced\)/i.test(v.name));
-  
-  const best = topMatch || premium || enhanced || matches[0];
+  const topMatch = genderMatches.find(v => topNames.some(name => v.name.includes(name)) && /\(Premium\)/i.test(v.name));
+  const premium = genderMatches.find(v => /\(Premium\)/i.test(v.name));
+  const enhanced = genderMatches.find(v => /\(Enhanced\)/i.test(v.name));
+
+  const best = topMatch || premium || enhanced || genderMatches[0];
   ttsVoiceCache[cacheKey] = best;
   return best;
 }
@@ -1427,16 +1477,29 @@ function ttsSpeak(text, lang) {
 // 偵測是否 iOS（Safari / Capacitor WebView）
 const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 
-// 付費用戶判斷（之後接訂閱系統，目前先用 localStorage 模擬）
+// 付費用戶判斷
 // ─── 付費 / 用量限制 ──────────────────────────────────
-const FREE_DAILY_LIMIT = 20;    // 免費：每天 20 次翻譯
-const SPONSOR_DAILY_LIMIT = 100; // 贊助者：每天 100 次 + Edge TTS
+const FREE_DAILY_LIMIT = 20;      // 免費：每天 20 次翻譯
+const SPONSOR_99_DAILY_LIMIT = 300; // 贊助 99：每天 300 次
+const SPONSOR_199_DAILY_LIMIT = Infinity; // 贊助 199：無限
+
+// 贊助等級：'none' | '99' | '199'
+function getSponsorTier() {
+  return localStorage.getItem('kaitalk.sponsorTier') || 'none';
+}
 
 function isSponsor() {
-  return localStorage.getItem('kaitalk.premium') === 'true';
+  return getSponsorTier() !== 'none';
 }
+
+function isSponsor199() {
+  return getSponsorTier() === '199';
+}
+
 // 保留舊名相容
 function isPremiumUser() { return isSponsor(); }
+
+const SPONSOR_DAILY_LIMIT = 300; // 向下相容：舊程式碼引用
 
 function getDailyUsage() {
   const today = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
@@ -1456,18 +1519,29 @@ function incrementUsage() {
   return usage.count;
 }
 
+function getSponsorDailyLimit() {
+  const tier = getSponsorTier();
+  if (tier === '199') return SPONSOR_199_DAILY_LIMIT;
+  if (tier === '99') return SPONSOR_99_DAILY_LIMIT;
+  return FREE_DAILY_LIMIT;
+}
+
 function canUseTranslation() {
-  const limit = isSponsor() ? SPONSOR_DAILY_LIMIT : FREE_DAILY_LIMIT;
+  const limit = getSponsorDailyLimit();
+  if (limit === Infinity) return true;
   return getDailyUsage().count < limit;
 }
 
 function getRemainingUsage() {
-  const limit = isSponsor() ? SPONSOR_DAILY_LIMIT : FREE_DAILY_LIMIT;
+  const limit = getSponsorDailyLimit();
+  if (limit === Infinity) return '∞';
   return Math.max(0, limit - getDailyUsage().count);
 }
 
 function getDailyLimit() {
-  return isSponsor() ? SPONSOR_DAILY_LIMIT : FREE_DAILY_LIMIT;
+  const limit = getSponsorDailyLimit();
+  if (limit === Infinity) return '∞';
+  return limit;
 }
 
 function showUpgradePrompt() {
@@ -1589,10 +1663,20 @@ async function nativeTtsSpeak(text, lang, remoteAudio) {
       const recommended = ['Lilian', 'Han', 'Yun', 'Limu', 'Meijia', 'Kyoko', 'Otoya', 'O-ren', 'Ava', 'Yuna'];
       const langPrefix = (lang || sttLang).split('-')[0];
       const matches = nativeTtsVoices.filter(v => v.lang.startsWith(langPrefix));
-      const best = matches.find(v => recommended.some(n => v.name.includes(n)) && /premium/i.test(v.name))
-                || matches.find(v => recommended.some(n => v.name.includes(n)) && /enhanced/i.test(v.name))
-                || matches.find(v => /premium/i.test(v.name))
-                || matches.find(v => /enhanced/i.test(v.name));
+
+      // 根據對方性別篩選語音
+      const targetGender = peerGenderStored || null;
+      let genderMatches = matches;
+      if (targetGender) {
+        const filtered = matches.filter(v => guessVoiceGender(v.name) === targetGender);
+        if (filtered.length > 0) genderMatches = filtered;
+      }
+
+      const best = genderMatches.find(v => recommended.some(n => v.name.includes(n)) && /premium/i.test(v.name))
+                || genderMatches.find(v => recommended.some(n => v.name.includes(n)) && /enhanced/i.test(v.name))
+                || genderMatches.find(v => /premium/i.test(v.name))
+                || genderMatches.find(v => /enhanced/i.test(v.name))
+                || genderMatches[0];
       if (best) opts.voice = nativeTtsVoices.indexOf(best);
     }
 
@@ -1656,6 +1740,19 @@ function ttsStop() {
   ttsSpeaking = false;
   const remoteAudio = document.getElementById('remote-audio');
   if (remoteAudio) remoteAudio.volume = 1.0;
+}
+
+// ─���─ 麥克風拉巴開關 ─────────────────────────────────
+function toggleMicFromSwitch(on) {
+  if (!localStream) return;
+  localStream.getAudioTracks().forEach(t => { t.enabled = on; });
+  log(`🎙️ 麥克風：${on ? '開' : '關'}`);
+  // 開 mic 時也啟動 STT 語音辨識
+  if (on && !sttActive) {
+    startSTT();
+  } else if (!on && sttActive) {
+    stopSTT();
+  }
 }
 
 function toggleTtsMode() {
@@ -2235,20 +2332,59 @@ document.getElementById('btn-regen-invite')?.addEventListener('click', async () 
 
 async function selectSponsorPlan(amount) {
   closeSponsorOverlay();
+  const tier = amount === 99 ? '99' : '199';
+  const productId = `com.kaitalk.sponsor.${tier}`;
+
   if (isNativeApp && window.Capacitor?.Plugins?.InAppPurchase) {
-    // iOS App → Apple IAP
-    const productId = amount === 99 ? 'com.kaitalk.sponsor.99' : 'com.kaitalk.sponsor.199';
+    // iOS App → Apple IAP（StoreKit 2）
     try {
-      await window.Capacitor.Plugins.InAppPurchase.purchase({ productId });
-      localStorage.setItem('kaitalk.premium', 'true');
-      updateAccountUI();
-      alert('🎉 感謝贊助！全功能已解鎖');
+      const result = await window.Capacitor.Plugins.InAppPurchase.purchase({ productId });
+      if (result.success) {
+        localStorage.setItem('kaitalk.sponsorTier', tier);
+        // 相容舊程式碼
+        localStorage.setItem('kaitalk.premium', 'true');
+        updateAccountUI();
+        const msg = tier === '199'
+          ? '🎉 感謝贊助！無限翻譯 + 改名功能已解鎖'
+          : '🎉 感謝贊助！每日 300 次翻譯已解鎖';
+        alert(msg);
+      }
     } catch (err) {
-      log(`購買失敗: ${err.message}`);
+      if (!err.message?.includes('cancelled')) {
+        log(`購買失敗: ${err.message}`);
+        alert(`購買失敗：${err.message}`);
+      }
     }
   } else {
-    // TODO: 接金流，先顯示提示
     alert(`感謝選擇 NT$${amount} 贊助方案！金流功能開發中，敬請期待。`);
+  }
+}
+
+// 恢復購買（用於換機或重裝）
+async function restorePurchases() {
+  if (!isNativeApp || !window.Capacitor?.Plugins?.InAppPurchase) {
+    alert('此功能僅限 iOS App');
+    return;
+  }
+  try {
+    const result = await window.Capacitor.Plugins.InAppPurchase.restorePurchases();
+    const purchases = result.purchases || [];
+    if (purchases.length === 0) {
+      alert('沒有找到之前的購買紀錄');
+      return;
+    }
+    // 找到最高等級
+    const has199 = purchases.some(p => p.productId === 'com.kaitalk.sponsor.199');
+    const has99 = purchases.some(p => p.productId === 'com.kaitalk.sponsor.99');
+    const tier = has199 ? '199' : has99 ? '99' : 'none';
+    if (tier !== 'none') {
+      localStorage.setItem('kaitalk.sponsorTier', tier);
+      localStorage.setItem('kaitalk.premium', 'true');
+      updateAccountUI();
+      alert('🎉 已恢復贊助資格！');
+    }
+  } catch (err) {
+    alert(`恢復失敗：${err.message}`);
   }
 }
 
@@ -2281,8 +2417,9 @@ function connectSocket() {
     peerName = peer.name;
     peerRegionStored = peerRegion || null;
     peerGenderStored = peerGender || null;
+    ttsVoiceCache = {}; // 清除語音快取，讓新配對的性別生效
     isHost = hostFlag;
-    log(`配對成功！房號 ${roomCode}, 對方 ${peer.name} ${peerGender || '?'}, 我是 ${isHost ? 'host' : 'guest'}`);
+    log(`配��成���！房號 ${roomCode}, 對方 ${peer.name} ${peerGender || '?'}, 我是 ${isHost ? 'host' : 'guest'}`);
     setStatus(`🎉 已配對到 ${peer.name}，建立連線中...`, true);
     showPeerCard(peer.name, roomCode, isHost ? 'host' : 'guest', peerVerified, peerGender, peer.avatar);
     setPeerLangBadge(null); // 對方語言一開始未知
@@ -2342,6 +2479,36 @@ function connectSocket() {
     hideTrivia();
     hideSubtitles();
     showButtons('idle');
+  });
+
+  // ── 文字聊天：接收對方訊息 ──
+  socket.on('peer_message', async ({ from, message }) => {
+    if (!message) return;
+    const { type, text, sticker } = message;
+    if (type === 'sticker') {
+      appendChatMsg('peer', sticker, null);
+    } else if (type === 'text' && text) {
+      // 翻譯對方的文字
+      let translated = null;
+      const myLang = sttLang;
+      const peerLang = message.lang || null;
+      if (peerLang && peerLang.split('-')[0] !== myLang.split('-')[0]) {
+        try {
+          const resp = await fetch(API_BASE + '/api/translate', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ text, from: peerLang, to: myLang }),
+          });
+          const data = await resp.json();
+          translated = data.translated || null;
+        } catch {}
+      }
+      appendChatMsg('peer', text, translated);
+      // TTS 朗讀翻譯
+      if (ttsMode && translated) {
+        ttsSpeak(translated, myLang);
+      }
+    }
   });
 
   // ── 互相想再遇通知（掛斷後才收到）──
@@ -2422,9 +2589,9 @@ async function setupPeerConnection() {
     };
   }
 
-  // STT 立刻啟動，不等 DataChannel —— 即使 DC 還沒開，本地字幕一定要先看得到
-  // DC 開好後送出去的訊息會自動帶走，沒開的話就只在自己這邊顯示
-  if (subtitlesEnabled) {
+  // STT：只有 mic 開啟時才啟動（mic 預設關，用戶開拉巴時會 startSTT）
+  const micOn = localStream?.getAudioTracks().some(t => t.enabled);
+  if (subtitlesEnabled && micOn) {
     startSTT();
   }
 
@@ -2519,7 +2686,9 @@ async function startMatching(opts = {}) {
       audio: { echoCancellation: true, noiseSuppression: true },
       video: false,
     });
-    log(`麥克風 OK`);
+    // v1.1: 麥克風預設靜音，用戶用拉巴開關開啟
+    localStream.getAudioTracks().forEach(t => { t.enabled = false; });
+    log(`麥克風 OK（預設靜音）`);
 
     // 立刻掛上本地 mic analyser，這樣配對時就能看自己的 mic 動
     localAnalyser = attachAnalyser(localStream);
@@ -3156,6 +3325,64 @@ btnMute.addEventListener('click', toggleMute);
 btnSubtitle.addEventListener('click', toggleSubtitles);
 document.getElementById('btn-tts')?.addEventListener('click', toggleTtsMode);
 langBtn.addEventListener('click', toggleLang);
+
+// ─── 文字聊天 ──────────────────────────────────────────
+function sendTextMessage() {
+  const input = document.getElementById('text-chat-input');
+  if (!input) return;
+  const text = input.value.trim();
+  if (!text || !peerId) return;
+  input.value = '';
+  // 顯示自己的訊息
+  appendChatMsg('self', text, null);
+  // 送給對方
+  socket.emit('send_to_peer', {
+    target: peerId,
+    message: { type: 'text', text, lang: sttLang },
+  });
+}
+
+function sendSticker(emoji) {
+  if (!peerId) return;
+  appendChatMsg('self', emoji, null);
+  socket.emit('send_to_peer', {
+    target: peerId,
+    message: { type: 'sticker', sticker: emoji },
+  });
+  // 關閉貼圖面板
+  const picker = document.getElementById('sticker-picker');
+  if (picker) picker.classList.remove('active');
+}
+
+function appendChatMsg(who, text, translated) {
+  const area = document.getElementById('text-chat-messages');
+  if (!area) return;
+  const now = new Date();
+  const time = `${now.getHours().toString().padStart(2,'0')}:${now.getMinutes().toString().padStart(2,'0')}`;
+  const div = document.createElement('div');
+  div.className = `text-msg ${who}`;
+  let html = `<div>${escapeHtml(text)}</div>`;
+  if (translated) html += `<div class="msg-translated">${escapeHtml(translated)}</div>`;
+  html += `<div class="msg-time">${time}</div>`;
+  div.innerHTML = html;
+  area.appendChild(div);
+  area.scrollTop = area.scrollHeight;
+}
+
+// 發送按鈕 + Enter 鍵
+document.getElementById('btn-send-text')?.addEventListener('click', sendTextMessage);
+document.getElementById('text-chat-input')?.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter' && !e.isComposing) {
+    e.preventDefault();
+    sendTextMessage();
+  }
+});
+
+// 貼圖按鈕
+document.getElementById('btn-sticker')?.addEventListener('click', () => {
+  const picker = document.getElementById('sticker-picker');
+  if (picker) picker.classList.toggle('active');
+});
 
 // 封鎖 + 檢舉
 document.getElementById('btn-block')?.addEventListener('click', blockCurrentPeer);
@@ -3830,6 +4057,21 @@ document.getElementById('btn-change-avatar')?.addEventListener('click', () => {
   if (grid) grid.style.display = grid.style.display === 'none' ? 'grid' : 'none';
 });
 
+// 199 贊助者改名
+document.getElementById('btn-edit-nickname')?.addEventListener('click', () => {
+  if (!isSponsor199()) return;
+  const current = localStorage.getItem(ONB_NICKNAME_KEY) || '';
+  const newName = prompt('輸入新暱稱（12 字內）', current);
+  if (!newName || newName.trim() === '' || newName.trim() === current) return;
+  const trimmed = newName.trim().slice(0, 12);
+  localStorage.setItem(ONB_NICKNAME_KEY, trimmed);
+  if (settingsNicknameDisplay) settingsNicknameDisplay.textContent = trimmed;
+  // 通知 server 更新暱稱
+  if (socket?.connected) {
+    socket.emit('update_profile', { nickname: trimmed });
+  }
+});
+
 // Wire settings gender buttons
 // 性別已鎖定，不提供設定裡修改
 document.querySelectorAll('.settings-tgender-btn').forEach(btn => {
@@ -3851,9 +4093,21 @@ function openSettings() {
   onbBuildLangGrid();
   updateAccountUI();
 
-  // 顯示當前暱稱
+  // 顯示當前暱稱 + 199 贊助者可改名
   if (settingsNicknameDisplay) {
     settingsNicknameDisplay.textContent = localStorage.getItem(ONB_NICKNAME_KEY) || '（未設定）';
+  }
+  const nickLock = document.getElementById('settings-nickname-lock');
+  const nickEditBtn = document.getElementById('btn-edit-nickname');
+  const nickHint = document.getElementById('settings-nickname-hint');
+  if (isSponsor199()) {
+    if (nickLock) nickLock.style.display = 'none';
+    if (nickEditBtn) nickEditBtn.style.display = 'inline-block';
+    if (nickHint) nickHint.textContent = '贊助 199 可修改暱稱';
+  } else {
+    if (nickLock) nickLock.style.display = '';
+    if (nickEditBtn) nickEditBtn.style.display = 'none';
+    if (nickHint) nickHint.textContent = t('upgrade_hint');
   }
 
   // 顯示當前頭像預覽（收起 grid）

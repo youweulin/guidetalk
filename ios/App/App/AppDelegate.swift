@@ -16,6 +16,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
             print("[AppDelegate] Found bridge VC, registering plugins")
             vc.bridge?.registerPluginInstance(AppleSignInPlugin())
             vc.bridge?.registerPluginInstance(AppleTranslationPlugin())
+            vc.bridge?.registerPluginInstance(InAppPurchasePlugin())
             print("[AppDelegate] Plugins registered successfully")
         }
         return true
