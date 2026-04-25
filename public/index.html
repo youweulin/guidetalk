@@ -233,31 +233,60 @@
     /* ─── 底部對講機 ─── */
     .bottombar {
       background: var(--card); border-top: 1px solid var(--border);
-      padding: 12px 14px calc(12px + var(--safe-bottom));
-      display: flex; flex-direction: column; gap: 10px;
+      padding: 10px 14px calc(12px + var(--safe-bottom));
+      display: flex; flex-direction: column; gap: 8px;
     }
-    .ptt-row { display: flex; gap: 8px; align-items: center; }
-    .ptt {
-      flex: 1;
-      min-height: 64px;
-      border-radius: 18px;
-      background: var(--primary); color: #fff;
-      font-size: 18px; font-weight: 700;
-      display: flex; align-items: center; justify-content: center; gap: 8px;
-      transition: background .1s, transform .05s;
-      user-select: none; -webkit-user-select: none; touch-action: none;
+    /* 模式切換 segmented control */
+    .mode-tabs {
+      display: grid; grid-template-columns: 1fr 1fr;
+      gap: 4px;
+      background: var(--bg);
+      padding: 4px;
+      border-radius: 12px;
     }
-    .ptt.holding { background: var(--danger); transform: scale(.99); }
-    .ptt.disabled { background: var(--border); color: var(--text-dim); }
-    .mode-toggle {
-      width: 64px; height: 64px;
-      border-radius: 18px;
-      background: var(--card); border: 1px solid var(--border);
+    .mode-tab {
+      padding: 8px;
+      background: transparent;
+      color: var(--text-dim);
+      font-size: 13px; font-weight: 600;
+      border-radius: 8px;
+      transition: background .15s, color .15s;
+    }
+    .mode-tab.active {
+      background: var(--card);
       color: var(--text);
-      display: flex; align-items: center; justify-content: center;
-      font-size: 22px;
+      box-shadow: 0 1px 2px rgba(0,0,0,.06);
     }
-    .mode-toggle.active { background: var(--primary); color: #fff; border-color: var(--primary); }
+    /* 大按鈕 */
+    .ptt {
+      width: 100%;
+      min-height: 64px;
+      border-radius: 16px;
+      background: var(--primary); color: #fff;
+      font-size: 17px; font-weight: 700;
+      display: flex; align-items: center; justify-content: center; gap: 8px;
+      transition: background .15s, transform .05s;
+      user-select: none; -webkit-user-select: none; touch-action: none;
+      position: relative;
+    }
+    .ptt.holding,
+    .ptt.live {
+      background: var(--danger);
+      animation: pttPulse 1.4s ease-in-out infinite;
+    }
+    .ptt.holding { transform: scale(.99); animation: none; }
+    .ptt.muted {
+      background: var(--border); color: var(--text-dim);
+      animation: none;
+    }
+    .ptt.disabled {
+      background: var(--border); color: var(--text-dim);
+      animation: none;
+    }
+    @keyframes pttPulse {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(217,59,59,.5); }
+      50%      { box-shadow: 0 0 0 10px rgba(217,59,59,0); }
+    }
 
     .status-line {
       font-size: 12px; color: var(--text-dim); text-align: center;
@@ -344,7 +373,7 @@
     .sheet-mask.show { opacity: 1; pointer-events: auto; }
     .sheet {
       position: fixed; left: 0; right: 0; bottom: 0;
-      max-height: 75vh;
+      max-height: 60vh;
       background: var(--card);
       border-top-left-radius: 18px;
       border-top-right-radius: 18px;
@@ -443,11 +472,10 @@
 
       <div class="field">
         <label>輸入 6 碼房號</label>
-        <div class="row">
-          <input id="code-input" type="text" placeholder="ABC123" maxlength="6" autocapitalize="characters" autocomplete="off" />
-          <button class="btn secondary" id="btn-join">加入</button>
-        </div>
+        <input id="code-input" type="text" placeholder="ABC123" maxlength="6" autocapitalize="characters" autocomplete="off" style="width:100%;padding:14px 16px;border:1px solid var(--border);border-radius:10px;background:transparent;text-transform:uppercase;letter-spacing:6px;text-align:center;font-weight:700;font-size:18px;" />
       </div>
+
+      <button class="btn full" id="btn-join">加入房間</button>
 
       <p style="font-size:12px;color:var(--text-dim);text-align:center;margin:18px 0 0;line-height:1.6;">
         建議第一次使用前允許「定位」與「麥克風」權限<br>
@@ -478,12 +506,13 @@
     </div>
 
     <div class="bottombar">
-      <div class="ptt-row">
-        <button class="mode-toggle" id="btn-mode" title="切換通話模式">🎙️</button>
-        <button class="ptt disabled" id="btn-ptt">
-          <span id="ptt-label">準備中…</span>
-        </button>
+      <div class="mode-tabs">
+        <button class="mode-tab active" id="tab-ptt" data-mode="ptt">🎙️ 對講機</button>
+        <button class="mode-tab" id="tab-hot" data-mode="hot">🔊 常開麥</button>
       </div>
+      <button class="ptt disabled" id="btn-ptt">
+        <span id="ptt-label">準備中…</span>
+      </button>
       <div class="status-line" id="status-line"></div>
     </div>
   </section>

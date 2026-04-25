@@ -64,6 +64,7 @@ const state = {
   localStream: null,
   micReady: false,
   hotMic: false,            // false = PTT, true = 常開麥
+  hotMicMuted: false,       // 常開麥模式下是否暫時靜音
   pttHolding: false,
 
   map: null,
@@ -224,6 +225,14 @@ async function enterRoom(resp) {
 
   // 開始追蹤位置
   startGeoWatch();
+
+  // UI 初始化
+  refreshTabsUI();
+  refreshPttUI();
+  // 進房自動展開距離表 — 立刻看到誰在哪
+  setTimeout(() => {
+    if (state.roomCode) showSheet();
+  }, 500);
 }
 
 function leaveRoom() {
@@ -328,9 +337,11 @@ function ensureMap() {
     attributionControl: false,
   }).setView([23.973, 120.982], 7);
 
-  L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  // CartoDB Positron — 清爽淺色，強調路線，駕駛時最不刺眼
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
     maxZoom: 19,
-    attribution: '© OpenStreetMap',
+    subdomains: 'abcd',
+    attribution: '© OSM · © CARTO',
   }).addTo(state.map);
   return state.map;
 }
@@ -670,10 +681,9 @@ async function ensureMic() {
   });
   state.localStream = stream;
   state.micReady = true;
-  // 預設靜音（PTT 模式）
-  setMicEnabled(state.hotMic);
-  $('btn-ptt').classList.remove('disabled');
-  $('ptt-label').textContent = state.hotMic ? '🔊 麥克風常開中' : '🎙️ 按住講話';
+  // 預設靜音（PTT 模式 / 常開但靜音）
+  setMicEnabled(state.hotMic && !state.hotMicMuted);
+  refreshPttUI();
   return stream;
 }
 
@@ -875,52 +885,113 @@ function pushSubtitle({ peerId, name, color, text, isSelf = false }) {
 
 // ─── PTT / 常開麥 ──────────────────────────────────
 const pttBtn = $('btn-ptt');
-const modeBtn = $('btn-mode');
+const tabPtt = $('tab-ptt');
+const tabHot = $('tab-hot');
+const pttLabel = () => $('ptt-label');
 
-function setHotMic(on) {
-  state.hotMic = !!on;
-  modeBtn.classList.toggle('active', state.hotMic);
-  modeBtn.textContent = state.hotMic ? '🔊' : '🎙️';
-  $('ptt-label').textContent = state.hotMic ? '🔊 麥克風常開中' : '🎙️ 按住講話';
-  if (state.micReady) setMicEnabled(state.hotMic || state.pttHolding);
-  state.socket?.emit('ptt', { on: state.hotMic });
-  if (state.hotMic) startSTT();
-  else if (!state.pttHolding) stopSTT();
+// 大按鈕的視覺狀態完全由這個 function 決定
+function refreshPttUI() {
+  const cls = pttBtn.classList;
+  cls.remove('holding', 'live', 'muted', 'disabled');
+
+  if (!state.micReady) {
+    cls.add('disabled');
+    pttLabel().textContent = '🎙️ 點擊允許麥克風';
+    return;
+  }
+
+  if (state.hotMic) {
+    // 常開麥模式
+    if (state.hotMicMuted) {
+      cls.add('muted');
+      pttLabel().textContent = '🔇 已靜音・點擊開啟';
+    } else {
+      cls.add('live');
+      pttLabel().textContent = '🔴 直播中・點擊靜音';
+    }
+  } else {
+    // PTT 對講機模式
+    if (state.pttHolding) {
+      cls.add('holding');
+      pttLabel().textContent = '🔴 通話中…';
+    } else {
+      pttLabel().textContent = '🎙️ 按住講話';
+    }
+  }
 }
 
-modeBtn.addEventListener('click', async () => {
-  await ensureMic().catch(() => {});
-  setHotMic(!state.hotMic);
-});
+function refreshTabsUI() {
+  tabPtt.classList.toggle('active', !state.hotMic);
+  tabHot.classList.toggle('active', state.hotMic);
+}
 
-// PTT 按住：pointer 事件涵蓋 touch + mouse
+async function setMode(mode) {
+  await ensureMic().catch(() => {});
+  if (mode === 'hot') {
+    state.hotMic = true;
+    state.hotMicMuted = false;     // 切到常開預設取消靜音 = 直播
+    if (state.micReady) setMicEnabled(true);
+    state.socket?.emit('ptt', { on: true });
+    startSTT();
+  } else {
+    state.hotMic = false;
+    state.hotMicMuted = false;
+    state.pttHolding = false;
+    if (state.micReady) setMicEnabled(false);
+    state.socket?.emit('ptt', { on: false });
+    stopSTT();
+  }
+  refreshTabsUI();
+  refreshPttUI();
+}
+
+tabPtt.addEventListener('click', () => setMode('ptt'));
+tabHot.addEventListener('click', () => setMode('hot'));
+
+// 大按鈕：行為依模式而定
 function pttDown(e) {
   e.preventDefault();
   if (!state.micReady) {
-    ensureMic().catch(() => toast('麥克風權限被拒'));
+    ensureMic().then(() => refreshPttUI()).catch(() => toast('麥克風權限被拒'));
     return;
   }
-  if (state.hotMic) return; // 常開模式忽略 PTT 按住
+  // 常開麥模式 → 按下不做事（在 click 時切靜音）
+  if (state.hotMic) return;
+  // PTT 模式 → 按住開麥
   state.pttHolding = true;
   setMicEnabled(true);
-  pttBtn.classList.add('holding');
-  $('ptt-label').textContent = '🔴 通話中…';
   state.socket?.emit('ptt', { on: true });
   startSTT();
+  refreshPttUI();
 }
 function pttUp() {
+  if (state.hotMic) return;
   if (!state.pttHolding) return;
   state.pttHolding = false;
-  if (!state.hotMic) setMicEnabled(false);
-  pttBtn.classList.remove('holding');
-  $('ptt-label').textContent = state.hotMic ? '🔊 麥克風常開中' : '🎙️ 按住講話';
-  state.socket?.emit('ptt', { on: state.hotMic });
-  if (!state.hotMic) stopSTT();
+  setMicEnabled(false);
+  state.socket?.emit('ptt', { on: false });
+  stopSTT();
+  refreshPttUI();
+}
+function pttClick() {
+  // 常開麥模式才有 click 行為（切靜音）
+  if (!state.hotMic) return;
+  if (!state.micReady) {
+    ensureMic().then(() => refreshPttUI()).catch(() => toast('麥克風權限被拒'));
+    return;
+  }
+  state.hotMicMuted = !state.hotMicMuted;
+  setMicEnabled(!state.hotMicMuted);
+  state.socket?.emit('ptt', { on: !state.hotMicMuted });
+  if (state.hotMicMuted) stopSTT();
+  else startSTT();
+  refreshPttUI();
 }
 pttBtn.addEventListener('pointerdown', pttDown);
 pttBtn.addEventListener('pointerup', pttUp);
 pttBtn.addEventListener('pointercancel', pttUp);
 pttBtn.addEventListener('pointerleave', pttUp);
+pttBtn.addEventListener('click', pttClick);
 
 // ─── 邀請對話框 ──────────────────────────────────
 const inviteModal = $('invite-modal');
