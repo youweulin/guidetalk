@@ -53,6 +53,7 @@ function setStatus(text, isError = false) {
 const state = {
   socket: null,
   myName: localStorage.getItem('gt_name') || '',
+  myLang: localStorage.getItem('gt_lang') || 'zh-TW',
   myPeerId: null,
   myColor: null,
   roomCode: null,
@@ -79,6 +80,14 @@ const state = {
 };
 
 $('name-input').value = state.myName;
+const langSelect = $('lang-select');
+if (langSelect) {
+  langSelect.value = state.myLang;
+  langSelect.addEventListener('change', () => {
+    state.myLang = langSelect.value;
+    localStorage.setItem('gt_lang', state.myLang);
+  });
+}
 
 // ─── 網路 ──────────────────────────────────────────
 function connectSocket() {
@@ -111,6 +120,12 @@ function connectSocket() {
   });
   state.socket.on('peer_location', (loc) => {
     updatePeerLocation(loc.peerId, loc);
+  });
+  state.socket.on('chat', ({ peerId, name, color, text, ts }) => {
+    if (peerId === state.myPeerId) return;  // 不顯示自己的回音
+    const p = state.peers.get(peerId);
+    if (p) p.lastSpoke = { text, ts: ts || Date.now() };
+    pushSubtitle({ peerId, name, color, text });
   });
   state.socket.on('peer_ptt', ({ peerId, on }) => {
     const p = state.peers.get(peerId);
@@ -759,6 +774,105 @@ async function handleSignal({ from, signal }) {
   }
 }
 
+// ─── 即時字幕（Web Speech API）────────────────────
+//
+// 各客戶端各自跑 STT，把識別文字 emit 給 server 廣播。
+// iOS Capacitor WKWebView 不支援 Web Speech，會自動 silent skip。
+const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition || null;
+const sttSupported = !!SpeechRec;
+let sttInstance = null;
+let sttRunning = false;
+let sttManualStop = false;
+
+function startSTT() {
+  if (!sttSupported) return;
+  if (sttRunning) return;
+  try {
+    sttInstance = new SpeechRec();
+    sttInstance.lang = state.myLang || 'zh-TW';
+    sttInstance.continuous = true;
+    sttInstance.interimResults = false;
+    sttInstance.maxAlternatives = 1;
+
+    sttInstance.onresult = (ev) => {
+      for (let i = ev.resultIndex; i < ev.results.length; i++) {
+        const r = ev.results[i];
+        if (r.isFinal) {
+          const text = (r[0]?.transcript || '').trim();
+          if (text && text.length >= 2) {
+            state.socket?.emit('chat', { text });
+            // 自己的也放本地 subtitle stack（給自己看到）
+            pushSubtitle({
+              peerId: state.myPeerId,
+              name: state.myName + '（你）',
+              color: state.myColor || '#0a7d3e',
+              text,
+              isSelf: true,
+            });
+          }
+        }
+      }
+    };
+    sttInstance.onerror = (e) => {
+      console.warn('[stt] error', e.error);
+      // not-allowed / no-speech / aborted → 不重試
+      if (e.error === 'not-allowed' || e.error === 'service-not-allowed') {
+        sttManualStop = true;
+      }
+    };
+    sttInstance.onend = () => {
+      sttRunning = false;
+      if (sttManualStop) return;
+      // 持續模式偶爾自動斷，沒手動停就重啟
+      if (state.hotMic || state.pttHolding) {
+        try { sttInstance.start(); sttRunning = true; } catch {}
+      }
+    };
+
+    sttManualStop = false;
+    sttInstance.start();
+    sttRunning = true;
+  } catch (err) {
+    console.warn('[stt] failed to start', err);
+  }
+}
+
+function stopSTT() {
+  sttManualStop = true;
+  if (sttInstance && sttRunning) {
+    try { sttInstance.stop(); } catch {}
+  }
+  sttRunning = false;
+}
+
+// ─── 浮動字幕渲染 ──────────────────────────────────
+const subtitleStack = $('subtitle-stack');
+const SUBTITLE_TTL_MS = 8000;
+const SUBTITLE_MAX = 4;
+
+function pushSubtitle({ peerId, name, color, text, isSelf = false }) {
+  if (!subtitleStack || !text) return;
+  const bubble = document.createElement('div');
+  bubble.className = 'subtitle-bubble';
+  bubble.style.borderLeftColor = color || '#fff';
+  bubble.dataset.peerId = peerId || '';
+  bubble.innerHTML = `
+    <div class="who" style="color:${color || '#fff'}">
+      ${escapeHtml(name)}${isSelf ? '' : ''}
+    </div>
+    ${escapeHtml(text)}
+  `;
+  subtitleStack.appendChild(bubble);
+  // 限制最多顯示 N 個
+  while (subtitleStack.children.length > SUBTITLE_MAX) {
+    subtitleStack.firstChild.remove();
+  }
+  setTimeout(() => {
+    bubble.classList.add('fade');
+    setTimeout(() => bubble.remove(), 800);
+  }, SUBTITLE_TTL_MS);
+}
+
 // ─── PTT / 常開麥 ──────────────────────────────────
 const pttBtn = $('btn-ptt');
 const modeBtn = $('btn-mode');
@@ -770,6 +884,8 @@ function setHotMic(on) {
   $('ptt-label').textContent = state.hotMic ? '🔊 麥克風常開中' : '🎙️ 按住講話';
   if (state.micReady) setMicEnabled(state.hotMic || state.pttHolding);
   state.socket?.emit('ptt', { on: state.hotMic });
+  if (state.hotMic) startSTT();
+  else if (!state.pttHolding) stopSTT();
 }
 
 modeBtn.addEventListener('click', async () => {
@@ -790,6 +906,7 @@ function pttDown(e) {
   pttBtn.classList.add('holding');
   $('ptt-label').textContent = '🔴 通話中…';
   state.socket?.emit('ptt', { on: true });
+  startSTT();
 }
 function pttUp() {
   if (!state.pttHolding) return;
@@ -798,6 +915,7 @@ function pttUp() {
   pttBtn.classList.remove('holding');
   $('ptt-label').textContent = state.hotMic ? '🔊 麥克風常開中' : '🎙️ 按住講話';
   state.socket?.emit('ptt', { on: state.hotMic });
+  if (!state.hotMic) stopSTT();
 }
 pttBtn.addEventListener('pointerdown', pttDown);
 pttBtn.addEventListener('pointerup', pttUp);
@@ -983,6 +1101,16 @@ function renderRow(r) {
     meta.push(`↔ ${formatDistance(straight)}`);
   }
 
+  // 最近一句話（30 秒內）
+  let chatBlock = '';
+  if (!r.self) {
+    const peer = state.peers.get(r.peerId);
+    const ls = peer?.lastSpoke;
+    if (ls && ls.text && (Date.now() - ls.ts) < 30000) {
+      chatBlock = `<div class="pchat">💬 ${escapeHtml(ls.text)}</div>`;
+    }
+  }
+
   return `
     <div class="peer-row ${r.self ? 'self' : ''}" data-peer-id="${escapeHtml(r.peerId)}">
       <div class="pdot" style="background:${r.color}">${escapeHtml(initial)}</div>
@@ -994,6 +1122,7 @@ function renderRow(r) {
         <div class="big">${escapeHtml(bigText)}</div>
         <div class="sub">${escapeHtml(subText)}</div>
       </div>
+      ${chatBlock}
     </div>
   `;
 }
