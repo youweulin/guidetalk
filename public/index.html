@@ -1,2956 +1,342 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="zh-Hant">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-  <title>KaiTalk — 兩人語音盲盒</title>
-  <meta name="description" content="KaiTalk — 跨語言即時語音社交，讓世界開口說話">
-  <meta name="theme-color" content="#7b2d8e">
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="apple-mobile-web-app-title" content="KaiTalk">
-  <link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png">
-  <link rel="icon" type="image/png" sizes="16x16" href="favicon-16.png">
-  <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
-  <link rel="manifest" href="/manifest.json">
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#0a7d3e" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-title" content="GuideTalk" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <link rel="manifest" href="/manifest.json" />
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+  <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png" />
+  <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16.png" />
+  <title>GuideTalk · 導遊團車對講 + 位置同步</title>
+
+  <!-- Leaflet（地圖渲染） -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
   <style>
     :root {
-      /* ─── 共用底色 ─── */
-      --bg: #f2f2f7;
+      --bg: #f5f5f7;
       --card: #ffffff;
-      --card-2: #f8f8fa;
       --text: #1d1d1f;
-      --muted: #86868b;
-      --success: #34c759;
-      --danger: #ff3b30;
-      --warning: #ff9500;
-      --tag-blue-bg: #eaf2ff;
-      --tag-blue-text: #4b89ff;
-      --tag-red-bg: #ffeaea;
-      --tag-red-text: #e65c5c;
-      --border: #f0f0f0;
-      --soft-shadow: 0 16px 40px rgba(0, 0, 0, 0.04), 0 4px 12px rgba(0, 0, 0, 0.02);
-      --card-shadow: 0 4px 16px rgba(0, 0, 0, 0.03);
-      /* ─── 預設：中性紫藍（onboarding 前）─── */
-      --primary: #7c6dd8;
-      --primary-dark: #6a5bbf;
-      --accent: #9b8ce8;
-      --gradient-btn: linear-gradient(135deg, #9b8ce8 0%, #7c6dd8 100%);
-      --gradient-text: linear-gradient(135deg, #7c6dd8, #9b8ce8);
-      --btn-shadow: rgba(124, 109, 216, 0.35);
-      --bubble-self-bg: linear-gradient(135deg, #e8e4f8, #ddd6f3);
-      --call-bar-border: #e8e4f8;
-      --call-bar-shadow: rgba(124, 109, 216, 0.08);
+      --text-dim: #6e6e73;
+      --primary: #0a7d3e;
+      --primary-dark: #086030;
+      --danger: #d93b3b;
+      --warning: #f4a261;
+      --border: #e5e5ea;
+      --shadow: 0 1px 3px rgba(0,0,0,.08), 0 4px 12px rgba(0,0,0,.04);
+      --safe-top: env(safe-area-inset-top);
+      --safe-bottom: env(safe-area-inset-bottom);
     }
-    /* ─── 女生主題：粉紅 ─── */
-    [data-theme="female"] {
-      --primary: #ff6b9d;
-      --primary-dark: #e65c8a;
-      --accent: #b388ff;
-      --gradient-btn: linear-gradient(135deg, #ff8c8c 0%, #ff6b9d 100%);
-      --gradient-text: linear-gradient(135deg, #ff6b9d, #b388ff);
-      --btn-shadow: rgba(255, 107, 157, 0.35);
-      --bubble-self-bg: linear-gradient(135deg, #ffe0ec, #ffd6e7);
-      --call-bar-border: #ffe8f0;
-      --call-bar-shadow: rgba(255, 107, 157, 0.08);
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #000;
+        --card: #1c1c1e;
+        --text: #f5f5f7;
+        --text-dim: #9a9aa0;
+        --border: #2c2c2e;
+        --shadow: 0 1px 3px rgba(0,0,0,.4), 0 4px 12px rgba(0,0,0,.2);
+      }
     }
-    /* ─── 男生主題：藍 ─── */
-    [data-theme="male"] {
-      --primary: #4a90d9;
-      --primary-dark: #3a7bc8;
-      --accent: #6eb5ff;
-      --gradient-btn: linear-gradient(135deg, #6eb5ff 0%, #4a90d9 100%);
-      --gradient-text: linear-gradient(135deg, #4a90d9, #6eb5ff);
-      --btn-shadow: rgba(74, 144, 217, 0.35);
-      --bubble-self-bg: linear-gradient(135deg, #dce8f5, #d0e0f0);
-      --call-bar-border: #dce8f5;
-      --call-bar-shadow: rgba(74, 144, 217, 0.08);
-    }
-    * { box-sizing: border-box; margin: 0; padding: 0; }
+    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+    html, body { margin: 0; padding: 0; height: 100%; }
     body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Hiragino Sans', 'Noto Sans JP', 'Segoe UI', sans-serif;
+      font-family: -apple-system, BlinkMacSystemFont, 'PingFang TC', 'Noto Sans TC', sans-serif;
       background: var(--bg);
       color: var(--text);
-      min-height: 100vh;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      padding: 16px;
-    }
-    .card {
-      background: var(--card);
-      border-radius: 32px;
-      padding: 28px 24px;
-      max-width: 400px;
-      width: 100%;
-      box-shadow: var(--soft-shadow);
-      text-align: center;
-      position: relative;
-    }
-    h1 {
-      font-size: 26px;
-      margin-bottom: 16px;
-      background: var(--gradient-text);
-      -webkit-background-clip: text;
-      background-clip: text;
-      -webkit-text-fill-color: transparent;
-      font-weight: 800;
-    }
-    .subtitle { color: var(--muted); font-size: 13px; margin-bottom: 24px; }
-
-    .status {
-      background: var(--card-2);
-      padding: 12px 16px;
-      border-radius: 16px;
-      margin-bottom: 14px;
-      min-height: 44px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 13px;
-      text-align: center;
-      color: var(--muted);
-      border: 1px solid rgba(155, 152, 176, 0.15);
-    }
-    .pulse {
-      display: inline-block;
-      width: 8px;
-      height: 8px;
-      border-radius: 50%;
-      background: var(--success);
-      margin-right: 8px;
-      animation: pulse 1.5s ease-in-out infinite;
-    }
-    @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
-
-    /* ─── 通話中 bar（兩行：名字 | 名字 + 音量/語言）─── */
-    .peer-card {
-      display: none;
-      margin-bottom: 8px;
-    }
-    .peer-card.active { display: block; }
-    .call-bar {
-      background: #ffffff;
-      border: 1px solid var(--call-bar-border);
-      border-radius: 16px;
-      padding: 16px;
-      box-shadow: 0 4px 16px var(--call-bar-shadow);
-      position: relative;
-    }
-    .topic-hint {
-      background: #fffcf2;
-      border: 1px solid #ffe6ac;
-      border-radius: 12px;
-      padding: 8px 14px;
-      margin-bottom: 8px;
-      font-size: 13px;
-      font-weight: 600;
-      text-align: center;
-      color: var(--text);
-    }
-    .conn-indicator {
-      display: inline-flex;
-      align-items: center;
-      gap: 5px;
-      font-size: 11px;
-      font-weight: 600;
-      color: var(--muted);
-      padding: 3px 10px;
-      border-radius: 8px;
-      background: var(--card-2);
-      margin-bottom: 6px;
-    }
-    .conn-dot {
-      width: 8px;
-      height: 8px;
-      border-radius: 50%;
-      flex-shrink: 0;
-    }
-    .conn-pulse {
-      animation: connPulse 1s ease-in-out infinite;
-    }
-    @keyframes connPulse {
-      0%, 100% { opacity: 1; transform: scale(1); }
-      50% { opacity: 0.4; transform: scale(0.8); }
-    }
-    .call-bar-row {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 0;
-    }
-    .call-bar-row:first-child { margin-bottom: 6px; }
-    .call-bar-row .cb-left,
-    .call-bar-row .cb-right {
-      flex: 1;
-      display: flex;
-      align-items: center;
-      gap: 4px;
-    }
-    .call-bar-row .cb-left {
-      justify-content: flex-start;
-      font-size: 16px;
-      font-weight: 800;
-      color: var(--text);
-    }
-    .call-bar-row .cb-right {
-      justify-content: flex-end;
-      font-size: 16px;
-      font-weight: 800;
-      color: var(--text);
-    }
-    .call-bar-row .cb-divider {
-      color: var(--border);
-      font-size: 18px;
-      font-weight: 300;
-      margin: 0 12px;
-      flex-shrink: 0;
-    }
-    .call-bar-row-small {
-      font-size: 12px !important;
-      font-weight: 600 !important;
-    }
-    .call-bar-row-small .cb-left,
-    .call-bar-row-small .cb-right {
-      font-size: 12px;
-      font-weight: 600;
-      color: var(--muted);
-    }
-    .level-mic { color: var(--success); font-weight: 700; font-family: ui-monospace, monospace; }
-    .level-spk { color: var(--primary); font-weight: 700; font-family: ui-monospace, monospace; }
-    .lang-btn-mini {
-      background: var(--tag-red-bg);
-      color: var(--tag-red-text);
-      border: none;
-      padding: 2px 8px;
-      border-radius: 8px;
-      font-size: 11px;
-      font-weight: 600;
-      cursor: pointer;
-      width: auto;
-      margin: 0;
-    }
-    .peer-card .label {
-      font-size: 11px;
-      color: #8e8e93;
-      text-transform: uppercase;
-      letter-spacing: 0.1em;
-      margin-bottom: 6px;
-      text-align: center;
-    }
-    .peer-card .name {
-      font-size: 26px;
-      font-weight: 800;
-      color: var(--primary);
-      text-align: center;
-      margin-bottom: 8px;
-    }
-    .peer-card .meta {
-      font-size: 11px;
-      color: #8e8e93;
-      font-family: ui-monospace, monospace;
-      text-align: center;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 6px;
-    }
-    .peer-card .role {
-      display: inline-block;
-      padding: 2px 8px;
-      border-radius: 10px;
-      font-size: 10px;
-      font-weight: 700;
-    }
-    .role.host { background: #e8f5e9; color: #4caf50; }
-    .role.guest { background: #f3e8ff; color: #a855f7; }
-
-    /* 位置驗證綠勾（IP 跟 declared 同國）*/
-    .verified-badge {
-      display: inline-block;
-      padding: 2px 6px;
-      border-radius: 10px;
-      font-size: 11px;
-      font-weight: 700;
-      background: #e8f5e9;
-      color: #4caf50;
-      margin-left: 4px;
-    }
-
-    /* ─── 豆知識破冰卡片 ─── */
-    .trivia-card {
-      display: none;
-      background: #fffcf2;
-      border: 1px solid #ffe6ac;
-      border-radius: 14px;
-      padding: 0;
       overflow: hidden;
-      margin-bottom: 12px;
-      text-align: center;
-      animation: fadeIn 0.3s ease-out;
-    }
-    .trivia-card.active { display: block; }
-    .trivia-card .trivia-header {
-      font-size: 11px;
-      color: #d97706;
-      font-weight: 700;
-      padding: 8px 14px;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-    }
-    .trivia-card .trivia-header::after {
-      content: '▾';
-      font-size: 12px;
-      transition: transform 0.2s;
-    }
-    .trivia-card.expanded .trivia-header::after {
-      transform: rotate(180deg);
-    }
-    .trivia-body {
-      display: none;
-      padding: 0 14px 10px;
-    }
-    .trivia-card.expanded .trivia-body {
-      display: block;
-      margin-bottom: 6px;
-    }
-    .trivia-card .trivia-text {
-      font-size: 12px;
-      line-height: 1.4;
-      color: var(--text);
-      margin-bottom: 4px;
-    }
-    .trivia-card .trivia-text-ja {
-      font-size: 11px;
-      line-height: 1.4;
-      color: var(--muted);
-    }
-
-    /* ─── 通話中按鈕列（想再遇 + 掛斷同一行）─── */
-    .call-actions {
-      display: flex;
-      gap: 12px;
-      margin-bottom: 10px;
-    }
-    .call-actions .btn-meet-again,
-    .call-actions .btn-danger {
-      flex: 1;
-      margin-bottom: 0;
-      border-radius: 24px;
-    }
-
-    /* ─── 想再遇按鈕 ─── */
-    .btn-meet-again {
-      background: #f0fdf4;
-      color: #22c55e;
-      border: 1px solid #bbf7d0;
-      font-size: 15px;
-      padding: 14px;
-      font-weight: 700;
-      cursor: pointer;
-      transition: all 0.15s;
-    }
-    .btn-meet-again:hover:not(:disabled) {
-      background: #dcfce7;
-    }
-    .btn-meet-again:active { transform: scale(0.96); }
-    .btn-meet-again.pressed {
-      background: #22c55e;
-      color: white;
-      border-color: #22c55e;
-      cursor: default;
-    }
-
-    /* ─── 信件 overlay ─── */
-    .letter-overlay {
-      display: none;
-      position: fixed;
-      inset: 0;
-      background: rgba(0,0,0,0.7);
-      backdrop-filter: blur(4px);
-      -webkit-backdrop-filter: blur(4px);
-      z-index: 95;
-      padding: 20px;
-      align-items: center;
-      justify-content: center;
-    }
-    .letter-overlay.active { display: flex; }
-    .letter-overlay-content {
-      background: var(--card);
-      border-radius: 20px;
-      padding: 24px;
-      max-width: 400px;
-      width: 100%;
-      max-height: 85vh;
-      overflow-y: auto;
-    }
-    .letter-header h3 {
       font-size: 16px;
-      font-weight: 700;
-      text-align: center;
-      margin-bottom: 14px;
-    }
-    .letter-messages {
-      max-height: 45vh;
-      overflow-y: auto;
-      margin-bottom: 14px;
-      padding: 4px 0;
-    }
-    .letter-msg { margin-bottom: 10px; }
-    .letter-msg.self { text-align: right; }
-    .letter-msg.peer { text-align: left; }
-    .letter-bubble {
-      display: inline-block;
-      max-width: 85%;
-      padding: 10px 14px;
-      border-radius: 16px;
-      font-size: 14px;
-      line-height: 1.5;
-      text-align: left;
-    }
-    .letter-msg.self .letter-bubble {
-      background: var(--bubble-self-bg);
-      color: var(--text);
-      border-bottom-right-radius: 4px;
-    }
-    .letter-msg.peer .letter-bubble {
-      background: var(--card-2);
-      color: var(--text);
-      border: 1px solid var(--border);
-      border-bottom-left-radius: 4px;
-    }
-    .letter-time {
-      font-size: 10px;
-      color: var(--muted);
-      margin-top: 2px;
-    }
-    .letter-input {
-      width: 100%;
-      padding: 10px 14px;
-      border-radius: 12px;
-      border: 1px solid var(--border);
-      background: var(--card-2);
-      font-size: 14px;
-      color: var(--text);
-      resize: none;
-      font-family: inherit;
-      outline: none;
-    }
-    .letter-input:focus { border-color: var(--primary); }
-    .letter-trans {
-      font-size: 12px;
-      color: var(--muted);
-      margin-top: 4px;
-      font-style: italic;
-    }
-    .letter-translate-btn {
-      background: none;
-      border: none;
-      color: var(--primary);
-      font-size: 10px;
-      font-weight: 600;
-      cursor: pointer;
-      margin-left: 6px;
-    }
-    .fi-btn-mail {
-      background: var(--card-2);
-      color: var(--primary);
-      border: 1px solid var(--border);
-    }
-
-    /* ─── 安全操作按鈕（封鎖 + 檢舉）─── */
-    .safety-actions {
-      display: flex;
-      gap: 8px;
-      margin-top: 6px;
-      justify-content: center;
-    }
-    .btn-safety {
-      padding: 6px 14px;
-      border-radius: 10px;
-      font-size: 12px;
-      font-weight: 600;
-      border: 1px solid var(--border);
-      background: var(--card-2);
-      color: var(--muted);
-      cursor: pointer;
-      transition: all 0.15s;
-    }
-    .btn-safety:hover {
-      background: rgba(0,0,0,0.04);
-    }
-    .btn-safety-danger {
-      border-color: rgba(255,59,48,0.2);
-      color: var(--danger);
-    }
-    .btn-safety-danger:hover {
-      background: rgba(255,59,48,0.06);
-    }
-
-    /* ─── 檢舉 overlay ─── */
-    .report-overlay {
-      display: none;
-      position: fixed;
-      inset: 0;
-      background: rgba(0,0,0,0.6);
-      backdrop-filter: blur(8px);
-      -webkit-backdrop-filter: blur(8px);
-      z-index: 110;
-      padding: 24px;
-      align-items: center;
-      justify-content: center;
-    }
-    .report-overlay.active { display: flex; }
-    .report-card {
-      background: var(--card);
-      border-radius: 24px;
-      padding: 28px 24px;
-      max-width: 360px;
-      width: 100%;
-      box-shadow: 0 20px 60px rgba(0,0,0,0.15);
-    }
-    .report-card h3 {
-      font-size: 18px;
-      font-weight: 700;
-      text-align: center;
-      margin-bottom: 8px;
-    }
-    .report-hint {
-      font-size: 12px;
-      color: var(--muted);
-      text-align: center;
-      line-height: 1.5;
-      margin-bottom: 16px;
-    }
-    .report-reasons {
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-      margin-bottom: 12px;
-    }
-    .report-reason-btn {
-      padding: 12px 16px;
-      border-radius: 12px;
-      border: 1px solid var(--border);
-      background: var(--card-2);
-      color: var(--text);
-      font-size: 14px;
-      font-weight: 600;
-      cursor: pointer;
-      text-align: left;
-      transition: all 0.15s;
-    }
-    .report-reason-btn:hover {
-      background: rgba(255,59,48,0.04);
-      border-color: rgba(255,59,48,0.2);
-    }
-    .report-reason-btn.selected {
-      background: rgba(255,59,48,0.08);
-      border-color: var(--danger);
-      color: var(--danger);
-    }
-    .report-notes {
-      width: 100%;
-      padding: 10px 14px;
-      border-radius: 12px;
-      border: 1px solid var(--border);
-      background: var(--card-2);
-      font-size: 13px;
-      color: var(--text);
-      resize: none;
-      font-family: inherit;
-      margin-bottom: 16px;
-      outline: none;
-    }
-    .report-notes:focus {
-      border-color: var(--danger);
-    }
-    .report-actions {
-      display: flex;
-      gap: 10px;
-    }
-    .report-actions .btn-secondary,
-    .report-actions .btn-danger {
-      flex: 1;
-    }
-
-    /* ─── 自訂確認彈窗 ─── */
-    .confirm-overlay {
-      display: none;
-      position: fixed;
-      inset: 0;
-      background: rgba(0,0,0,0.6);
-      backdrop-filter: blur(8px);
-      -webkit-backdrop-filter: blur(8px);
-      z-index: 110;
-      padding: 24px;
-      align-items: center;
-      justify-content: center;
-    }
-    .confirm-overlay.active {
-      display: flex;
-      animation: fadeIn 0.25s ease-out;
-    }
-    .confirm-card {
-      background: var(--card);
-      border-radius: 24px;
-      padding: 32px 28px 24px;
-      max-width: 320px;
-      width: 100%;
-      text-align: center;
-      box-shadow: 0 20px 60px rgba(0,0,0,0.15);
-    }
-    .confirm-icon {
-      font-size: 48px;
-      margin-bottom: 12px;
-    }
-    .confirm-text {
-      font-size: 16px;
-      font-weight: 600;
-      color: var(--text);
-      margin-bottom: 24px;
-      line-height: 1.5;
-    }
-    .confirm-actions {
-      display: flex;
-      gap: 10px;
-    }
-    .confirm-btn {
-      flex: 1;
-      padding: 14px 0;
-      border-radius: 14px;
-      font-size: 15px;
-      font-weight: 700;
-      border: none;
-      cursor: pointer;
-      transition: transform 0.1s, box-shadow 0.15s;
-    }
-    .confirm-btn:active {
-      transform: scale(0.97);
-    }
-    .confirm-btn-cancel {
-      background: var(--card-2);
-      color: var(--text);
-      border: 1px solid var(--border);
-    }
-    .confirm-btn-cancel:hover {
-      background: rgba(179,136,255,0.06);
-    }
-    .confirm-btn-ok {
-      background: var(--danger);
-      color: #fff;
-      box-shadow: 0 4px 16px rgba(255,59,48,0.3);
-    }
-    .confirm-btn-ok:hover {
-      box-shadow: 0 6px 20px rgba(255,59,48,0.4);
-    }
-
-    /* ─── 互相想再遇 match overlay（掛斷後彈出）─── */
-    .mutual-match-overlay {
-      display: none;
-      position: fixed;
-      inset: 0;
-      background: rgba(0,0,0,0.85);
-      z-index: 100;
-      padding: 24px;
-      align-items: center;
-      justify-content: center;
-    }
-    .mutual-match-overlay.active {
-      display: flex;
-      animation: fadeIn 0.5s ease-out;
-    }
-    .mutual-match-card {
-      text-align: center;
-      max-width: 360px;
-      width: 100%;
-    }
-    .mutual-match-card .emoji {
-      font-size: 64px;
-      margin-bottom: 16px;
-    }
-    .mutual-match-card h2 {
-      font-size: 24px;
-      margin-bottom: 12px;
-      background: var(--gradient-text);
-      -webkit-background-clip: text;
-      background-clip: text;
-      -webkit-text-fill-color: transparent;
-    }
-    .mutual-match-card p {
-      font-size: 14px;
-      color: var(--muted);
-      margin-bottom: 24px;
-      line-height: 1.6;
-    }
-    .mutual-match-card .peer-name-big {
-      font-size: 28px;
-      font-weight: 700;
-      color: var(--text);
-      margin-bottom: 20px;
-    }
-    .reunion-code-box {
-      background: rgba(255,255,255,0.1);
-      border: 1px dashed rgba(255,255,255,0.3);
-      border-radius: 16px;
-      padding: 16px;
-      margin-bottom: 20px;
-    }
-    .reunion-label {
-      font-size: 12px;
-      color: var(--muted);
-      margin-bottom: 8px;
-      font-weight: 600;
-      text-transform: uppercase;
-      letter-spacing: 0.1em;
-    }
-    .reunion-code {
-      font-size: 36px;
-      font-weight: 800;
-      letter-spacing: 0.3em;
-      font-family: ui-monospace, monospace;
-      background: var(--gradient-text);
-      -webkit-background-clip: text;
-      background-clip: text;
-      -webkit-text-fill-color: transparent;
-      margin-bottom: 8px;
-    }
-    .reunion-hint {
-      font-size: 12px;
-      color: var(--muted);
       line-height: 1.4;
     }
-    /* 主畫面重逢碼入口 */
-    .reunion-input-row {
-      display: flex;
-      gap: 8px;
-      margin-top: 12px;
-      align-items: center;
-    }
-    .reunion-input {
-      flex: 1;
-      padding: 12px 16px;
-      border-radius: 14px;
-      border: 1px solid var(--border);
-      background: var(--card-2);
-      font-size: 18px;
-      font-weight: 700;
-      letter-spacing: 0.2em;
-      text-align: center;
-      font-family: ui-monospace, monospace;
-      color: var(--text);
-      outline: none;
-      transition: border-color 0.15s;
-    }
-    .reunion-input:focus {
-      border-color: var(--primary);
-    }
-    .reunion-input::placeholder {
-      font-size: 13px;
-      letter-spacing: 0;
-      font-weight: 400;
-      font-family: -apple-system, BlinkMacSystemFont, sans-serif;
-      color: var(--muted);
-    }
-    .btn-reunion {
-      padding: 12px 18px;
-      border-radius: 14px;
-      border: none;
-      background: var(--gradient-btn);
-      color: #fff;
-      font-size: 14px;
-      font-weight: 700;
-      cursor: pointer;
-      white-space: nowrap;
-      box-shadow: 0 4px 12px var(--btn-shadow);
-      transition: transform 0.1s;
-    }
-    .btn-reunion:active { transform: scale(0.97); }
-    .btn-reunion:disabled { opacity: 0.4; cursor: not-allowed; }
+    button, input { font: inherit; color: inherit; }
+    input { font-size: 16px; }  /* 避免 iOS 自動 zoom */
+    button { cursor: pointer; border: 0; }
 
-    /* 對方的語言徽章（只顯示國旗，未知時顯示「🌐 偵測中」）*/
-    .peer-card .peer-lang {
-      display: inline-block;
-      padding: 2px 8px;
-      border-radius: 10px;
-      font-size: 12px;
-      font-weight: 600;
-      margin-top: 8px;
-      margin-left: 4px;
-      background: rgba(96,205,255,0.15);
-      color: #60cdff;
-      border: 1px solid rgba(96,205,255,0.25);
-    }
-    .peer-card .peer-lang.detecting {
-      background: rgba(255,255,255,0.05);
-      color: var(--muted);
-      border-color: rgba(255,255,255,0.08);
-      font-size: 10px;
-      font-weight: 500;
-    }
-
-    /* ─── Volume Meters（精簡數字版）─── */
-    .meters {
-      display: none;
-      margin-bottom: 12px;
-    }
-    .meters.active {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 16px;
-    }
-    .meter-compact {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      font-size: 12px;
-      color: var(--muted);
-    }
-    .meter-compact .level {
-      font-family: ui-monospace, monospace;
-      font-size: 14px;
-      font-weight: 700;
-      min-width: 32px;
-      text-align: right;
-    }
-    .meter-compact .level.active-mic { color: var(--success); }
-    .meter-compact .level.active-spk { color: var(--primary); }
-    /* 隱藏舊版 meter 條 (JS 還在寫 width%，但我們不顯示了) */
-    .meter-row, .meter-content, .meter-side, .meter-label, .meter, .meter-fill, .user-display {
-      display: none !important;
-    }
-    .meter.active::after {
-      content: '';
-      position: absolute;
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.05));
-      pointer-events: none;
-    }
-
-    button {
-      width: 100%;
-      padding: 14px;
-      border: none;
-      border-radius: 20px;
-      font-size: 15px;
-      font-weight: 700;
-      cursor: pointer;
-      transition: transform 0.12s, box-shadow 0.2s;
-      margin-bottom: 10px;
-      letter-spacing: 0.02em;
-    }
-    button:active { transform: scale(0.96); }
-    button:disabled { opacity: 0.45; cursor: not-allowed; }
-    .btn-primary {
-      background: linear-gradient(135deg, #ff7eb3, #ff9ec6);
-      color: white;
-      box-shadow: 0 6px 20px rgba(255, 126, 179, 0.35);
-      font-size: 16px;
-      padding: 16px;
-    }
-    .btn-primary:hover:not(:disabled) {
-      box-shadow: 0 8px 28px rgba(255, 126, 179, 0.45);
-    }
-    .btn-danger {
-      background: linear-gradient(135deg, #ef5350, #ff7043);
-      color: white;
-      box-shadow: 0 4px 16px rgba(239, 83, 80, 0.25);
-    }
-    .btn-secondary {
-      background: var(--card-2);
-      color: var(--text);
-      border: 1px solid rgba(155, 152, 176, 0.2);
-    }
-    .sponsor-plan-btn {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      width: 100%;
-      padding: 16px 20px;
-      border-radius: 14px;
-      border: 1.5px solid var(--border);
-      background: var(--card-2);
-      color: var(--text);
-      cursor: pointer;
-      transition: all 0.2s;
-    }
-    .sponsor-plan-btn:hover, .sponsor-plan-btn:active {
-      border-color: #ffb347;
-      background: linear-gradient(135deg, rgba(255,224,140,0.15), rgba(255,179,71,0.15));
-    }
-    .btn-tts {
-      background: rgba(96,205,255,0.1);
-      color: #60cdff;
-      border: 1px solid rgba(96,205,255,0.2);
-      font-size: 13px;
-      padding: 10px;
+    /* ─── 大型按鈕 ─── */
+    .btn {
+      display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+      padding: 14px 20px;
       border-radius: 12px;
-      cursor: pointer;
-      width: 100%;
-      margin-bottom: 6px;
+      font-weight: 600; font-size: 16px;
+      background: var(--primary); color: #fff;
+      transition: transform .1s, opacity .15s;
+      min-height: 48px;
     }
-    .btn-tts.active {
-      background: rgba(52,199,89,0.1);
-      color: var(--success);
-      border-color: rgba(52,199,89,0.3);
-    }
-    .btn-mute {
-      background: rgba(255,167,38,0.1);
-      color: var(--warning);
-      border: 1px solid rgba(255,167,38,0.2);
-      font-size: 13px;
-      padding: 10px;
-    }
-    .btn-mute.muted {
-      background: rgba(239,83,80,0.1);
-      color: var(--danger);
-      border-color: rgba(239,83,80,0.2);
-    }
-    /* ─── Toggle Switch（麥克風拉巴）─── */
-    .toggle-switch {
-      position: relative; display: inline-block; width: 48px; height: 28px; flex-shrink: 0;
-    }
-    .toggle-switch input { opacity: 0; width: 0; height: 0; }
-    .toggle-slider {
-      position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0;
-      background: #ccc; border-radius: 28px; transition: 0.3s;
-    }
-    .toggle-slider::before {
-      content: ''; position: absolute; height: 22px; width: 22px; left: 3px; bottom: 3px;
-      background: #fff; border-radius: 50%; transition: 0.3s;
-    }
-    .toggle-switch input:checked + .toggle-slider { background: var(--success); }
-    .toggle-switch input:checked + .toggle-slider::before { transform: translateX(20px); }
-    /* ─── 文字聊天 ─── */
-    .text-msg { max-width: 80%; padding: 8px 12px; border-radius: 16px; font-size: 14px; line-height: 1.5; word-break: break-word; }
-    .text-msg.self { align-self: flex-end; background: var(--bubble-self-bg); color: var(--text); border-bottom-right-radius: 4px; }
-    .text-msg.peer { align-self: flex-start; background: var(--card); color: var(--text); border: 1px solid var(--border); border-bottom-left-radius: 4px; }
-    .text-msg .msg-translated { font-size: 12px; color: var(--muted); margin-top: 2px; font-style: italic; }
-    .text-msg .msg-time { font-size: 10px; color: var(--muted); margin-top: 2px; }
-    /* ─── 貼圖選擇器 ─── */
-    .sticker-picker { display: none; background: var(--card); border-radius: 16px 16px 0 0; padding: 12px; box-shadow: 0 -4px 16px rgba(0,0,0,0.08); max-height: 200px; overflow-y: auto; }
-    .sticker-picker.active { display: grid; grid-template-columns: repeat(6, 1fr); gap: 8px; }
-    .sticker-picker button { background: none; border: none; font-size: 28px; cursor: pointer; padding: 6px; border-radius: 8px; transition: background 0.15s; }
-    .sticker-picker button:active { background: var(--card-2); }
-    .btn-subtitle {
-      background: rgba(179,136,255,0.1);
-      color: var(--accent);
-      border: 1px solid rgba(179,136,255,0.25);
-      font-size: 18px;
-      padding: 6px 12px;
-      width: auto;
-      min-width: 44px;
-      margin: 0;
-      border-radius: 14px;
-      transition: background 0.2s, opacity 0.2s;
-    }
-    .btn-subtitle.off {
-      background: rgba(155,152,176,0.08);
-      color: var(--muted);
-      border-color: rgba(155,152,176,0.15);
-      opacity: 0.5;
-    }
+    .btn:active { transform: scale(0.97); }
+    .btn[disabled] { opacity: .5; pointer-events: none; }
+    .btn.secondary { background: var(--card); color: var(--text); border: 1px solid var(--border); }
+    .btn.danger    { background: var(--danger); color: #fff; }
+    .btn.full      { width: 100%; }
 
-    .input {
-      width: 100%;
-      padding: 14px;
-      border: 1px solid rgba(155,152,176,0.2);
-      background: var(--card-2);
-      color: var(--text);
-      border-radius: 16px;
-      font-size: 16px;
-      margin-bottom: 14px;
-      text-align: center;
-    }
-    .input:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px rgba(255,126,179,0.15); }
+    /* ─── 啟動畫面 ─── */
+    .screen { position: fixed; inset: 0; display: none; flex-direction: column;
+              padding-top: var(--safe-top); padding-bottom: var(--safe-bottom); }
+    .screen.active { display: flex; }
 
-    .footer-links {
-      text-align: center;
-      margin-top: 16px;
-      font-size: 11px;
-      color: var(--muted);
+    .home {
+      align-items: center; justify-content: center;
+      padding: 24px;
     }
-    .footer-links a {
-      color: var(--muted);
-      text-decoration: none;
-    }
-    .footer-links a:hover {
-      color: var(--primary);
-    }
-    .footer-links span {
-      margin: 0 6px;
-    }
-    .log {
-      /* 隱藏 debug log — 用戶不需要看到 socket/STT 訊息 */
-      display: none;
-      margin-top: 14px;
-      padding: 10px;
-      background: rgba(45,43,61,0.05);
-      border-radius: 12px;
-      font-family: ui-monospace, 'SF Mono', Menlo, monospace;
-      font-size: 10px;
-      color: var(--muted);
-      max-height: 100px;
-      overflow-y: auto;
-      text-align: left;
-    }
-    .hint {
-      color: var(--muted);
-      font-size: 11px;
-      margin-top: 12px;
-      line-height: 1.5;
-    }
-
-    /* ─── Profile Section（個人檔案區）─── */
-    .profile-section {
-      display: flex;
-      align-items: flex-start;
-      gap: 16px;
-      text-align: left;
-      margin-bottom: 24px;
-      padding: 4px;
-      cursor: pointer;
-      transition: opacity 0.15s;
-    }
-    .profile-section:hover { opacity: 0.85; }
-    .profile-section:active { transform: scale(0.99); }
-    .avatar-container {
-      flex-shrink: 0;
-      width: 100px;
-      height: 100px;
-      border-radius: 50%;
-      background: linear-gradient(135deg, #f0edf5, #e8e5f0);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      box-shadow: 0 4px 16px rgba(0,0,0,0.06);
-    }
-    .avatar-img {
-      width: 100%;
-      height: 100%;
-      border-radius: 50%;
-      object-fit: cover;
-    }
-    .profile-info {
-      flex: 1;
-      min-width: 0;
-    }
-    .profile-name {
-      font-size: 22px;
-      font-weight: 800;
-      color: var(--text);
-      margin-bottom: 8px;
-      background: none;
-      -webkit-text-fill-color: var(--text);
-    }
-    .profile-tags {
-      display: flex;
-      gap: 8px;
-      margin-bottom: 8px;
-      flex-wrap: wrap;
-    }
-    .tag {
-      display: inline-block;
-      padding: 4px 12px;
-      border-radius: 20px;
-      font-size: 12px;
-      font-weight: 600;
-    }
-    .tag-blue {
-      background: var(--tag-blue-bg);
-      color: var(--tag-blue-text);
-    }
-    .tag-red {
-      background: var(--tag-red-bg);
-      color: var(--tag-red-text);
-    }
-    .profile-pref {
-      font-size: 13px;
-      color: var(--muted);
-    }
-    .pref-lang {
-      margin-left: 4px;
-    }
-    .user-bar-region.unset {
-      background: rgba(255,149,0,0.1);
-      color: var(--warning);
-    }
-
-    /* ─── 想找講語言 bar ─── */
-    .target-lang-bar {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 8px;
-      padding: 10px 14px;
-      margin-bottom: 10px;
-      background: rgba(255,126,179,0.06);
-      border: 1px solid rgba(255,126,179,0.15);
+    .home .panel {
+      width: 100%; max-width: 380px;
+      background: var(--card);
+      padding: 28px 22px;
       border-radius: 18px;
-      cursor: pointer;
-      transition: background 0.15s, border-color 0.15s, box-shadow 0.15s;
-      box-shadow: 0 2px 8px rgba(255,126,179,0.05);
+      box-shadow: var(--shadow);
     }
-    .target-lang-bar:hover {
-      background: rgba(255,126,179,0.1);
-      border-color: rgba(255,126,179,0.25);
-    }
-    .target-lang-bar:active { transform: scale(0.99); }
-    .tlb-label {
-      font-size: 12px;
-      color: var(--muted);
-      flex-shrink: 0;
-    }
-    .tlb-value {
-      font-size: 13px;
-      font-weight: 700;
-      color: var(--primary);
-      text-align: right;
-      flex-shrink: 1;
-      min-width: 0;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-    }
+    .brand { text-align: center; margin-bottom: 18px; }
+    .brand .logo { font-size: 36px; }
+    .brand h1 { margin: 8px 0 4px; font-size: 24px; }
+    .brand p  { margin: 0; color: var(--text-dim); font-size: 14px; }
 
-    /* ─── Match modes (3 buttons) ─── */
-    /* ─── Trending topics ─── */
-    .trends-section {
-      margin-bottom: 14px;
-    }
-    .trends-title {
-      font-size: 13px;
-      font-weight: 700;
-      color: var(--muted);
-      margin-bottom: 8px;
-    }
-    .trends-grid {
-      display: grid;
-      grid-template-columns: repeat(4, 1fr);
-      gap: 6px;
-    }
-    .trend-chip {
-      padding: 8px 4px;
-      border-radius: 10px;
-      border: 1px solid var(--border);
-      background: var(--card-2);
-      font-size: 11px;
-      font-weight: 600;
-      color: var(--text);
-      cursor: pointer;
-      transition: all 0.15s;
-      white-space: nowrap;
-      text-align: center;
-    }
-    .trend-chip:hover {
-      border-color: var(--primary);
-      background: color-mix(in srgb, var(--primary) 6%, transparent);
-    }
-    .topic-cat {
-      background: var(--card);
-      border-color: color-mix(in srgb, var(--primary) 20%, transparent);
-    }
-    .trends-oneline {
-      flex-wrap: nowrap;
-      overflow-x: auto;
-      -webkit-overflow-scrolling: touch;
-    }
-    .trends-oneline::-webkit-scrollbar { display: none; }
-    .trends-oneline .trend-chip {
-      font-size: 10px;
-      padding: 4px 8px;
-      color: var(--muted);
-    }
-
-    .online-status {
-      text-align: center;
-      font-size: 12px;
-      color: var(--muted);
-      margin-bottom: 8px;
-    }
-    .online-dot {
-      display: inline-block;
-      width: 6px;
-      height: 6px;
-      border-radius: 50%;
-      background: var(--success);
-      margin-right: 4px;
-      animation: pulse 1.5s ease-in-out infinite;
-    }
-    #match-modes { display: block; }
-
-    /* ─── Massive CTA 按鈕（依照藍圖）─── */
-    .btn-primary-massive {
-      width: 100%;
-      height: 80px;
-      border: none;
-      border-radius: 20px;
-      background: var(--gradient-btn);
-      color: white;
-      cursor: pointer;
-      margin-bottom: 14px;
-      box-shadow: 0 12px 24px var(--btn-shadow);
-      transition: transform 0.12s, box-shadow 0.2s;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      gap: 2px;
-    }
-    .btn-primary-massive:hover:not(:disabled) {
-      transform: translateY(-2px);
-      box-shadow: 0 16px 32px var(--btn-shadow);
-    }
-    .btn-primary-massive:active { transform: scale(0.97); }
-    .btn-primary-massive:disabled { opacity: 0.45; cursor: not-allowed; }
-    .btn-primary-massive .btn-title {
-      font-size: 20px;
-      font-weight: 800;
-    }
-    .btn-primary-massive .btn-subtitle-text {
-      font-size: 16px;
-      font-weight: 700;
-      opacity: 0.9;
-    }
-
-    /* ─── 次要按鈕列（附近 + 指定 並排）─── */
-    .action-row {
-      display: flex;
-      gap: 10px;
-    }
-    .btn-secondary-outline {
-      flex: 1;
-      background: var(--card);
-      color: var(--text);
-      border: 1.5px solid var(--border);
-      font-size: 14px;
-      font-weight: 600;
-      padding: 14px 8px;
-      border-radius: 16px;
-      cursor: pointer;
-      transition: background 0.15s, border-color 0.2s, box-shadow 0.2s;
-      margin: 0;
-      width: auto;
-    }
-    .btn-secondary-outline:hover:not(:disabled) {
-      border-color: rgba(179,136,255,0.3);
-      box-shadow: 0 4px 12px rgba(0,0,0,0.04);
-    }
-    .btn-secondary-outline:active { transform: scale(0.97); }
-    .btn-secondary-outline:disabled { opacity: 0.4; cursor: not-allowed; }
-    .btn-mode-secondary {
-      background: var(--card-2);
-      color: var(--accent);
-      border: 1px solid rgba(179,136,255,0.2);
-      font-size: 14px;
-      padding: 13px;
-      width: 100%;
-      margin-bottom: 8px;
-      border-radius: 20px;
-      font-weight: 700;
-      cursor: pointer;
-      transition: background 0.15s, box-shadow 0.2s;
-      box-shadow: 0 2px 8px rgba(179,136,255,0.08);
-    }
-    .btn-mode-secondary:hover:not(:disabled) {
-      background: rgba(179,136,255,0.08);
-      box-shadow: 0 4px 16px rgba(179,136,255,0.15);
-    }
-    .btn-mode-secondary:disabled {
-      opacity: 0.4;
-      cursor: not-allowed;
-    }
-
-    /* ─── Settings button (top right of card) ─── */
-    .settings-btn {
-      position: absolute;
-      top: 20px;
-      right: 20px;
-      background: var(--card-2);
-      color: var(--muted);
-      border: 1px solid var(--border);
-      width: 36px;
-      height: 36px;
-      border-radius: 50%;
-      font-size: 16px;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      padding: 0;
-      margin: 0;
-      transition: background 0.15s, color 0.15s, box-shadow 0.15s;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.04);
-    }
-    .settings-btn:hover {
-      background: rgba(179,136,255,0.08);
-      color: var(--accent);
-    }
-    /* ─── Bottom tabs (below card) ─── */
-    .bottom-tabs {
-      max-width: 400px;
-      width: 100%;
-      margin: 16px auto 0;
-    }
-    .tab-bar {
-      display: flex;
-      gap: 0;
-      margin-bottom: 12px;
-      background: var(--card);
-      border-radius: 14px;
-      padding: 4px;
-      box-shadow: var(--card-shadow);
-      border: 1px solid var(--border);
-    }
-    .tab-btn {
-      flex: 1;
-      padding: 10px 0;
-      border: none;
+    .field { margin: 16px 0; }
+    .field label { display: block; margin-bottom: 6px; font-size: 13px; color: var(--text-dim); }
+    .field input {
+      width: 100%; padding: 12px 14px;
+      border: 1px solid var(--border); border-radius: 10px;
       background: transparent;
-      font-size: 13px;
-      font-weight: 700;
-      color: var(--muted);
-      cursor: pointer;
-      border-radius: 11px;
-      transition: all 0.2s;
     }
-    .tab-btn.active {
-      background: var(--primary);
-      color: #fff;
-      box-shadow: 0 2px 8px var(--btn-shadow);
-    }
-    .inbox-badge {
-      background: var(--danger);
-      color: #fff;
-      font-size: 10px;
-      font-weight: 700;
-      padding: 1px 5px;
-      border-radius: 8px;
-      margin-left: 4px;
-    }
-    .tab-content {
-      min-height: 40px;
-    }
-    /* 好友項目 */
-    .friend-item {
-      padding: 12px 14px;
-      background: var(--card);
-      border-radius: 16px;
-      margin-bottom: 10px;
-      cursor: pointer;
-      border: 1px solid var(--border);
-      box-shadow: var(--card-shadow);
-      transition: background 0.15s, box-shadow 0.15s;
-    }
-    .friend-item:hover {
-      background: color-mix(in srgb, var(--primary) 4%, transparent);
-    }
-    .fi-row {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-    }
-    .fi-avatar {
-      width: 36px;
-      height: 36px;
-      border-radius: 50%;
-      background: var(--card-2);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 18px;
-      flex-shrink: 0;
-      border: 1px solid var(--border);
-    }
-    .fi-info {
-      flex: 1;
-      min-width: 0;
-    }
-    .fi-name {
-      font-weight: 700;
-      font-size: 14px;
-      color: var(--text);
-      margin-bottom: 2px;
-    }
-    .fi-meta {
-      font-size: 11px;
-      color: var(--muted);
-    }
-    .fi-actions {
-      display: flex;
-      gap: 6px;
-      flex-shrink: 0;
-    }
-    .fi-btn {
-      padding: 6px 12px;
-      border-radius: 10px;
-      border: none;
-      font-size: 11px;
-      font-weight: 700;
-      cursor: pointer;
-      white-space: nowrap;
-    }
-    .fi-btn-call {
-      background: var(--gradient-btn);
-      color: #fff;
-    }
-    .inbox-item {
-      padding: 12px 14px;
-      background: var(--card);
-      border-radius: 16px;
-      margin-bottom: 10px;
-      cursor: pointer;
-      border: 1px solid var(--border);
-      box-shadow: var(--card-shadow);
-      transition: background 0.15s;
-    }
-    .inbox-item:hover {
-      background: color-mix(in srgb, var(--primary) 4%, transparent);
-    }
-    .inbox-item-badge {
-      background: var(--danger);
-      color: #fff;
-      font-size: 10px;
-      font-weight: 700;
-      padding: 1px 5px;
-      border-radius: 8px;
-      margin-left: 4px;
-    }
-    .friends-empty {
-      text-align: center;
-      color: var(--muted);
-      padding: 30px 0;
-      font-size: 13px;
-      line-height: 1.6;
-    }
-    .history-item {
-      padding: 12px 14px;
-      background: var(--card);
-      border-radius: 16px;
-      margin-bottom: 10px;
-      cursor: pointer;
-      border: 1px solid var(--border);
-      box-shadow: var(--card-shadow);
-      transition: background 0.15s, box-shadow 0.15s;
-    }
-    .history-item:hover {
-      background: color-mix(in srgb, var(--primary) 4%, transparent);
-      box-shadow: 0 2px 12px color-mix(in srgb, var(--primary) 10%, transparent);
-    }
-    .hi-row {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-    }
-    .hi-avatar {
-      width: 36px;
-      height: 36px;
-      border-radius: 50%;
-      background: var(--card-2);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 18px;
-      flex-shrink: 0;
-      border: 1px solid var(--border);
-    }
-    .hi-avatar-img {
-      width: 36px;
-      height: 36px;
-      border-radius: 50%;
-      object-fit: cover;
-      flex-shrink: 0;
-      border: 1px solid var(--border);
-    }
-    .hd-avatar-img {
-      width: 48px;
-      height: 48px;
-      border-radius: 50%;
-      object-fit: cover;
-      display: block;
-      margin: 0 auto 6px;
-      border: 2px solid var(--border);
-    }
-    .hi-info {
-      flex: 1;
-      min-width: 0;
-    }
-    .hi-name {
-      font-weight: 700;
-      font-size: 14px;
-      color: var(--text);
-      margin-bottom: 2px;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-    .hi-tags {
-      display: flex;
-      gap: 4px;
-      flex-wrap: nowrap;
-      overflow: hidden;
-    }
-    .hi-tags .tag {
-      font-size: 10px;
-      padding: 1px 6px;
-      white-space: nowrap;
-    }
-    .hi-right {
-      text-align: right;
-      flex-shrink: 0;
-      white-space: nowrap;
-    }
-    .hi-date {
-      display: block;
-      font-size: 11px;
-      color: var(--muted);
-      font-weight: 600;
-    }
-    .hi-meta {
-      display: block;
-      font-size: 10px;
-      color: var(--muted);
-      margin-top: 1px;
-    }
-    /* ─── History detail overlay ─── */
-    .history-overlay {
-      display: none;
-      position: fixed;
-      inset: 0;
-      background: rgba(0,0,0,0.7);
-      backdrop-filter: blur(4px);
-      -webkit-backdrop-filter: blur(4px);
-      z-index: 95;
-      padding: 20px;
-      align-items: center;
-      justify-content: center;
-    }
-    .history-overlay.active { display: flex; }
-    .history-overlay-content {
-      background: var(--card);
-      border-radius: 20px;
-      padding: 24px;
-      max-width: 400px;
-      width: 100%;
-      max-height: 85vh;
-      overflow-y: auto;
-    }
-    .hd-header {
-      text-align: center;
-      margin-bottom: 16px;
-      padding-bottom: 12px;
-      border-bottom: 1px solid var(--border);
-    }
-    .hd-avatar {
-      font-size: 32px;
-      display: block;
-      margin-bottom: 6px;
-    }
-    .hd-name {
-      font-size: 18px;
-      font-weight: 800;
-      color: var(--text);
-      display: block;
-      margin-bottom: 4px;
-    }
-    .hd-info {
-      font-size: 13px;
-      color: var(--muted);
-    }
-    .hd-reunion {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      padding: 12px 14px;
-      background: var(--card-2);
-      border-radius: 14px;
-      margin-bottom: 14px;
-      border: 1px solid var(--border);
-    }
-    .hd-reunion-label {
-      font-size: 12px;
-      color: var(--muted);
-      font-weight: 600;
-    }
-    .hd-reunion-code {
-      font-size: 20px;
-      font-weight: 800;
-      letter-spacing: 0.2em;
-      font-family: ui-monospace, monospace;
-      color: var(--primary);
-    }
-    .btn-reunion-use {
-      margin-left: auto;
-      padding: 6px 14px;
-      border-radius: 10px;
-      border: none;
-      background: var(--gradient-btn);
-      color: #fff;
-      font-size: 12px;
-      font-weight: 700;
-      cursor: pointer;
-      white-space: nowrap;
-    }
-    .hd-messages {
-      max-height: 55vh;
-      overflow-y: auto;
-      padding: 4px 0;
-    }
-    .hd-msg {
-      margin-bottom: 10px;
-    }
-    .hd-msg.self { text-align: right; }
-    .hd-msg.peer { text-align: left; }
-    .hd-bubble {
-      display: inline-block;
-      max-width: 85%;
-      padding: 10px 14px;
-      border-radius: 16px;
-      font-size: 14px;
-      line-height: 1.5;
-      text-align: left;
-    }
-    .hd-msg.self .hd-bubble {
-      background: var(--bubble-self-bg);
-      color: var(--text);
-      border-bottom-right-radius: 4px;
-    }
-    .hd-msg.peer .hd-bubble {
-      background: var(--card-2);
-      color: var(--text);
-      border: 1px solid var(--border);
-      border-bottom-left-radius: 4px;
-    }
-    .hd-trans {
-      font-size: 12px;
-      color: var(--muted);
-      margin-top: 4px;
-      font-style: italic;
-    }
-    .hd-label {
-      font-size: 11px;
-      color: var(--muted);
-      margin-top: 2px;
-    }
-    .hd-actions {
-      display: flex;
-      gap: 10px;
-      margin-top: 16px;
-    }
-    .hd-actions .btn-secondary {
-      flex: 1;
-    }
-    .btn-danger-small {
-      flex: 1;
-      padding: 12px 0;
-      border-radius: 14px;
-      font-size: 13px;
-      font-weight: 600;
-      border: 1px solid rgba(255,59,48,0.2);
-      background: rgba(255,59,48,0.06);
-      color: var(--danger);
-      cursor: pointer;
-      transition: background 0.15s;
-    }
-    .btn-danger-small:hover {
-      background: rgba(255,59,48,0.12);
-    }
+    .field .row { display: flex; gap: 8px; }
+    .field .row input { flex: 1; text-transform: uppercase; letter-spacing: 4px; text-align: center; font-weight: 600; }
 
-    /* ─── Settings overlay (similar to specific-picker) ─── */
-    .settings-overlay {
-      display: none;
-      position: fixed;
-      inset: 0;
-      background: rgba(0,0,0,0.7);
-      backdrop-filter: blur(4px);
-      -webkit-backdrop-filter: blur(4px);
-      z-index: 95;
-      padding: 20px;
-      align-items: center;
-      justify-content: center;
+    .divider { display: flex; align-items: center; margin: 18px 0;
+               color: var(--text-dim); font-size: 12px; }
+    .divider::before, .divider::after { content: ""; flex: 1; height: 1px; background: var(--border); }
+    .divider::before { margin-right: 10px; }
+    .divider::after  { margin-left: 10px; }
+
+    /* ─── 房間畫面 ─── */
+    .room { background: var(--bg); }
+    .topbar {
+      display: flex; align-items: center; gap: 10px;
+      padding: 10px 14px;
+      background: var(--card); border-bottom: 1px solid var(--border);
     }
-    .settings-overlay.active { display: flex; }
-    .settings-overlay-content {
-      background: var(--card);
-      border-radius: 20px;
-      padding: 24px;
-      padding-bottom: 16px;
-      max-width: 400px;
-      width: calc(100% - 40px);
-      max-height: 90vh;
-      display: flex;
-      flex-direction: column;
+    .room-code {
+      font-family: ui-monospace, Menlo, monospace; font-weight: 700; font-size: 18px;
+      letter-spacing: 2px;
     }
-    .settings-scroll {
-      flex: 1;
-      overflow-y: auto;
-      margin-bottom: 12px;
+    .room-meta { flex: 1; font-size: 12px; color: var(--text-dim); }
+    .icon-btn {
+      width: 38px; height: 38px;
+      display: flex; align-items: center; justify-content: center;
+      background: transparent; color: var(--text);
+      border-radius: 10px;
+    }
+    .icon-btn:active { background: var(--border); }
+
+    .map-wrap { flex: 1; position: relative; }
+    #map { position: absolute; inset: 0; }
+
+    .peer-strip {
+      position: absolute; top: 8px; left: 8px; right: 8px;
+      display: flex; gap: 6px; overflow-x: auto;
+      padding: 4px 0; z-index: 400;
       -webkit-overflow-scrolling: touch;
     }
-    .settings-actions {
-      display: flex;
-      gap: 10px;
+    .peer-strip::-webkit-scrollbar { display: none; }
+    .peer-chip {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 6px 10px; border-radius: 999px;
+      background: rgba(255,255,255,0.95); color: #1d1d1f;
+      font-size: 13px; font-weight: 600;
+      box-shadow: 0 1px 3px rgba(0,0,0,.12);
       flex-shrink: 0;
+      white-space: nowrap;
     }
-    .settings-actions .btn-primary,
-    .settings-actions .btn-secondary {
+    .peer-chip .dot { width: 10px; height: 10px; border-radius: 50%; }
+    .peer-chip.ptt-on { box-shadow: 0 0 0 2px var(--primary), 0 1px 3px rgba(0,0,0,.2); }
+    .peer-chip .dist { color: #6e6e73; font-weight: 500; font-size: 12px; }
+
+    /* ─── 底部對講機 ─── */
+    .bottombar {
+      background: var(--card); border-top: 1px solid var(--border);
+      padding: 12px 14px calc(12px + var(--safe-bottom));
+      display: flex; flex-direction: column; gap: 10px;
+    }
+    .ptt-row { display: flex; gap: 8px; align-items: center; }
+    .ptt {
       flex: 1;
+      min-height: 64px;
+      border-radius: 18px;
+      background: var(--primary); color: #fff;
+      font-size: 18px; font-weight: 700;
+      display: flex; align-items: center; justify-content: center; gap: 8px;
+      transition: background .1s, transform .05s;
+      user-select: none; -webkit-user-select: none; touch-action: none;
     }
-    .settings-overlay-content h3 {
-      font-size: 18px;
-      margin-bottom: 16px;
-      text-align: center;
-      background: var(--gradient-text);
-      -webkit-background-clip: text;
-      background-clip: text;
-      -webkit-text-fill-color: transparent;
-    }
-    .settings-section {
-      margin-bottom: 20px;
-    }
-    .settings-section h4 {
-      font-size: 12px;
-      font-weight: 600;
-      color: var(--muted);
-      text-transform: uppercase;
-      letter-spacing: 0.08em;
-      margin-bottom: 8px;
-    }
-    .settings-select {
-      width: 100%;
-      padding: 12px 14px;
-      border-radius: 12px;
-      border: 1px solid var(--border);
-      background: var(--card-2);
+    .ptt.holding { background: var(--danger); transform: scale(.99); }
+    .ptt.disabled { background: var(--border); color: var(--text-dim); }
+    .mode-toggle {
+      width: 64px; height: 64px;
+      border-radius: 18px;
+      background: var(--card); border: 1px solid var(--border);
       color: var(--text);
-      font-size: 16px;
-      font-weight: 600;
-      font-family: inherit;
-      outline: none;
-      appearance: none;
-      -webkit-appearance: none;
-      cursor: pointer;
-      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2386868b' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
-      background-repeat: no-repeat;
-      background-position: right 14px center;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 22px;
     }
-    .settings-select:focus {
-      border-color: var(--primary);
-    }
-    .settings-select[multiple] {
-      padding: 8px;
-      background-image: none;
-    }
-    .settings-select[multiple] option {
-      padding: 8px 10px;
-      border-radius: 8px;
-      margin-bottom: 2px;
-    }
-    .checkbox-group {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 6px;
-    }
-    .checkbox-item {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      padding: 8px 12px;
-      border-radius: 10px;
-      border: 1px solid var(--border);
-      background: var(--card-2);
-      font-size: 13px;
-      font-weight: 600;
-      cursor: pointer;
-      transition: all 0.15s;
-    }
-    .checkbox-item:has(input:checked) {
-      background: color-mix(in srgb, var(--primary) 10%, transparent);
-      border-color: var(--primary);
-      color: var(--primary);
-    }
-    .checkbox-item input[type="checkbox"] {
-      width: 16px;
-      height: 16px;
-      accent-color: var(--primary);
-    }
-    .settings-profile-row {
-      display: flex;
-      align-items: center;
-      gap: 16px;
-    }
-    .settings-profile-left {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 6px;
-      flex-shrink: 0;
-    }
-    .btn-oauth {
-      width: 100%;
-      padding: 12px;
-      border-radius: 12px;
-      font-size: 14px;
-      font-weight: 600;
-      cursor: pointer;
-      margin-bottom: 8px;
-      border: none;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 8px;
-    }
-    .btn-apple {
-      background: #000;
-      color: #fff;
-    }
-    .btn-email {
-      background: var(--card-2);
-      color: var(--text);
-      border: 1px solid var(--border);
-    }
-    .settings-avatar-img {
-      width: 68px;
-      height: 68px;
-      border-radius: 50%;
-      object-fit: cover;
-      border: 2px solid var(--border);
-    }
-    .settings-change-btn {
-      font-size: 10px;
-      color: var(--primary);
-      background: none;
-      border: none;
-      cursor: pointer;
-      font-weight: 600;
-    }
-    .settings-profile-right {
-      flex: 1;
-    }
-    .settings-profile-name {
-      font-size: 18px;
-      font-weight: 700;
-      color: var(--text);
-      margin-bottom: 4px;
-    }
-    .settings-profile-hint {
-      font-size: 11px;
-      color: var(--muted);
-    }
-    .settings-gender-row {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      margin-top: 6px;
-      font-size: 13px;
-    }
-    .settings-gender-label {
-      color: var(--muted);
-      font-weight: 600;
-    }
-    .settings-gender-value {
-      font-weight: 700;
-      color: var(--text);
-    }
-    .settings-locked-row {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      padding: 12px;
-      background: rgba(255,255,255,0.04);
-      border-radius: 12px;
-      font-size: 14px;
-      color: var(--text);
-    }
-    .settings-locked-row .lock-icon {
-      color: var(--warning);
-      font-size: 14px;
-    }
-    .settings-locked-row .locked-hint {
-      font-size: 11px;
-      color: var(--muted);
-      margin-left: auto;
-    }
-    .settings-overlay-content .region-grid {
-      display: grid;
-      grid-template-columns: repeat(4, 1fr);
-      gap: 6px;
-    }
-    .settings-overlay-content .lang-grid {
-      display: grid;
-      grid-template-columns: repeat(2, 1fr);
-      gap: 8px;
-    }
-    .settings-overlay-content .gender-grid {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 8px;
-    }
-    .settings-overlay-content .region-grid .grid-btn {
-      padding: 10px 4px;
-      font-size: 12px;
-    }
-    .settings-overlay-content .grid-btn {
-      background: rgba(255,255,255,0.04);
-      border: 1px solid rgba(255,255,255,0.1);
-      color: var(--text);
-      padding: 12px 8px;
-      border-radius: 12px;
-      font-size: 13px;
-      font-weight: 600;
-      cursor: pointer;
-      width: 100%;
-      margin: 0;
-      transition: background 0.15s, border-color 0.15s;
-    }
-    .settings-overlay-content .grid-btn:hover {
-      background: rgba(96,205,255,0.1);
-      border-color: rgba(96,205,255,0.3);
-    }
-    .settings-overlay-content .grid-btn.selected {
-      background: rgba(96,205,255,0.2);
-      border-color: #60cdff;
-      color: #60cdff;
-    }
+    .mode-toggle.active { background: var(--primary); color: #fff; border-color: var(--primary); }
 
-    .avatar-grid {
-      display: grid;
-      grid-template-columns: repeat(4, 1fr);
-      gap: 12px;
-      margin-top: 8px;
+    .status-line {
+      font-size: 12px; color: var(--text-dim); text-align: center;
+      min-height: 16px;
     }
-    .avatar-option {
-      width: 100%;
-      aspect-ratio: 1;
-      border-radius: 50%;
-      overflow: hidden;
-      cursor: pointer;
-      border: 3px solid transparent;
-      transition: all 0.2s;
-    }
-    .avatar-option.selected {
-      border-color: var(--primary);
-      transform: scale(1.08);
-      box-shadow: 0 4px 12px var(--btn-shadow);
-    }
-    .avatar-option img {
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-    }
+    .status-line.error { color: var(--danger); }
 
-    /* ─── Specific picker (overlay) ─── */
-    .specific-picker {
-      display: none;
-      position: fixed;
-      inset: 0;
-      background: rgba(0,0,0,0.7);
-      backdrop-filter: blur(4px);
-      -webkit-backdrop-filter: blur(4px);
-      z-index: 90;
-      padding: 20px;
-      align-items: center;
-      justify-content: center;
+    /* ─── 邀請對話框 ─── */
+    .modal-mask {
+      position: fixed; inset: 0; background: rgba(0,0,0,.4);
+      display: none; align-items: center; justify-content: center;
+      padding: 20px; z-index: 1000;
     }
-    .specific-picker.active { display: flex; }
-    .specific-picker-content {
-      background: var(--card);
-      border-radius: 20px;
-      padding: 24px;
-      max-width: 400px;
-      width: 100%;
-      max-height: 85vh;
-      overflow-y: auto;
+    .modal-mask.show { display: flex; }
+    .modal {
+      width: 100%; max-width: 380px;
+      background: var(--card); border-radius: 18px;
+      padding: 22px;
+      box-shadow: var(--shadow);
     }
-    .specific-picker-content h3 {
-      font-size: 18px;
-      margin-bottom: 16px;
-      text-align: center;
-      background: var(--gradient-text);
-      -webkit-background-clip: text;
-      background-clip: text;
-      -webkit-text-fill-color: transparent;
+    .modal h3 { margin: 0 0 14px; font-size: 18px; }
+    .invite-code {
+      font-family: ui-monospace, Menlo, monospace;
+      font-size: 36px; font-weight: 800; letter-spacing: 8px;
+      text-align: center; padding: 16px;
+      background: var(--bg); border-radius: 12px;
+      margin: 12px 0;
     }
-    .specific-picker-content .region-grid {
-      display: grid;
-      grid-template-columns: repeat(4, 1fr);
-      gap: 6px;
-      margin-bottom: 16px;
-    }
-    .specific-picker-content .region-grid .grid-btn {
-      padding: 10px 4px;
-      font-size: 12px;
-    }
-    .specific-picker-content .grid-btn {
-      background: rgba(255,255,255,0.04);
-      border: 1px solid rgba(255,255,255,0.1);
-      color: var(--text);
-      padding: 12px 8px;
-      border-radius: 12px;
-      font-size: 13px;
-      font-weight: 600;
-      cursor: pointer;
-      width: 100%;
-      margin: 0;
-      transition: background 0.15s, border-color 0.15s;
-    }
-    .specific-picker-content .grid-btn:hover {
-      background: rgba(96,205,255,0.1);
-      border-color: rgba(96,205,255,0.3);
-    }
-    .specific-picker-content .grid-btn.selected {
-      background: rgba(96,205,255,0.2);
-      border-color: #60cdff;
-      color: #60cdff;
-    }
-
-    /* ─── Subtitles（LINE 風格，佔滿剩餘空間）─── */
-    .subtitles {
-      display: none;
-      background: var(--card-2);
-      border: 1px solid var(--border);
-      border-radius: 20px 20px 0 0;
-      padding: 14px;
-      margin-bottom: 0;
-      max-height: calc(100vh - 380px);
-      min-height: 200px;
-      overflow-y: auto;
-      text-align: left;
-      scroll-behavior: smooth;
-    }
-    .subtitles.active { display: block; }
-    .subtitles-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      font-size: 11px;
-      color: var(--muted);
-      margin-bottom: 8px;
-      text-transform: uppercase;
-      letter-spacing: 0.08em;
-    }
-    .subtitles-header .lang-btn {
-      background: rgba(255,255,255,0.08);
-      border: none;
-      color: var(--muted);
-      padding: 3px 8px;
-      border-radius: 8px;
-      font-size: 10px;
-      cursor: pointer;
-      width: auto;
-      margin: 0;
-    }
-    .subtitles-header .lang-btn:hover { color: var(--text); }
-
-    /* ─── Lang bar（字幕上方固定列）─── */
-    .lang-bar {
-      display: none;
-      align-items: center;
-      justify-content: space-between;
-      gap: 8px;
-      padding: 8px 14px;
-      background: var(--card);
-      border-radius: 16px 16px 0 0;
-      border: 1px solid var(--border);
-      border-bottom: none;
-      margin-bottom: -1px;
-      font-size: 11px;
-      color: var(--muted);
-    }
-    .lang-bar.active { display: flex; }
-    .lang-bar .label {
-      text-transform: uppercase;
-      letter-spacing: 0.08em;
-    }
-    .lang-bar .right {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-    }
-    .lang-bar .lang-btn {
-      background: var(--tag-red-bg);
-      border: 1px solid rgba(230,92,92,0.15);
-      color: var(--tag-red-text);
-      padding: 5px 12px;
-      border-radius: 12px;
-      font-size: 12px;
-      font-weight: 600;
-      cursor: pointer;
-      width: auto;
-      margin: 0;
-      transition: background 0.15s;
-    }
-    .lang-bar .lang-btn:hover { background: rgba(230,92,92,0.12); }
-    .stt-status {
-      display: inline-flex;
-      align-items: center;
-      gap: 4px;
-      font-size: 10px;
-      padding: 2px 6px;
-      border-radius: 6px;
-      margin-left: 6px;
-    }
-    .stt-status .dot {
-      width: 12px;
-      height: 12px;
-      border-radius: 50%;
-      background: #666;
-      box-shadow: 0 0 6px currentColor;
-    }
-    .stt-status.idle { background: rgba(255,255,255,0.05); color: var(--muted); }
-    .stt-status.idle .dot { background: #666; }
-    .stt-status.starting { background: rgba(255,167,38,0.15); color: var(--warning); }
-    .stt-status.starting .dot { background: var(--warning); animation: pulse 0.8s infinite; }
-    .stt-status.active { background: rgba(76,175,80,0.15); color: #4caf50; padding: 2px 8px; }
-    .stt-status.active .dot { display: none; }
-    .stt-status.active::after {
-      content: '● ● ●';
-      font-size: 6px;
-      letter-spacing: 2px;
-      animation: dots-wave 1.4s infinite ease-in-out;
-    }
-    @keyframes dots-wave {
-      0%, 100% { opacity: 0.4; transform: scale(0.8); }
-      50% { opacity: 1; transform: scale(1.2); }
-    }
-    .stt-status.error { background: rgba(231,76,60,0.15); color: var(--danger); }
-    .stt-status.error .dot { background: var(--danger); }
-    /* ─── LINE 風格對話氣泡 ─── */
-    .subtitle-line {
-      display: flex;
-      flex-direction: column;
-      margin-bottom: 10px;
-      animation: fadeIn 0.2s ease-out;
-    }
-    .subtitle-line:last-child { margin-bottom: 0; }
-    @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
-
-    /* 自己的訊息：靠右 */
-    .subtitle-line.self {
-      align-items: flex-end;
-    }
-    .subtitle-line.self .speaker {
-      font-size: 10px;
-      font-weight: 600;
-      color: var(--muted);
-      margin-bottom: 3px;
-      padding: 0;
-      background: none;
-    }
-    .subtitle-line.self .text-wrap {
-      background: var(--primary);
-      color: white;
-      border-radius: 18px 18px 4px 18px;
-      padding: 10px 14px;
-      max-width: 80%;
-      box-shadow: 0 2px 8px color-mix(in srgb, var(--primary) 15%, transparent);
-    }
-    .subtitle-line.self .text {
-      font-size: 14px;
-      line-height: 1.45;
-      color: white;
-      word-break: break-word;
-    }
-
-    /* 對方的訊息：靠左 */
-    .subtitle-line.peer {
-      align-items: flex-start;
-    }
-    .subtitle-line.peer .speaker {
-      font-size: 10px;
-      font-weight: 600;
-      color: var(--muted);
-      margin-bottom: 3px;
-      padding: 0;
-      background: none;
-    }
-    .subtitle-line.peer .text-wrap {
-      background: #e8e8ed;
-      color: var(--text);
-      border-radius: 18px 18px 18px 4px;
-      padding: 10px 14px;
-      max-width: 80%;
-    }
-    .subtitle-line.peer .text {
-      font-size: 14px;
-      line-height: 1.45;
-      color: var(--text);
-      word-break: break-word;
-    }
-
-    /* 翻譯行（氣泡內，小字） */
-    .subtitle-line .translation {
-      font-size: 12px;
-      line-height: 1.3;
-      color: rgba(0,0,0,0.45);
-      word-break: break-word;
-      margin-top: 4px;
-      padding-top: 4px;
-      border-top: 1px solid rgba(0,0,0,0.08);
-    }
-    .subtitle-line.self .translation {
-      color: rgba(255,255,255,0.7);
-      border-top-color: rgba(255,255,255,0.2);
-    }
-
-    .subtitle-line.interim .text {
-      opacity: 0.6;
-      font-style: italic;
-    }
-    .subtitles-empty {
-      text-align: center;
-      color: var(--muted);
-      font-size: 13px;
-      padding: 24px 12px;
-    }
-
-    /* ─── Chat input bar（字幕區底部打字欄）─── */
-    .chat-container {
-      display: flex;
-      flex-direction: column;
-      margin-bottom: 10px;
-    }
-    .chat-input-bar {
-      display: flex;
-      gap: 8px;
-      padding: 10px 14px;
-      background: var(--card);
-      border: 1px solid var(--border);
-      border-top: none;
-      border-radius: 0 0 20px 20px;
-      margin-top: -1px;
-    }
-    .chat-input {
-      flex: 1;
-      border: 1px solid var(--border);
-      background: var(--card-2);
-      color: var(--text);
-      padding: 10px 14px;
-      border-radius: 20px;
-      font-size: 16px;
-      outline: none;
-    }
-    .chat-input:focus {
-      border-color: var(--primary);
-      box-shadow: 0 0 0 2px color-mix(in srgb, var(--primary) 12%, transparent);
-    }
-    .btn-chat-send {
-      flex-shrink: 0;
-      background: var(--gradient-btn);
-      color: white;
-      border: none;
-      padding: 10px 18px;
-      border-radius: 20px;
-      font-size: 14px;
-      font-weight: 700;
-      cursor: pointer;
-      transition: transform 0.1s;
-      width: auto;
-      margin: 0;
-    }
-    .btn-chat-send:active { transform: scale(0.95); }
-
-    /* ─── Onboarding overlay ─── */
-    .onboarding {
-      display: none;
-      position: fixed;
-      inset: 0;
-      background: var(--bg);
-      z-index: 100;
-      padding: 24px;
-      overflow-y: auto;
-    }
-    .onboarding.active {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-    .onboarding-card {
-      max-width: 380px;
-      width: 100%;
-      background: var(--card);
-      border-radius: 24px;
-      padding: 32px 28px;
-      box-shadow: 0 20px 60px rgba(0,0,0,0.4);
-    }
-    .onb-logo {
-      text-align: center;
+    .invite-url {
+      padding: 10px 12px; background: var(--bg); border-radius: 8px;
+      font-size: 12px; color: var(--text-dim);
+      word-break: break-all; user-select: all;
       margin-bottom: 12px;
     }
-    .onb-icon {
-      width: 80px;
-      height: 80px;
-      border-radius: 20px;
-      box-shadow: 0 8px 24px rgba(0,0,0,0.12);
-    }
-    .onb-title {
-      text-align: center;
-      font-size: 24px;
-      font-weight: 800;
-      background: var(--gradient-text);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      margin-bottom: 6px;
-    }
-    .onb-slogan {
-      text-align: center;
-      font-size: 13px;
-      color: var(--muted);
-      margin-bottom: 16px;
-    }
-    .onb-divider {
-      height: 1px;
-      background: var(--border);
-      margin: 0 20px 16px;
-    }
-    .onboarding-step {
-      display: none;
-    }
-    .onboarding-step.active {
-      display: block;
-      animation: fadeIn 0.3s ease-out;
-    }
-    .onboarding h2 {
-      font-size: 22px;
-      margin-bottom: 8px;
-      background: var(--gradient-text);
-      -webkit-background-clip: text;
-      background-clip: text;
-      -webkit-text-fill-color: transparent;
-    }
-    .onboarding .step-hint {
-      font-size: 13px;
-      color: var(--muted);
-      margin-bottom: 20px;
-      line-height: 1.5;
-    }
-    .onboarding .step-warning {
-      font-size: 11px;
-      color: var(--warning);
-      margin-top: 6px;
-      margin-bottom: 16px;
-    }
-    .onboarding .input {
-      margin-bottom: 8px;
-    }
-    .onboarding .detected-box {
-      background: rgba(96,205,255,0.08);
-      border: 1px solid rgba(96,205,255,0.2);
-      border-radius: 12px;
-      padding: 14px;
-      margin-bottom: 16px;
-      text-align: center;
-    }
-    .onboarding .detected-box .label {
-      font-size: 11px;
-      color: var(--muted);
-      text-transform: uppercase;
-      letter-spacing: 0.08em;
-      margin-bottom: 6px;
-    }
-    .onboarding .detected-box .value {
-      font-size: 18px;
-      font-weight: 700;
-      color: #60cdff;
-    }
-    .gender-grid {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 8px;
-      margin-bottom: 16px;
-    }
+    .modal-actions { display: flex; gap: 8px; }
+    .modal-actions .btn { flex: 1; }
 
-    .onboarding .lang-grid {
-      display: grid;
-      grid-template-columns: repeat(2, 1fr);
-      gap: 8px;
-      margin-bottom: 16px;
+    /* ─── Toast ─── */
+    .toast {
+      position: fixed; left: 50%; top: 16px;
+      transform: translateX(-50%) translateY(-200%);
+      background: rgba(0,0,0,.85); color: #fff;
+      padding: 10px 18px; border-radius: 999px;
+      font-size: 14px; z-index: 2000;
+      transition: transform .25s ease;
+      pointer-events: none;
+      max-width: 90%;
     }
-    .onboarding .region-grid {
-      display: grid;
-      grid-template-columns: repeat(4, 1fr);
-      gap: 6px;
-      margin-bottom: 16px;
+    .toast.show { transform: translateX(-50%) translateY(0); }
+
+    /* ─── Leaflet popup 客製 ─── */
+    .leaflet-popup-content { margin: 8px 12px; font-size: 13px; }
+    .marker-pin {
+      width: 28px; height: 28px;
+      border-radius: 50% 50% 50% 0;
+      transform: rotate(-45deg);
+      border: 2px solid #fff;
+      box-shadow: 0 2px 4px rgba(0,0,0,.3);
+      display: flex; align-items: center; justify-content: center;
+      color: #fff; font-weight: 700; font-size: 12px;
     }
-    .onboarding .region-grid .grid-btn {
-      padding: 10px 4px;
-      font-size: 12px;
+    .marker-pin span { transform: rotate(45deg); }
+    .marker-pin.me::after {
+      content: ''; position: absolute;
+      width: 50px; height: 50px;
+      border: 2px solid currentColor;
+      border-radius: 50%; opacity: .25;
+      animation: pulse 2s infinite;
+      transform: rotate(45deg) translate(-12px, -12px);
     }
-    .onboarding .grid-btn {
-      background: rgba(255,255,255,0.04);
-      border: 1px solid rgba(255,255,255,0.1);
-      color: var(--text);
-      padding: 12px 8px;
-      border-radius: 12px;
-      font-size: 13px;
-      font-weight: 600;
-      cursor: pointer;
-      width: 100%;
-      margin: 0;
-      transition: background 0.15s, border-color 0.15s;
-    }
-    .onboarding .grid-btn:hover {
-      background: rgba(96,205,255,0.1);
-      border-color: rgba(96,205,255,0.3);
-    }
-    .onboarding .grid-btn.selected {
-      background: rgba(96,205,255,0.2);
-      border-color: #60cdff;
-      color: #60cdff;
-    }
-    .onboarding .step-progress {
-      display: flex;
-      justify-content: center;
-      gap: 6px;
-      margin-bottom: 20px;
-    }
-    .onboarding .progress-dot {
-      width: 8px;
-      height: 8px;
-      border-radius: 50%;
-      background: rgba(255,255,255,0.15);
-    }
-    .onboarding .progress-dot.active {
-      background: var(--primary);
-    }
-    .onboarding .progress-dot.done {
-      background: var(--success);
+    @keyframes pulse {
+      0%   { transform: rotate(45deg) translate(-12px, -12px) scale(0.6); opacity: .5; }
+      100% { transform: rotate(45deg) translate(-12px, -12px) scale(1.4); opacity: 0; }
     }
   </style>
 </head>
 <body>
-  <!-- Onboarding overlay (新用戶第一次開或缺資料時顯示) -->
-  <div id="onboarding" class="onboarding">
-    <div class="onboarding-card">
-      <div class="step-progress">
-        <span class="progress-dot" id="dot-1"></span>
-        <span class="progress-dot" id="dot-2"></span>
-        <span class="progress-dot" id="dot-3"></span>
-        <span class="progress-dot" id="dot-4"></span>
-        <span class="progress-dot" id="dot-5"></span>
-        <span class="progress-dot" id="dot-6"></span>
-        <span class="progress-dot" id="dot-7"></span>
+  <!-- 啟動畫面：建房 / 加入 -->
+  <section id="screen-home" class="screen home active">
+    <div class="panel">
+      <div class="brand">
+        <div class="logo">🚐</div>
+        <h1>GuideTalk</h1>
+        <p>導遊團車對講 + 位置同步</p>
       </div>
 
-      <!-- Step 1: 暱稱 -->
-      <div class="onboarding-step" id="step-1">
-        <div class="onb-logo">
-          <img src="/icon-192.png" class="onb-icon" alt="KaiTalk">
-        </div>
-        <h2 class="onb-title" data-i18n="welcome">歡迎來到 KaiTalk</h2>
-        <p class="onb-slogan" data-i18n="slogan">會講你的語言，就能跟全世界聊天</p>
-        <div class="onb-divider"></div>
-        <p class="step-hint" data-i18n="nickname_hint">先取個暱稱，讓對方知道怎麼稱呼你</p>
-        <input id="onb-name" class="input" data-i18n="nickname_placeholder" placeholder="你的暱稱（12 字內）" maxlength="12">
-        <p class="step-warning" data-i18n="nickname_warning">暱稱設定後不能修改（除非升級會員）</p>
-        <button id="onb-step1-next" class="btn-primary" disabled data-i18n="next">下一步</button>
+      <div class="field">
+        <label>你的暱稱（給夥伴看的）</label>
+        <input id="name-input" type="text" placeholder="例：阿德 / 1 號車" maxlength="24" />
       </div>
 
-      <!-- Step 2: 性別 -->
-      <div class="onboarding-step" id="step-2">
-        <h2 data-i18n="your_gender">你的性別</h2>
-        <p class="step-hint" data-i18n="gender_hint">讓對方知道你是誰。</p>
-        <div class="gender-grid">
-          <button class="grid-btn onb-gender-btn" data-gender="male" data-i18n="male">♂ 男生</button>
-          <button class="grid-btn onb-gender-btn" data-gender="female" data-i18n="female">♀ 女生</button>
-          <button class="grid-btn onb-gender-btn" data-gender="other" data-i18n="other">⚥ 其他</button>
-        </div>
-        <button id="onb-step2-next" class="btn-primary" disabled data-i18n="next">下一步</button>
-      </div>
+      <button class="btn full" id="btn-create">建立新房間</button>
 
-      <!-- Step 3: 頭像 -->
-      <div class="onboarding-step" id="step-3">
-        <h2 data-i18n="pick_avatar">選一個虛擬頭像 🎭</h2>
-        <p class="step-hint" data-i18n="avatar_hint">對方會看到這個頭像。之後可以在設定裡更換。</p>
-        <div class="avatar-grid">
-          <div class="avatar-option selected" data-avatar="avatar_mature.png"><img src="https://imagedelivery.net/8vYNanmJriUCfsABJIN-Gw/avatar_mature/public" style="transform: scale(1.1) translateY(2%);"></div>
-          <div class="avatar-option" data-avatar="avatar_sporty.png"><img src="https://imagedelivery.net/8vYNanmJriUCfsABJIN-Gw/avatar_sporty/public" style="transform: scale(1.4) translateY(10%);"></div>
-          <div class="avatar-option" data-avatar="avatar_elegant.png"><img src="https://imagedelivery.net/8vYNanmJriUCfsABJIN-Gw/avatar_elegant/public" style="transform: scale(1.2) translateY(5%);"></div>
-          <div class="avatar-option" data-avatar="avatar_shorthair.png"><img src="https://imagedelivery.net/8vYNanmJriUCfsABJIN-Gw/avatar_shorthair/public" style="transform: scale(1.1) translateY(3%);"></div>
-          <div class="avatar-option" data-avatar="avatar_older_m.png"><img src="https://imagedelivery.net/8vYNanmJriUCfsABJIN-Gw/avatar_older_m/public" style="transform: scale(1.15) translateY(3%);"></div>
-          <div class="avatar-option" data-avatar="avatar_older_f.png"><img src="https://imagedelivery.net/8vYNanmJriUCfsABJIN-Gw/avatar_older_f/public" style="transform: scale(1.2) translateY(5%);"></div>
-          <div class="avatar-option" data-avatar="avatar_idol_m.png"><img src="https://imagedelivery.net/8vYNanmJriUCfsABJIN-Gw/avatar_idol_m/public" style="transform: scale(1.0) translateY(0);"></div>
-          <div class="avatar-option" data-avatar="avatar_idol_f.png"><img src="https://imagedelivery.net/8vYNanmJriUCfsABJIN-Gw/avatar_idol_f/public" style="transform: scale(1.15) translateY(4%);"></div>
-        </div>
-        <button id="onb-step3-next" class="btn-primary" data-i18n="next">下一步</button>
-      </div>
+      <div class="divider">或</div>
 
-      <!-- Step 4: 想找 -->
-      <div class="onboarding-step" id="step-4">
-        <h2 data-i18n="who_to_chat">想跟誰聊？</h2>
-        <p class="step-hint" data-i18n="who_hint">配對時會優先配給你想要的對象。</p>
-        <div class="gender-grid">
-          <button class="grid-btn onb-target-gender-btn" data-tgender="male" data-i18n="male">♂ 男生</button>
-          <button class="grid-btn onb-target-gender-btn" data-tgender="female" data-i18n="female">♀ 女生</button>
-          <button class="grid-btn onb-target-gender-btn" data-tgender="any" data-i18n="any_gender">⚥ 都可以</button>
-        </div>
-        <button id="onb-step4-next" class="btn-primary" disabled data-i18n="next">下一步</button>
-      </div>
-
-      <!-- Step 5: 國家/地區 -->
-      <div class="onboarding-step" id="step-5">
-        <h2 data-i18n="where_are_you">你在哪裡？🌏</h2>
-        <p class="step-hint" data-i18n="region_hint">這個會用在「附近配對」跟「指定地方」功能。之後可以隨時改。</p>
-        <div class="detected-box" id="onb-detected-region" style="display:none">
-          <div class="label" data-i18n="detected">系統偵測到</div>
-          <div class="value" id="onb-detected-region-value">—</div>
-        </div>
-        <div class="region-grid" id="onb-region-grid"></div>
-        <button id="onb-step5-next" class="btn-primary" disabled data-i18n="next">下一步</button>
-      </div>
-
-      <!-- Step 6: 語言（從 LANGS 動態生成） -->
-      <div class="onboarding-step" id="step-6">
-        <h2 data-i18n="your_language">你講什麼語言？💬</h2>
-        <p class="step-hint" data-i18n="lang_hint">會用來辨識你的語音、轉成文字。對方看不懂的話會自動翻譯。</p>
-        <div class="lang-grid" id="onb-lang-grid"></div>
-        <button id="onb-step6-next" class="btn-primary" disabled data-i18n="next">下一步</button>
-      </div>
-
-      <!-- Step 7: 語音品質引導（僅 iOS 顯示） -->
-      <div class="onboarding-step" id="step-7">
-        <h2>讓翻譯聲音更自然 🗣️</h2>
-        <p class="step-hint">KaiTalk 會把對方說的話翻譯成你的語言，並用語音念出來。<br>下載高品質語音包，聽起來就像真人在跟你說話！</p>
-        <div id="onb-voice-status" style="margin:16px 0;padding:14px;background:var(--card-2);border-radius:12px;text-align:left;font-size:13px;line-height:1.6;"></div>
-        <div style="margin:12px 0;padding:14px;background:linear-gradient(135deg,#e8f4fd,#f0e6ff);border-radius:12px;text-align:left;">
-          <div style="font-size:13px;font-weight:700;margin-bottom:8px;">📱 下載方式（2 分鐘）</div>
-          <div style="font-size:12px;line-height:1.8;color:#333;">
-            1️⃣ iPhone <b>設定</b> → <b>輔助使用</b><br>
-            2️⃣ <b>朗讀內容</b> → <b>語音</b><br>
-            3️⃣ 選語言 → 下載「高音質」版本
-          </div>
-          <div style="font-size:11px;color:#666;margin-top:6px;line-height:1.6;">
-            👍 推薦：<b>Lilian</b>（女）· <b>Han</b>（男）· <b>Yun</b>（女）· <b>Limu</b>（男）
-          </div>
-        </div>
-        <button id="onb-step7-next" class="btn-primary" data-i18n="start_using">開始使用 🚀</button>
-        <button id="onb-step7-skip" class="btn-link" style="margin-top:8px;font-size:13px;color:var(--muted);background:none;border:none;cursor:pointer;">之後再說</button>
-      </div>
-    </div>
-  </div>
-
-  <div class="card">
-    <button id="btn-settings" class="settings-btn" title="設定">⚙️</button>
-    <h1>KaiTalk</h1>
-
-    <!-- status: 只在 matching / connecting 時顯示，idle 時隱藏 -->
-    <div id="status" class="status" style="display:none">準備中...</div>
-
-    <!-- ═══ 配對成功後才顯示的區域 ═══ -->
-
-    <!-- 豆知識（保留在最上面）-->
-    <div id="trivia-card" class="trivia-card">
-      <div class="trivia-header" id="trivia-toggle">💡 今日話題</div>
-      <div class="trivia-body">
-        <div class="trivia-text" id="trivia-text-zh">—</div>
-        <div class="trivia-text-ja" id="trivia-text-ja">—</div>
-      </div>
-    </div>
-
-    <!-- 對方 + 自己（精簡兩行 bar） -->
-    <div id="peer-card" class="peer-card call-bar">
-      <span id="connection-indicator" class="conn-indicator" style="display:none"></span>
-      <div class="call-bar-row" style="display:flex;align-items:center;gap:8px;">
-        <img id="peer-avatar-img" src="" style="width:36px;height:36px;border-radius:50%;object-fit:cover;display:none;">
-        <span class="cb-left" style="flex:1;"><span id="peer-gender-icon"></span> <span id="peer-name">—</span></span>
-        <span class="cb-divider">|</span>
-        <span class="cb-right"><span id="user-display">—</span></span>
-        <img id="my-avatar-img" src="" style="width:36px;height:36px;border-radius:50%;object-fit:cover;display:none;">
-      </div>
-      <div class="call-bar-row call-bar-row-small">
-        <span class="cb-left"><span class="peer-lang detecting" id="peer-lang-badge">🌐</span> <span id="peer-verified-badge" class="verified-badge" style="display:none">✓</span> 🔊<span id="remote-level" class="level-spk">0%</span></span>
-        <span class="cb-divider">|</span>
-        <span class="cb-right">🎤<span id="local-level" class="level-mic">0%</span> <span id="stt-status" class="stt-status idle"><span class="dot"></span></span> <button id="lang-btn" class="lang-btn-mini">🇯🇵</button></span>
-      </div>
-      <!-- 隱藏但保留 JS 需要的 id -->
-      <div style="display:none">
-        <span id="room-code">—</span>
-        <span id="my-role">—</span>
-        <div id="local-meter" style="width:0%"></div>
-        <div id="remote-meter" style="width:0%"></div>
-        <button id="btn-subtitle">💬</button>
-      </div>
-    </div>
-
-    <!-- 保留給 JS 用但不顯示 -->
-    <div id="meters" class="meters" style="display:none !important"></div>
-    <div id="lang-bar" class="lang-bar" style="display:none !important"></div>
-
-    <!-- 字幕 + 文字對話區（LINE 風格） -->
-    <!-- 話題提示（通話中顯示） -->
-    <div id="topic-hint" class="topic-hint" style="display:none"></div>
-
-    <div class="chat-container">
-      <div id="subtitles" class="subtitles">
-        <div id="subtitles-list">
-          <div class="subtitles-empty">開始說話或打字...</div>
-        </div>
-      </div>
-      <div id="chat-input-bar" class="chat-input-bar" style="display:none">
-        <input id="chat-input" class="chat-input" type="text" placeholder="輸入訊息..." maxlength="200" autocomplete="off">
-        <button id="btn-chat-send" class="btn-chat-send">送出</button>
-      </div>
-    </div>
-
-    <!-- ═══ Idle 主畫面（配對前）═══ -->
-
-    <!-- 隱藏 input (onboarding 用) -->
-    <input id="name" class="input" placeholder="暱稱" maxlength="12" style="display:none">
-
-    <!-- ═══ Profile Section（個人檔案區）═══ -->
-    <div id="user-bar" class="profile-section" role="button" tabindex="0">
-      <div class="avatar-container">
-        <img id="avatar-img" class="avatar-img" src="https://imagedelivery.net/8vYNanmJriUCfsABJIN-Gw/avatar_mature/public" alt="avatar">
-      </div>
-      <div class="profile-info">
-        <h2 class="profile-name" id="user-bar-name">—</h2>
-        <div class="profile-tags">
-          <span class="tag tag-blue" id="user-bar-region">📍 TW 中部</span>
-          <span class="tag tag-red" id="user-bar-lang">🇯🇵 日本語</span>
-        </div>
-        <div class="profile-pref">
-          <span id="user-bar-target">想找：♀ 女生</span>
-          <span id="target-lang-value" class="pref-lang">所有語言</span>
-        </div>
-      </div>
-    </div>
-
-    <!-- ═══ 話題配對（JS 動態生成 5 個）═══ -->
-    <div id="topic-section" class="trends-section">
-      <div class="trends-grid" id="topic-grid"></div>
-    </div>
-
-    <!-- ═══ 主配對按鈕（Massive CTA）═══ -->
-    <div id="online-status" class="online-status" style="display:none"></div>
-    <div id="match-modes">
-      <button id="btn-start" class="btn-primary-massive" disabled>
-        <div class="btn-title" data-i18n="cta_title">チャットしよう！</div>
-        <div class="btn-subtitle-text" data-i18n="cta_subtitle">開聊！</div>
-      </button>
-      <div class="action-row">
-        <button id="btn-nearby" class="btn-secondary-outline" disabled data-i18n="nearby">📍 附近的人</button>
-        <button id="btn-specific" class="btn-secondary-outline" disabled data-i18n="specific">🌏 指定地方</button>
-      </div>
-    </div>
-
-    <button id="btn-cancel" class="btn-secondary" style="display:none">取消配對</button>
-
-    <!-- 麥克風 + 語音翻譯（同一行）-->
-    <div id="mic-toggle-bar" style="display:none;margin:8px 0;">
-      <div style="display:flex;align-items:center;gap:8px;">
-        <div style="flex:1;display:flex;align-items:center;justify-content:center;gap:8px;background:var(--card);border-radius:12px;padding:8px 12px;box-shadow:var(--card-shadow);">
-          <span style="font-size:13px;color:var(--muted);">🎙️</span>
-          <label class="toggle-switch">
-            <input type="checkbox" id="mic-toggle" onchange="toggleMicFromSwitch(this.checked)">
-            <span class="toggle-slider"></span>
-          </label>
-        </div>
-        <button id="btn-tts" class="btn-tts" style="flex:1;margin:0;">🔇 語音翻譯：關</button>
-      </div>
-    </div>
-    <button id="btn-mute" class="btn-mute" style="display:none">🔊 喇叭：開</button>
-
-    <div id="call-actions" class="call-actions" style="display:none">
-      <button id="btn-meet-again" class="btn-meet-again" data-i18n="meet_again">💚 想再遇</button>
-      <button id="btn-hangup" class="btn-danger" data-i18n="hangup">📞 掛斷</button>
-    </div>
-    <div id="safety-actions" class="safety-actions" style="display:none">
-      <button id="btn-block" class="btn-safety">🚫 封鎖</button>
-      <button id="btn-report" class="btn-safety btn-safety-danger">🚨 檢舉</button>
-    </div>
-
-    <!-- overlays (kept in card for z-index) -->
-    <div id="target-lang-picker" class="specific-picker">
-      <div class="specific-picker-content">
-        <h3>想跟講什麼語言的人聊？</h3>
-        <p style="text-align:center;color:var(--muted);font-size:12px;margin-bottom:16px;">可多選。預設「所有語言」= 不過濾。</p>
-        <div class="lang-grid" id="target-lang-grid">
-          <button class="grid-btn target-lang-btn" data-lang="zh-TW">🇹🇼 中文（繁）</button>
-          <button class="grid-btn target-lang-btn" data-lang="ja-JP">🇯🇵 日本語</button>
-          <button class="grid-btn target-lang-btn" data-lang="en-US">🇺🇸 English</button>
-          <button class="grid-btn target-lang-btn" data-lang="vi-VN">🇻🇳 Tiếng Việt</button>
-          <button class="grid-btn target-lang-btn" data-lang="id-ID">🇮🇩 Indonesia</button>
-          <button class="grid-btn target-lang-btn" data-lang="hi-IN">🇮🇳 हिन्दी</button>
-          <button class="grid-btn target-lang-btn" data-lang="ur-PK">🇵🇰 اردو</button>
-          <button class="grid-btn target-lang-btn" data-lang="ko-KR">🇰🇷 한국어</button>
-          <button class="grid-btn target-lang-btn" data-lang="zh-CN">🇨🇳 简中</button>
-          <button class="grid-btn target-lang-btn" data-lang="tl-PH">🇵🇭 Tagalog</button>
-          <button class="grid-btn target-lang-btn" data-lang="th-TH">🇹🇭 ภาษาไทย</button>
-          <button class="grid-btn target-lang-btn" data-lang="pt-BR">🇧🇷 Português</button>
-        </div>
-        <button id="btn-target-lang-clear" class="btn-secondary" style="margin-top:8px;">清除（所有語言）</button>
-        <button id="btn-target-lang-save" class="btn-primary">儲存</button>
-        <button id="btn-target-lang-cancel" class="btn-secondary">取消</button>
-      </div>
-    </div>
-
-    <div id="specific-picker" class="specific-picker">
-      <div class="specific-picker-content">
-        <h3>選一個地方找人聊</h3>
-        <div class="region-grid" id="specific-region-grid"></div>
-        <button id="btn-specific-confirm" class="btn-primary" disabled>開始配對</button>
-        <button id="btn-specific-cancel" class="btn-secondary">取消</button>
-      </div>
-    </div>
-
-    <!-- target-lang-bar 拿掉了（功能移到 user card 裡） -->
-    <div id="target-lang-bar" style="display:none"></div>
-
-    <div id="log" class="log"></div>
-  </div>
-
-  <!-- 對話 / 好友 tab（主畫面下方）-->
-  <!-- PWA 安裝提示 -->
-  <div id="btn-pwa-install" style="display:none;padding:8px 16px;margin:0 auto 8px;max-width:480px;">
-    <button onclick="installPwa()" style="width:100%;padding:12px;border:none;border-radius:12px;background:linear-gradient(135deg,#7c6dd8,#4a90d9);color:#fff;font-size:14px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;">
-      <span style="font-size:18px;">📲</span> 安裝 KaiTalk App
-    </button>
-  </div>
-
-  <div id="bottom-tabs" class="bottom-tabs" style="display:none">
-    <div class="tab-bar">
-      <button class="tab-btn active" data-tab="history" data-i18n="tab_chat">💬 對話</button>
-      <button class="tab-btn" data-tab="friends" data-i18n="tab_friends">👥 好友</button>
-      <button class="tab-btn" data-tab="inbox">✉️ <span data-i18n="tab_inbox_text">信箱</span> <span id="inbox-badge" class="inbox-badge" style="display:none">0</span></button>
-    </div>
-    <div class="tab-content" id="tab-history">
-      <div id="history-list"></div>
-    </div>
-    <div class="tab-content" id="tab-friends" style="display:none">
-      <div id="friends-list"></div>
-    </div>
-    <div class="tab-content" id="tab-inbox" style="display:none">
-      <div id="inbox-list"></div>
-    </div>
-  </div>
-
-  <!-- 歷史對話詳細 overlay -->
-  <div id="history-overlay" class="history-overlay">
-    <div class="history-overlay-content"></div>
-  </div>
-
-  <!-- 設定 overlay -->
-  <div id="settings-overlay" class="settings-overlay">
-    <div class="settings-overlay-content">
-      <h3>⚙️ 設定</h3>
-      <div class="settings-scroll">
-
-      <!-- 頭像 + 暱稱（合併一行） -->
-      <div class="settings-section">
-        <div class="settings-profile-row">
-          <div class="settings-profile-left">
-            <img id="settings-current-avatar" class="settings-avatar-img" src="">
-            <button class="settings-change-btn" id="btn-change-avatar">更換頭像</button>
-          </div>
-          <div class="settings-profile-right">
-            <div class="settings-profile-name"><span id="settings-nickname-lock">🔒</span> <span id="settings-nickname-display">—</span> <button id="btn-edit-nickname" class="settings-change-btn" style="display:none;font-size:11px;padding:2px 8px;margin-left:4px;">改名</button></div>
-            <div class="settings-profile-hint" id="settings-nickname-hint">升級會員可改暱稱</div>
-            <div class="settings-gender-row">
-              <span class="settings-gender-label">性別</span>
-              <span class="settings-gender-value" id="settings-gender-display">—</span>
-            </div>
-          </div>
-        </div>
-        <div class="avatar-grid" id="settings-avatar-grid" style="display:none">
-          <div class="avatar-option" data-avatar="avatar_mature.png"><img src="https://imagedelivery.net/8vYNanmJriUCfsABJIN-Gw/avatar_mature/public" style="transform: scale(1.1) translateY(2%);"></div>
-          <div class="avatar-option" data-avatar="avatar_sporty.png"><img src="https://imagedelivery.net/8vYNanmJriUCfsABJIN-Gw/avatar_sporty/public" style="transform: scale(1.4) translateY(10%);"></div>
-          <div class="avatar-option" data-avatar="avatar_elegant.png"><img src="https://imagedelivery.net/8vYNanmJriUCfsABJIN-Gw/avatar_elegant/public" style="transform: scale(1.2) translateY(5%);"></div>
-          <div class="avatar-option" data-avatar="avatar_shorthair.png"><img src="https://imagedelivery.net/8vYNanmJriUCfsABJIN-Gw/avatar_shorthair/public" style="transform: scale(1.1) translateY(3%);"></div>
-          <div class="avatar-option" data-avatar="avatar_older_m.png"><img src="https://imagedelivery.net/8vYNanmJriUCfsABJIN-Gw/avatar_older_m/public" style="transform: scale(1.15) translateY(3%);"></div>
-          <div class="avatar-option" data-avatar="avatar_older_f.png"><img src="https://imagedelivery.net/8vYNanmJriUCfsABJIN-Gw/avatar_older_f/public" style="transform: scale(1.2) translateY(5%);"></div>
-          <div class="avatar-option" data-avatar="avatar_idol_m.png"><img src="https://imagedelivery.net/8vYNanmJriUCfsABJIN-Gw/avatar_idol_m/public" style="transform: scale(1.0) translateY(0);"></div>
-          <div class="avatar-option" data-avatar="avatar_idol_f.png"><img src="https://imagedelivery.net/8vYNanmJriUCfsABJIN-Gw/avatar_idol_f/public" style="transform: scale(1.15) translateY(4%);"></div>
+      <div class="field">
+        <label>輸入 6 碼房號</label>
+        <div class="row">
+          <input id="code-input" type="text" placeholder="ABC123" maxlength="6" autocapitalize="characters" autocomplete="off" />
+          <button class="btn secondary" id="btn-join">加入</button>
         </div>
       </div>
 
-      <!-- 帳號登入 -->
-      <div class="settings-section" id="account-section" style="margin-top:0;"></div>
+      <p style="font-size:12px;color:var(--text-dim);text-align:center;margin:18px 0 0;line-height:1.6;">
+        建議第一次使用前允許「定位」與「麥克風」權限<br>
+        位置只在房間內分享，不寫入伺服器
+      </p>
+    </div>
+  </section>
 
-      <!-- 想跟誰聊（可改） -->
-      <div class="settings-section">
-        <h4>想跟誰聊</h4>
-        <div class="gender-grid">
-          <button class="grid-btn settings-tgender-btn" data-tgender="male">♂ 男生</button>
-          <button class="grid-btn settings-tgender-btn" data-tgender="female">♀ 女生</button>
-          <button class="grid-btn settings-tgender-btn" data-tgender="any">⚥ 都可以</button>
-        </div>
+  <!-- 房間畫面 -->
+  <section id="screen-room" class="screen room">
+    <div class="topbar">
+      <button class="icon-btn" id="btn-leave" title="離開">←</button>
+      <div>
+        <div class="room-code" id="room-code-display">------</div>
+        <div class="room-meta" id="room-meta">— 人</div>
       </div>
+      <div style="flex:1"></div>
+      <button class="icon-btn" id="btn-invite" title="邀請">🔗</button>
+      <button class="icon-btn" id="btn-recenter" title="回到我的位置">📍</button>
+    </div>
 
-      <!-- 我的地區（下拉選單） -->
-      <div class="settings-section">
-        <h4>我的地區</h4>
-        <select id="settings-region-select" class="settings-select"></select>
-      </div>
+    <div class="map-wrap">
+      <div class="peer-strip" id="peer-strip"></div>
+      <div id="map"></div>
+    </div>
 
-      <!-- 我講的語言（從 LANGS 動態生成） -->
-      <div class="settings-section">
-        <h4>我講的語言</h4>
-        <select id="settings-lang-select" class="settings-select"></select>
-      </div>
-
-      <!-- 想找講什麼語言的人 -->
-      <div class="settings-section">
-        <h4>想找講什麼語言的人</h4>
-        <select id="settings-target-lang-select" class="settings-select"></select>
-      </div>
-
-      <!-- 翻譯語音設定（僅 iOS） -->
-      <div class="settings-section" id="settings-voice-section" style="display:none;">
-        <h4>翻譯語音 🗣️</h4>
-        <div id="settings-voice-status" style="padding:10px;background:var(--card-2);border-radius:10px;font-size:12px;line-height:1.6;margin-bottom:10px;"></div>
-        <select id="settings-tts-voice-select" class="settings-select" style="margin-bottom:10px;"></select>
-        <button id="btn-voice-test" style="width:100%;padding:8px;border:1px solid var(--border);border-radius:8px;background:var(--card-2);font-size:12px;cursor:pointer;margin-bottom:10px;">🔊 試聽</button>
-        <div style="padding:12px;background:linear-gradient(135deg,#e8f4fd,#f0e6ff);border-radius:10px;">
-          <div style="font-size:12px;font-weight:700;margin-bottom:6px;">如何取得更多好聽的聲音？</div>
-          <div style="font-size:11px;line-height:1.7;color:#333;">
-            iPhone 設定 → <b>輔助使用</b> → <b>朗讀內容</b> → <b>語音</b><br>
-            → 選語言 → 下載「<b>高音質</b>」或「<b>增強音質</b>」版本
-          </div>
-          <div style="font-size:11px;color:#666;margin-top:8px;line-height:1.6;">
-            👍 推薦下載：<b>Lilian</b>（女）· <b>Han</b>（男）· <b>Yun</b>（女）· <b>Limu</b>（男）<br>
-            💡 下載後回到 KaiTalk 設定就能選擇
-          </div>
-        </div>
-      </div>
-
-      <!-- 邀請好友 -->
-      <div class="settings-section" id="invite-section" style="display:none;">
-        <h4 style="margin-bottom:8px;">📎 邀請好友</h4>
-        <button id="btn-show-invite" style="width:100%;padding:10px;border:none;border-radius:10px;background:linear-gradient(135deg,#7c6dd8,#4a90d9);color:#fff;font-size:14px;font-weight:600;cursor:pointer;">
-          產生邀請連結 / QR Code
+    <div class="bottombar">
+      <div class="ptt-row">
+        <button class="mode-toggle" id="btn-mode" title="切換通話模式">🎙️</button>
+        <button class="ptt disabled" id="btn-ptt">
+          <span id="ptt-label">準備中…</span>
         </button>
       </div>
+      <div class="status-line" id="status-line"></div>
+    </div>
+  </section>
 
-      </div><!-- end settings-scroll -->
-      <div class="settings-footer-links" style="text-align:center;margin-bottom:12px;font-size:11px;color:var(--muted);">
-        <a href="/privacy.html" target="_blank" style="color:var(--muted);text-decoration:none;" data-i18n="privacy">隱私政策</a>
-        <span style="margin:0 6px;">·</span>
-        <a href="/terms.html" target="_blank" style="color:var(--muted);text-decoration:none;" data-i18n="terms">使用條款</a>
+  <!-- 邀請對話框 -->
+  <div class="modal-mask" id="invite-modal">
+    <div class="modal">
+      <h3>邀請夥伴加入</h3>
+      <p style="margin:0;font-size:13px;color:var(--text-dim);">把房號或連結傳給其他導遊：</p>
+      <div class="invite-code" id="invite-code-text"></div>
+      <div class="invite-url" id="invite-url-text"></div>
+      <div class="modal-actions">
+        <button class="btn secondary" id="btn-copy-url">複製連結</button>
+        <button class="btn" id="btn-share">分享 / LINE</button>
       </div>
-      <div class="settings-actions">
-        <button id="btn-settings-save" class="btn-primary" data-i18n="save">儲存</button>
-        <button id="btn-settings-cancel" class="btn-secondary" data-i18n="cancel">取消</button>
-      </div>
+      <button class="btn secondary full" id="btn-close-invite" style="margin-top:8px;">關閉</button>
     </div>
   </div>
 
-  <!-- 贊助 overlay -->
-  <div id="sponsor-overlay" class="settings-overlay">
-    <div class="settings-overlay-content" style="max-width:360px;padding:24px 20px;">
-      <h3 style="margin-bottom:4px;">贊助 KaiTalk</h3>
-      <p style="font-size:12px;color:var(--muted);text-align:center;margin-bottom:16px;">一次贊助，永久解鎖。未來可全額抵扣正式版費用</p>
-      <div id="sponsor-plans" style="display:flex;flex-direction:column;gap:10px;">
-        <button class="sponsor-plan-btn" data-amount="99" onclick="selectSponsorPlan(99)" style="text-align:left;padding:14px 16px;">
-          <div style="display:flex;justify-content:space-between;align-items:center;">
-            <span style="font-size:18px;font-weight:700;">NT$ 99</span>
-            <span style="font-size:11px;color:var(--primary);font-weight:600;background:var(--tag-blue-bg);padding:2px 8px;border-radius:10px;">輕量贊助</span>
-          </div>
-          <div style="font-size:12px;color:var(--muted);margin-top:6px;line-height:1.6;">
-            每日 300 次 AI 翻譯<br>
-            自然人聲語音翻譯
-          </div>
-        </button>
-        <button class="sponsor-plan-btn" data-amount="199" onclick="selectSponsorPlan(199)" style="text-align:left;padding:14px 16px;border:2px solid var(--primary);position:relative;">
-          <div style="position:absolute;top:-10px;right:12px;background:var(--primary);color:#fff;font-size:10px;padding:2px 8px;border-radius:10px;font-weight:600;">推薦</div>
-          <div style="display:flex;justify-content:space-between;align-items:center;">
-            <span style="font-size:18px;font-weight:700;">NT$ 199</span>
-            <span style="font-size:11px;color:#e65c5c;font-weight:600;background:var(--tag-red-bg);padding:2px 8px;border-radius:10px;">進階贊助</span>
-          </div>
-          <div style="font-size:12px;color:var(--muted);margin-top:6px;line-height:1.6;">
-            無限次 AI 翻譯<br>
-            自然人聲語音翻譯<br>
-            可修改暱稱<br>
-            新功能搶先體驗
-          </div>
-        </button>
-      </div>
-      <div style="margin-top:12px;display:flex;gap:8px;">
-        <button class="btn-secondary" onclick="restorePurchases()" style="flex:1;font-size:12px;">恢復購買</button>
-        <button class="btn-secondary" onclick="closeSponsorOverlay()" style="flex:1;">取消</button>
-      </div>
-    </div>
-  </div>
+  <div class="toast" id="toast"></div>
 
-  <!-- 邀請 QR Code overlay -->
-  <div id="invite-overlay" class="settings-overlay">
-    <div class="settings-overlay-content" style="max-width:340px;padding:24px 20px;text-align:center;">
-      <h3 style="margin-bottom:4px;">📎 我的邀請連結</h3>
-      <p style="font-size:12px;color:var(--muted);margin:4px 0 16px;">分享連結或 QR Code，對方開啟就能加你好友</p>
-      <div id="invite-qr-container" style="display:inline-block;margin:0 auto 16px;"></div>
-      <div id="invite-link-display" style="word-break:break-all;font-size:11px;padding:10px;background:var(--card-2,#f5f5f7);border-radius:8px;margin-bottom:12px;user-select:all;"></div>
-      <div style="display:flex;gap:8px;">
-        <button id="btn-copy-invite" class="btn-primary" style="flex:1;padding:10px;font-size:13px;">複製連結</button>
-        <button id="btn-share-invite" class="btn-primary" style="flex:1;padding:10px;font-size:13px;display:none;">分享</button>
-        <button id="btn-regen-invite" class="btn-secondary" style="flex:1;padding:10px;font-size:13px;">重新產生</button>
-      </div>
-      <button class="btn-secondary" id="btn-close-invite" style="width:100%;margin-top:8px;padding:10px;">關閉</button>
-    </div>
-  </div>
-
-  <!-- 信件 overlay -->
-  <div id="letter-overlay" class="letter-overlay">
-    <div class="letter-overlay-content"></div>
-  </div>
-
-  <!-- 檢舉 overlay -->
-  <div id="report-overlay" class="report-overlay">
-    <div class="report-card">
-      <h3>🚨 檢舉用戶</h3>
-      <p class="report-hint">選擇檢舉原因，對話紀錄會作為證據一併提交。<br>檢舉後將自動封鎖對方並掛斷。</p>
-      <div class="report-reasons">
-        <button class="report-reason-btn" data-reason="harassment">🗣️ 言語騷擾</button>
-        <button class="report-reason-btn" data-reason="inappropriate">🔞 不當內容</button>
-        <button class="report-reason-btn" data-reason="spam">📢 垃圾訊息/廣告</button>
-        <button class="report-reason-btn" data-reason="underage">👶 疑似未成年</button>
-        <button class="report-reason-btn" data-reason="other">❓ 其他</button>
-      </div>
-      <textarea id="report-notes" class="report-notes" placeholder="補充說明（選填）" maxlength="500" rows="2"></textarea>
-      <div class="report-actions">
-        <button id="btn-report-cancel" class="btn-secondary">取消</button>
-        <button id="btn-report-submit" class="btn-danger" disabled>提交檢舉</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- 自訂確認彈窗 -->
-  <div id="confirm-overlay" class="confirm-overlay">
-    <div class="confirm-card">
-      <div class="confirm-icon" id="confirm-icon">📞</div>
-      <p class="confirm-text" id="confirm-text">確定要結束通話嗎？</p>
-      <div class="confirm-actions">
-        <button id="btn-confirm-cancel" class="confirm-btn confirm-btn-cancel">繼續聊</button>
-        <button id="btn-confirm-ok" class="confirm-btn confirm-btn-ok">結束通話</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- 互相想再遇 overlay（掛斷後才彈出）-->
-  <div id="mutual-match-overlay" class="mutual-match-overlay">
-    <div class="mutual-match-card">
-      <div class="emoji">🎉</div>
-      <h2>你們互相想再遇！</h2>
-      <div class="peer-name-big" id="mutual-match-name">—</div>
-      <div class="reunion-code-box" id="reunion-code-box" style="display:none">
-        <p class="reunion-label">你們的重逢碼</p>
-        <div class="reunion-code" id="reunion-code-display">------</div>
-        <p class="reunion-hint">下次輸入這組碼，就能再找到對方</p>
-      </div>
-      <button id="btn-mutual-ok" class="btn-primary">太棒了！</button>
-    </div>
-  </div>
-
-  <audio id="remote-audio" autoplay playsinline></audio>
-
-  <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.74.0/dist/umd/supabase.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-  <script src="/main.js"></script>
+  <!-- Capacitor（iOS app 包裝時才載入到，網頁直接走 fallback） -->
+  <script type="module" src="/main.js"></script>
 </body>
 </html>

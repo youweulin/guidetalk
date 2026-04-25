@@ -1,26 +1,22 @@
 {
-  "name": "kaitalk",
-  "version": "0.0.1",
-  "description": "兩人隨機語音盲盒（聊活）— Phase 0 prototype",
+  "name": "guidetalk",
+  "version": "0.1.0",
+  "description": "導遊團車對講 + GPS 位置同步（多車隊不走散）",
   "type": "module",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "dev": "node server.js",
-    "db:apply": "node --env-file=.env.local db/apply.js"
+    "dev": "node server.js"
   },
   "engines": {
     "node": ">=18.0.0"
   },
   "dependencies": {
-    "@capacitor-community/text-to-speech": "^8.0.0",
     "@capacitor/cli": "^8.3.0",
     "@capacitor/core": "^8.3.0",
+    "@capacitor/geolocation": "^8.0.0",
     "@capacitor/ios": "^8.3.0",
-    "@libsql/client": "^0.17.2",
     "express": "^5.1.0",
-    "jose": "^6.2.2",
-    "msedge-tts": "^2.0.4",
     "socket.io": "^4.8.1"
   },
   "devDependencies": {

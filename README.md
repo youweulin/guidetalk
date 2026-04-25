@@ -1,99 +1,64 @@
-# kaitalk · 聊活
+# GuideTalk · 導遊團車對講 + 位置同步
 
-> **兩人隨機語音盲盒**——配對、講話、跨語言即時字幕。
-> 純 P2P 架構，伺服器只做訊令轉發，媒體永遠不經過 server。
-
----
-
-## 產品定位
-
-不是交友軟體，是「**有人陪**」的服務。
-- 隨機配對兩個人 → WebRTC P2P 語音直連
-- 即時字幕（每人標自己的語言）
-- 跨語言自動翻譯（中 ↔ 日 ↔ 英 ↔ 韓）
-- 想再聊就繼續，不想就結束 → 抽下一個
-
-主力市場：**台灣 ↔ 日本**——語音比文字親密、比視訊安全，加上字幕翻譯打通語言牆。
+> **多車隊行程不走散**：即時對講機 + 即時位置共享。
+> 為日本/海外導遊團車場景而生。
 
 ---
 
-## Phase 0 + 1（已完成）
+## 為什麼有這個 App
 
-- [x] Socket.IO 訊令 server + 兩人配對佇列
-- [x] WebRTC P2P 音訊（Opus）
-- [x] 雙向音量視覺化 meter
-- [x] 喇叭靜音切換（給單機測試）
-- [x] 即時 STT 字幕（Web Speech API）
-- [x] 每人標自己的語言（zh-TW / ja-JP / en-US / ko-KR / zh-CN）
-- [x] 跨語言翻譯（自動偵測對方語言 → 翻成我的語言）
-- [x] 翻譯 provider 多層 fallback（Apple → Chrome built-in → Google → MyMemory）
-- [x] 字幕開關按鈕
+導遊帶團、多台車並行時，常碰到：
+- 在前車的人不知道後車哪裡了，是要等？要繞回去？
+- 用 LINE 問位置太慢，開車不方便看訊息
+- 一般 LINE 群通話沒有「即時位置」這層
 
-## Phase 2（接下來）
-
-- [ ] PWA manifest + Service Worker
-- [ ] 部署到永久 URL（Zeabur）
-- [ ] iOS Capacitor wrap + AppleTranslation plugin
-- [ ] Google 登入（Supabase Auth）
-- [ ] 性別篩選
-- [ ] 試聊 10 秒倒數 + 豆知識題目庫
+**GuideTalk 解法：**
+1. 開團 → 拿到 6 碼房號 / 邀請連結
+2. 同團導遊全部加入 → 地圖即時看到每台車在哪
+3. 想講話按住 PTT 按鈕 → 全房聽得到（像對講機）
+4. 點任一夥伴 → 「在地圖開啟」直接導航過去
 
 ---
 
-## 技術架構
+## 架構
 
 ```
-┌─────────┐                      ┌─────────┐
-│  Alice  │                      │   Bob   │
-│ (手機)  │                      │ (手機)  │
-└────┬────┘                      └────┬────┘
-     │                                │
-     │   1. WebSocket → 唯一一台      │
-     │      訊令 server (server.js)   │
-     ▼                                ▼
-   ┌──────────────────────────────────┐
-   │  signaling: matchmaking + relay  │
-   │  ⚠️ 完全不碰 audio / 字幕內容    │
-   └──────────────────────────────────┘
-     │                                │
-     │   2. 透過 Google STUN 查公網 IP │
-     │   3. WebRTC P2P 直連            │
-     ▼                                ▼
-   ┌──────────────────────────────────┐
-   │  ⚡ 音訊 / 字幕 DataChannel       │
-   │  ⚡ 完全不經過任何 server         │
-   │  ⚡ 字幕翻譯在用戶手機跑          │
-   └──────────────────────────────────┘
+┌──────────────────────────────────────────┐
+│ Socket.IO server（你的 Zeabur）          │
+│  • 房間（建立 / 加入 / 12 小時 TTL）       │
+│  • WebRTC 訊令轉發（offer/answer/ICE）    │
+│  • GPS pub/sub（in-memory，不寫 DB）      │
+└──────────────────────────────────────────┘
+        ↑ 訊令          ↑ GPS
+        │               │
+   ┌────┴───────────────┴────┐
+   │ 每支手機                │
+   │  • WebRTC P2P mesh 音訊 │  ← 媒體永遠 P2P 直連
+   │  • Leaflet + OSM 地圖   │
+   │  • iOS: Capacitor 原生  │
+   │     ├ CoreLocation 背景 │
+   │     └ 麥克風背景音訊    │
+   └─────────────────────────┘
 ```
 
-### 隱私架構
-
-| 資料 | 存哪裡 | 為什麼 |
+| 資料 | 走哪 | 為什麼 |
 |---|---|---|
-| 音訊 | 不存任何地方 | P2P 即時、不錄音 |
-| 字幕文字（通話中） | 雙方手機 in-memory | 翻譯需要 context |
-| 字幕翻譯 | 用戶手機快取 | 同一句不翻第二次 |
-| 配對 metadata | server | 只記「誰跟誰配過」，不含對話內容 |
+| 通話音訊 | WebRTC P2P，**完全不經 server** | 隱私、零伺服器流量 |
+| 位置 GPS | Socket.IO 經 server 廣播 | 即時、新加入者立刻看到全部、收訊不穩也不會掉 |
+| 位置儲存 | **server in-memory，房結束即消失** | 無 DB、無 log |
+
+## 通話架構選擇
+
+純語音 + PTT 場景下，4-8 人的 **WebRTC Mesh** 就夠了：
+- 8 人 mesh，每人下載 7 路 Opus = 224 kbps（一張 IG 圖的流量）
+- 純音訊不像視訊會發燙
+- 不需要 SFU，**伺服器零媒體成本**
+
+10+ 人或加視訊再考慮升級到 LiveKit / mediasoup。
 
 ---
 
-## 翻譯 Provider 順序
-
-```js
-PROVIDERS = [
-  AppleTranslationProvider,    // ← iOS Capacitor App，最佳
-  ChromeBuiltinTranslator,      // ← Chrome 138+ 桌面/Android，免費本地
-  GoogleFreeTranslator,         // ← 任何瀏覽器，預設
-  MyMemoryTranslator,           // ← 終極 fallback
-]
-```
-
-第一個 `isAvailable()` 回 true 的就用，每次失敗就 fallback 到下一個。
-新加 provider 只要 push 進陣列，**其他程式碼不用改**。
-
----
-
-## 在本地跑
+## 開發 / 本機跑
 
 ```bash
 npm install
@@ -101,53 +66,55 @@ npm start
 # → http://localhost:9001
 ```
 
-開**兩個瀏覽器分頁**訪問同一個 URL，各按「開始配對」。
-
-### 同電腦測試訣竅
-1. 兩個分頁都按「🔇 喇叭靜音」（避免 echo）
-2. 對著一邊講話
-3. 另一邊的「對方聲音」音量條會跳 = 配對成功
-
-### 跨裝置測試
-用 [cloudflared](https://github.com/cloudflare/cloudflared) 開隧道：
-```bash
-cloudflared tunnel --url http://localhost:9001
-```
-拿到的 https URL 任何手機/電腦都能開。
-
-### 端到端訊令測試（純 Node，不用瀏覽器）
-```bash
-node test-e2e.mjs
-```
-模擬兩個假客戶端做完整 WebRTC 訊令交換 + 配對流程。
+開兩個分頁，第一個建房，第二個輸入房號加入。允許麥克風 + 定位權限即可開始測。
 
 ---
 
-## 平台策略
+## 平台支援
 
-| 平台 | 部署方式 | 翻譯 |
-|---|---|---|
-| iPhone / iPad | Capacitor App（App Store） | Apple Translation |
-| Android Chrome | PWA（add to home screen） | Chrome Built-in |
-| Mac/Win Chrome | PWA | Chrome Built-in |
-| Mac Safari / iOS Safari / Firefox | PWA fallback | Google 免費 endpoint |
+| 平台 | 通話 | 位置 | 鎖屏/背景持續定位 |
+|---|---|---|---|
+| iPhone（Capacitor App） | ✅ | ✅ Capacitor Geolocation | ✅（Info.plist 已設定）|
+| Android Chrome / PWA | ✅ | ✅ Web Geolocation | ❌ 切後台會停 |
+| 桌面 Chrome / Safari | ✅ | ✅ | N/A |
 
-**一份 web 程式碼** → Capacitor wrap iOS / 直接 PWA → 自動偵測環境用最佳翻譯。
+> Android 要支援背景定位需另外做 Capacitor Android 建構（目前專案只有 iOS）。
 
 ---
 
-## 檔案結構
+## iOS 上架重點
 
+`ios/App/App/Info.plist` 已預設：
+- `NSMicrophoneUsageDescription` —— 對講通話
+- `NSLocationWhenInUseUsageDescription` —— 前景定位
+- `NSLocationAlwaysAndWhenInUseUsageDescription` —— 背景定位（鎖屏行車）
+- `UIBackgroundModes`：`audio`、`location`、`voip`
+
+App Store 審查說明範本：
+
+> 本 App 為導遊帶團、多車隊行車場景設計。使用者在團體房間中與同團夥伴分享即時位置，避免行車途中分車走散。位置只在房間連線期間即時轉發給同房夥伴，不上傳資料庫、不存儲於裝置外，房間結束即停止。
+
+---
+
+## 部署到 Zeabur
+
+```bash
+# 已預設網域 guidetalk.zeabur.app
+# 1. push 到 youweulin/guidetalk
+# 2. Zeabur Dashboard → New Service → GitHub → guidetalk
+# 3. Build: 自動偵測 Node
+# 4. PORT 由 Zeabur 注入
 ```
-kaitalk/
-├── server.js                # 訊令 server（Socket.IO + 配對佇列）
-├── package.json             # 只有 2 個依賴：express + socket.io
-├── public/
-│   ├── index.html           # 單頁 UI
-│   └── main.js              # WebRTC + STT + 翻譯 + 字幕邏輯
-├── test-e2e.mjs             # 端到端訊令測試
-└── README.md
-```
+
+---
+
+## 接下來可以做
+
+- [ ] Android Capacitor build（背景定位）
+- [ ] 對講機快捷貼圖（「等紅燈」「我先到了」）
+- [ ] 軌跡記錄（行程結束自動產生 GPX）
+- [ ] 地圖加路線規劃（OSRM）
+- [ ] LiveKit 整合（>10 人團）
 
 ---
 

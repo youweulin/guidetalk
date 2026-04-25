@@ -7,7 +7,7 @@
 	<key>CFBundleDevelopmentRegion</key>
 	<string>en</string>
 	<key>CFBundleDisplayName</key>
-        <string>KaiTalk</string>
+        <string>GuideTalk</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>
@@ -46,12 +46,16 @@
 	<key>UIViewControllerBasedStatusBarAppearance</key>
 	<true/>
 	<key>NSMicrophoneUsageDescription</key>
-	<string>KaiTalk needs your microphone for voice calls with other users.</string>
-	<key>NSSpeechRecognitionUsageDescription</key>
-	<string>KaiTalk uses speech recognition to create real-time subtitles and translations.</string>
+	<string>GuideTalk 需要使用麥克風讓您與團車夥伴進行對講通話。</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>GuideTalk 會在團車行程中分享您的位置給同房夥伴,避免行車途中走散。位置資訊不會上傳伺服器,只在房間連線時即時轉發。</string>
+	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+	<string>背景定位讓您鎖屏或切換 App 時,夥伴仍能看到您的位置。位置資訊只在房間連線期間使用,不會被儲存或追蹤。</string>
 	<key>UIBackgroundModes</key>
 	<array>
 		<string>audio</string>
+		<string>location</string>
+		<string>voip</string>
 	</array>
 </dict>
 </plist>

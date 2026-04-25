@@ -1,15 +1,12 @@
 import type { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
-  appId: 'com.kaitalk.app',
-  appName: 'KaiTalk',
+  appId: 'com.guidetalk.app',
+  appName: 'GuideTalk',
   webDir: 'public',
   server: {
-    // 允許本地 WebView 請求這些遠端 URL
     allowNavigation: [
-      'kaitalk.zeabur.app',
-      'snzyltibimkbxshkzhyr.supabase.co',
-      'imagedelivery.net',
+      'guidetalk.zeabur.app',
     ],
   },
   ios: {
@@ -19,7 +16,10 @@ const config: CapacitorConfig = {
   },
   plugins: {
     CapacitorHttp: {
-      enabled: true, // 用原生 HTTP 繞過 CORS
+      enabled: true,
+    },
+    Geolocation: {
+      // 位置權限與背景模式由 Info.plist 控制
     },
   },
 };
