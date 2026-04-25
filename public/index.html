@@ -187,6 +187,49 @@
       line-height: 1.35;
     }
 
+    /* ─── 打字快速送訊面板 ─── */
+    .quicksend {
+      position: fixed; left: 0; right: 0; bottom: 0;
+      background: var(--card);
+      border-top-left-radius: 18px; border-top-right-radius: 18px;
+      box-shadow: 0 -2px 16px rgba(0,0,0,.18);
+      transform: translateY(110%);
+      transition: transform .25s ease;
+      z-index: 901;
+      padding: 14px 14px calc(14px + var(--safe-bottom));
+      display: flex; flex-direction: column; gap: 10px;
+    }
+    .quicksend.show { transform: translateY(0); }
+    .quicksend-header {
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .quicksend-header h3 { margin: 0; font-size: 16px; }
+    .qs-presets {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 6px;
+    }
+    .qs-preset {
+      padding: 12px 10px;
+      border-radius: 10px;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      color: var(--text);
+      font-size: 14px; font-weight: 600;
+      text-align: center;
+    }
+    .qs-preset:active { transform: scale(.97); background: var(--primary); color: #fff; }
+    .qs-input-row {
+      display: flex; gap: 8px;
+    }
+    .qs-input-row input {
+      flex: 1;
+      padding: 12px 14px;
+      border: 1px solid var(--border); border-radius: 10px;
+      background: transparent;
+    }
+    .qs-input-row .btn { padding: 12px 16px; min-height: 44px; }
+
     /* ─── 底部對講機 ─── */
     .bottombar {
       background: var(--card); border-top: 1px solid var(--border);
@@ -422,6 +465,7 @@
         <div class="room-meta" id="room-meta">— 人</div>
       </div>
       <div style="flex:1"></div>
+      <button class="icon-btn" id="btn-chat" title="打字傳訊">💬</button>
       <button class="icon-btn" id="btn-list" title="距離表">📋</button>
       <button class="icon-btn" id="btn-invite" title="邀請">🔗</button>
       <button class="icon-btn" id="btn-recenter" title="回到我的位置">📍</button>
@@ -456,6 +500,26 @@
         <button class="btn" id="btn-share">分享 / LINE</button>
       </div>
       <button class="btn secondary full" id="btn-close-invite" style="margin-top:8px;">關閉</button>
+    </div>
+  </div>
+
+  <!-- 打字快速送訊面板 -->
+  <div class="quicksend" id="quicksend">
+    <div class="quicksend-header">
+      <h3>💬 打字傳訊</h3>
+      <button class="icon-btn" id="btn-close-chat">✕</button>
+    </div>
+    <div class="qs-presets" id="qs-presets">
+      <button class="qs-preset">🚦 等紅燈</button>
+      <button class="qs-preset">📍 我先到了</button>
+      <button class="qs-preset">⛽ 加油中</button>
+      <button class="qs-preset">😅 走錯路了</button>
+      <button class="qs-preset">🙋 等我一下</button>
+      <button class="qs-preset">🚐 出發囉</button>
+    </div>
+    <div class="qs-input-row">
+      <input id="qs-input" type="text" placeholder="自己打字（送出後全房看得到）" maxlength="100" />
+      <button class="btn" id="qs-send">送出</button>
     </div>
   </div>
 

@@ -982,6 +982,57 @@ $('btn-recenter').addEventListener('click', () => {
   }
 });
 
+// ─── 打字快送 ────────────────────────────────────
+const quicksendEl = $('quicksend');
+const qsInput = $('qs-input');
+
+function showQuickSend() {
+  // 跟距離表互斥
+  if (sheetEl?.classList.contains('show')) hideSheet();
+  quicksendEl.classList.add('show');
+  setTimeout(() => qsInput.focus(), 250);
+}
+function hideQuickSend() {
+  quicksendEl.classList.remove('show');
+  qsInput.blur();
+}
+function sendChatText(text) {
+  const t = String(text || '').trim();
+  if (!t) return;
+  if (!state.socket?.connected) { toast('未連線'); return; }
+  state.socket.emit('chat', { text: t });
+  // 自己也看到
+  pushSubtitle({
+    peerId: state.myPeerId,
+    name: state.myName + '（你）',
+    color: state.myColor || '#0a7d3e',
+    text: t, isSelf: true,
+  });
+}
+
+$('btn-chat').addEventListener('click', () => {
+  if (quicksendEl.classList.contains('show')) hideQuickSend();
+  else showQuickSend();
+});
+$('btn-close-chat').addEventListener('click', hideQuickSend);
+$('qs-send').addEventListener('click', () => {
+  sendChatText(qsInput.value);
+  qsInput.value = '';
+});
+qsInput.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') {
+    sendChatText(qsInput.value);
+    qsInput.value = '';
+  }
+});
+// 一鍵預設句
+document.querySelectorAll('.qs-preset').forEach(btn => {
+  btn.addEventListener('click', () => {
+    sendChatText(btn.textContent.trim());
+    hideQuickSend();
+  });
+});
+
 // ─── 距離表面板 ──────────────────────────────────
 const sheetEl = $('sheet');
 const sheetMask = $('sheet-mask');
