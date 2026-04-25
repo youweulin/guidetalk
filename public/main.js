@@ -384,20 +384,15 @@ function updatePeerLocation(peerId, loc) {
 
 function bindPeerPopup(peerId, p) {
   if (!p.marker) return;
-  const html = `
-    <b>${escapeHtml(p.name)}</b>
-    <div style="margin-top:6px;display:flex;gap:6px;">
-      <button class="btn" data-act="open-maps" data-peer="${peerId}"
-              style="padding:8px 12px;font-size:13px;min-height:36px;border-radius:8px;">
-        在地圖開啟
-      </button>
-    </div>
-  `;
-  p.marker.bindPopup(html);
+  p.marker.bindPopup(`<b>${escapeHtml(p.name)}</b>`);
+  refreshPeerPopup(peerId, p);
   p.marker.on('popupopen', (e) => {
+    const cur = state.peers.get(peerId);
+    if (!cur) return;
+    refreshPeerPopup(peerId, cur);  // 開啟瞬間刷一下最新數字
     const node = e.popup.getElement();
     node?.querySelector('[data-act="open-maps"]')?.addEventListener('click', () => {
-      openInNativeMaps(p.loc.lat, p.loc.lng, p.name);
+      openInNativeMaps(cur.loc.lat, cur.loc.lng, cur.name);
     });
   });
 }
@@ -410,15 +405,139 @@ function updatePeerDistance(peerId, p) {
     distEl.textContent = '';
     return;
   }
-  const meters = haversine(
+  // 直線距離（即時、永遠有）
+  const straight = haversine(
     state.myLastLoc.lat, state.myLastLoc.lng,
     p.loc.lat, p.loc.lng,
   );
-  distEl.textContent = formatDistance(meters);
+  // 開車 ETA（OSRM 拿到才顯示）
+  if (p.eta && p.eta.durationSec != null) {
+    distEl.textContent = `🚗 ${formatDuration(p.eta.durationSec)} · ${formatDistance(p.eta.drivingMeters)}`;
+  } else {
+    distEl.textContent = `↔ ${formatDistance(straight)}`;
+  }
+  // 也更新 popup 內容
+  refreshPeerPopup(peerId, p);
+  // 嘗試刷新 ETA（內部會節流）
+  maybeRefreshEta(peerId, p);
 }
 
 function refreshAllDistances() {
   for (const [peerId, p] of state.peers) updatePeerDistance(peerId, p);
+}
+
+// ─── ETA via OSRM（router.project-osrm.org，免費、免 key）───
+const OSRM_BASE = 'https://router.project-osrm.org/route/v1/driving';
+const ETA_TTL_MS         = 30_000; // 30 秒沒動就重抓
+const ETA_MOVE_THRESHOLD = 100;    // 任一端移動 >100m 就重抓
+const ETA_MIN_GAP_MS     = 5_000;  // 同一 peer 兩次呼叫至少間隔 5 秒
+
+function shouldRefreshEta(peer) {
+  if (!peer.loc || !state.myLastLoc) return false;
+  if (peer.etaInFlight) return false;
+  if (!peer.eta) return true;
+  const e = peer.eta;
+  const now = Date.now();
+  if (now - e.fetchedAt < ETA_MIN_GAP_MS) return false;
+  if (now - e.fetchedAt > ETA_TTL_MS) return true;
+  if (e.peerLoc && haversine(e.peerLoc.lat, e.peerLoc.lng, peer.loc.lat, peer.loc.lng) > ETA_MOVE_THRESHOLD) return true;
+  if (e.selfLoc && haversine(e.selfLoc.lat, e.selfLoc.lng, state.myLastLoc.lat, state.myLastLoc.lng) > ETA_MOVE_THRESHOLD) return true;
+  return false;
+}
+
+async function fetchOsrm(lat1, lng1, lat2, lng2) {
+  const url = `${OSRM_BASE}/${lng1},${lat1};${lng2},${lat2}?overview=false&alternatives=false&steps=false`;
+  const ctrl = new AbortController();
+  const t = setTimeout(() => ctrl.abort(), 8000);
+  try {
+    const r = await fetch(url, { signal: ctrl.signal });
+    if (!r.ok) return null;
+    const d = await r.json();
+    if (d.code !== 'Ok' || !d.routes?.[0]) return null;
+    return {
+      drivingMeters: Math.round(d.routes[0].distance),
+      durationSec:   Math.round(d.routes[0].duration),
+    };
+  } catch {
+    return null;
+  } finally {
+    clearTimeout(t);
+  }
+}
+
+async function maybeRefreshEta(peerId, peer) {
+  if (!shouldRefreshEta(peer)) return;
+  peer.etaInFlight = true;
+  const myLoc = state.myLastLoc;
+  const peerLoc = peer.loc;
+  const result = await fetchOsrm(myLoc.lat, myLoc.lng, peerLoc.lat, peerLoc.lng);
+  peer.etaInFlight = false;
+  if (!result) return;
+  // peer 可能已離線；保險檢查
+  if (!state.peers.has(peerId)) return;
+  peer.eta = {
+    drivingMeters: result.drivingMeters,
+    durationSec:   result.durationSec,
+    fetchedAt:     Date.now(),
+    peerLoc:       { lat: peerLoc.lat, lng: peerLoc.lng },
+    selfLoc:       { lat: myLoc.lat,   lng: myLoc.lng },
+  };
+  // 更新 chip 顯示
+  if (peer.chip) {
+    const distEl = peer.chip.querySelector('.dist');
+    if (distEl) distEl.textContent = `🚗 ${formatDuration(peer.eta.durationSec)} · ${formatDistance(peer.eta.drivingMeters)}`;
+  }
+  refreshPeerPopup(peerId, peer);
+}
+
+function formatDuration(sec) {
+  if (sec < 60)   return '<1分';
+  if (sec < 3600) return `${Math.round(sec / 60)}分`;
+  const h = Math.floor(sec / 3600);
+  const m = Math.round((sec % 3600) / 60);
+  return m === 0 ? `${h}h` : `${h}h${m}分`;
+}
+
+function refreshPeerPopup(peerId, p) {
+  if (!p.marker || !p.loc) return;
+  const straight = state.myLastLoc
+    ? haversine(state.myLastLoc.lat, state.myLastLoc.lng, p.loc.lat, p.loc.lng)
+    : null;
+  const etaLine = p.eta
+    ? `<div style="margin-top:4px;color:#0a7d3e;font-weight:600;">
+         🚗 開車約 ${formatDuration(p.eta.durationSec)}（${formatDistance(p.eta.drivingMeters)}）
+       </div>`
+    : `<div style="margin-top:4px;color:#6e6e73;font-size:12px;">⏳ 計算中…</div>`;
+  const straightLine = straight != null
+    ? `<div style="color:#6e6e73;font-size:12px;">↔ 直線 ${formatDistance(straight)}</div>`
+    : '';
+  const speedLine = (p.loc.speed != null && p.loc.speed > 0.5)
+    ? `<div style="color:#6e6e73;font-size:12px;">🏎 ${(p.loc.speed * 3.6).toFixed(0)} km/h</div>`
+    : '';
+  const ageLine = p.loc.ts
+    ? `<div style="color:#6e6e73;font-size:12px;">📡 ${formatLocAge(p.loc.ts)}</div>`
+    : '';
+  const html = `
+    <b>${escapeHtml(p.name)}</b>
+    ${etaLine}
+    ${straightLine}
+    ${speedLine}
+    ${ageLine}
+    <div style="margin-top:8px;display:flex;gap:6px;">
+      <button class="btn" data-act="open-maps"
+              style="padding:8px 12px;font-size:13px;min-height:36px;border-radius:8px;">
+        在地圖開啟
+      </button>
+    </div>
+  `;
+  p.marker.setPopupContent(html);
+}
+
+function formatLocAge(ts) {
+  const sec = Math.max(0, Math.round((Date.now() - ts) / 1000));
+  if (sec < 10) return '剛剛';
+  if (sec < 60) return `${sec} 秒前`;
+  return `${Math.round(sec / 60)} 分鐘前`;
 }
 
 function haversine(lat1, lng1, lat2, lng2) {
