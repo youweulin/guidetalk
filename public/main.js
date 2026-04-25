@@ -337,8 +337,8 @@ function ensureMap() {
     attributionControl: false,
   }).setView([23.973, 120.982], 7);
 
-  // CartoDB Positron — 清爽淺色，強調路線，駕駛時最不刺眼
-  L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+  // CartoDB Voyager — 風格最接近 Google Maps（公路顏色 + POI），免 key 免費
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
     maxZoom: 19,
     subdomains: 'abcd',
     attribution: '© OSM · © CARTO',
