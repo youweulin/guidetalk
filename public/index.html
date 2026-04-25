@@ -103,6 +103,35 @@
     .field .row { display: flex; gap: 8px; }
     .field .row input { flex: 1; text-transform: uppercase; letter-spacing: 4px; text-align: center; font-weight: 600; }
 
+    /* 最近房間 */
+    .recent-room {
+      display: flex; align-items: center; justify-content: space-between;
+      gap: 10px;
+      padding: 10px 14px;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      cursor: pointer;
+      text-align: left;
+      width: 100%;
+    }
+    .recent-room:active { transform: scale(.98); }
+    .recent-room .rcode {
+      font-family: ui-monospace, Menlo, monospace; font-weight: 700;
+      font-size: 16px; letter-spacing: 3px;
+    }
+    .recent-room .rmeta {
+      font-size: 11px; color: var(--text-dim);
+    }
+    .recent-room .rdel {
+      width: 28px; height: 28px;
+      background: transparent; color: var(--text-dim);
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 14px;
+    }
+    .recent-room .rdel:active { background: var(--border); }
+
     .divider { display: flex; align-items: center; margin: 18px 0;
                color: var(--text-dim); font-size: 12px; }
     .divider::before, .divider::after { content: ""; flex: 1; height: 1px; background: var(--border); }
@@ -193,6 +222,7 @@
     /* ─── 打字快速送訊面板 ─── */
     .quicksend {
       position: fixed; left: 0; right: 0; bottom: 0;
+      max-height: 80vh;
       background: var(--card);
       border-top-left-radius: 18px; border-top-right-radius: 18px;
       box-shadow: 0 -2px 16px rgba(0,0,0,.18);
@@ -203,6 +233,41 @@
       display: flex; flex-direction: column; gap: 10px;
     }
     .quicksend.show { transform: translateY(0); }
+    .qs-history {
+      flex: 1;
+      max-height: 40vh;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+      padding: 4px 2px;
+      display: flex; flex-direction: column; gap: 6px;
+    }
+    .qs-history:empty::before {
+      content: "還沒有訊息";
+      color: var(--text-dim); font-size: 13px;
+      text-align: center; padding: 16px 0;
+    }
+    .chat-msg {
+      display: flex; flex-direction: column;
+      max-width: 80%;
+      padding: 8px 12px; border-radius: 14px;
+      background: var(--bg);
+      border-left: 3px solid var(--primary);
+      font-size: 14px; line-height: 1.4;
+      word-break: break-word;
+    }
+    .chat-msg.self {
+      align-self: flex-end;
+      background: rgba(10,125,62,.18);
+      border-left: 0; border-right: 3px solid var(--primary);
+    }
+    .chat-msg .who {
+      font-size: 11px; font-weight: 600;
+      margin-bottom: 2px;
+    }
+    .chat-msg .when {
+      font-size: 10px; color: var(--text-dim);
+      margin-top: 2px; align-self: flex-end;
+    }
     .quicksend-header {
       display: flex; align-items: center; justify-content: space-between;
     }
@@ -239,9 +304,9 @@
       padding: 8px 12px calc(6px + var(--safe-bottom));
       display: flex; flex-direction: column; gap: 6px;
     }
-    /* 模式切換 segmented control */
+    /* 模式切換 segmented control + 訊息按鈕 */
     .mode-tabs {
-      display: grid; grid-template-columns: 1fr 1fr;
+      display: grid; grid-template-columns: 1fr 1fr 52px;
       gap: 4px;
       background: var(--bg);
       padding: 4px;
@@ -260,6 +325,12 @@
       color: var(--text);
       box-shadow: 0 1px 2px rgba(0,0,0,.06);
     }
+    /* 💬 訊息觸發按鈕跟 mode-tab 視覺有點區隔 */
+    .mode-tab.chat-trigger {
+      font-size: 18px;
+      color: var(--text);
+    }
+    .mode-tab.chat-trigger:active { background: var(--card); }
     /* 大按鈕 */
     .ptt {
       width: 100%;
@@ -486,6 +557,12 @@
 
       <button class="btn full" id="btn-join">加入房間</button>
 
+      <!-- 最近的房間（從 localStorage 帶出，可一鍵回房）-->
+      <div id="recent-rooms-wrap" style="display:none;margin-top:18px;">
+        <div style="font-size:13px;color:var(--text-dim);margin-bottom:8px;">最近的房間（一鍵回房）</div>
+        <div id="recent-rooms" style="display:flex;flex-direction:column;gap:6px;"></div>
+      </div>
+
       <p style="font-size:12px;color:var(--text-dim);text-align:center;margin:18px 0 0;line-height:1.6;">
         建議第一次使用前允許「定位」與「麥克風」權限<br>
         位置只在房間內分享，不寫入伺服器
@@ -502,7 +579,6 @@
         <div class="room-meta" id="room-meta">— 人</div>
       </div>
       <div style="flex:1"></div>
-      <button class="icon-btn" id="btn-chat" title="打字傳訊">💬</button>
       <button class="icon-btn" id="btn-list" title="距離表">📋</button>
       <button class="icon-btn" id="btn-invite" title="邀請">🔗</button>
       <button class="icon-btn" id="btn-recenter" title="回到我的位置">📍</button>
@@ -527,6 +603,7 @@
       <div class="mode-tabs">
         <button class="mode-tab active" id="tab-ptt" data-mode="ptt">🎙️ 對講機</button>
         <button class="mode-tab" id="tab-hot" data-mode="hot">🔊 常開麥</button>
+        <button class="mode-tab chat-trigger" id="btn-chat" title="打字傳訊">💬</button>
       </div>
       <button class="ptt disabled" id="btn-ptt">
         <span id="ptt-label">準備中…</span>
@@ -553,9 +630,10 @@
   <!-- 打字快速送訊面板 -->
   <div class="quicksend" id="quicksend">
     <div class="quicksend-header">
-      <h3>💬 打字傳訊</h3>
+      <h3>💬 訊息</h3>
       <button class="icon-btn" id="btn-close-chat">✕</button>
     </div>
+    <div class="qs-history" id="qs-history"></div>
     <div class="qs-presets" id="qs-presets">
       <button class="qs-preset">🚦 等紅燈</button>
       <button class="qs-preset">📍 我先到了</button>
@@ -565,7 +643,7 @@
       <button class="qs-preset">🚐 出發囉</button>
     </div>
     <div class="qs-input-row">
-      <input id="qs-input" type="text" placeholder="自己打字（送出後全房看得到）" maxlength="100" />
+      <input id="qs-input" type="text" placeholder="打字傳給全房" maxlength="100" />
       <button class="btn" id="qs-send">送出</button>
     </div>
   </div>

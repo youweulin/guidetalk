@@ -100,10 +100,13 @@ function ensureRoomCreated(code, hostSocketId) {
     hostId: hostSocketId,
     peers: new Map(),
     emptyAt: null,
+    chat: [],  // 最近 N 則訊息歷史（ring buffer）
   };
   rooms.set(code, room);
   return room;
 }
+
+const CHAT_HISTORY_MAX = 50;
 
 function removePeer(roomCode, peerId) {
   const room = getRoom(roomCode);
@@ -197,6 +200,7 @@ io.on('connection', (socket) => {
         roomCode,
         you: { peerId: socket.id, color, name: peer.name },
         peers: peerList,
+        chat: room.chat.slice(-CHAT_HISTORY_MAX),
       });
     }
 
@@ -252,10 +256,16 @@ io.on('connection', (socket) => {
     const peer = room.peers.get(socket.id);
     if (!peer) return;
     const clean = String(text).slice(0, 200);
-    io.to(myRoom).emit('chat', {
+    const msg = {
       peerId: socket.id, name: peer.name, color: peer.color,
       text: clean, ts: Date.now(),
-    });
+    };
+    // 寫入歷史 ring buffer
+    room.chat.push(msg);
+    if (room.chat.length > CHAT_HISTORY_MAX) {
+      room.chat.splice(0, room.chat.length - CHAT_HISTORY_MAX);
+    }
+    io.to(myRoom).emit('chat', msg);
   });
 
   socket.on('ptt', ({ on } = {}) => {

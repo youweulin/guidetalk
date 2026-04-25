@@ -60,6 +60,7 @@ const state = {
 
   // peers: Map<peerId, { name, color, loc?, pc?, audio?, marker?, chip?, pttOn? }>
   peers: new Map(),
+  chatHistory: [],   // 訊息歷史（含自己的）
 
   localStream: null,
   micReady: false,
@@ -81,6 +82,77 @@ const state = {
 };
 
 $('name-input').value = state.myName;
+
+// ─── 最近房間 ────────────────────────────────────
+const RECENT_ROOMS_KEY = 'gt_recent_rooms';
+const RECENT_ROOMS_MAX = 5;
+
+function loadRecentRooms() {
+  try {
+    const arr = JSON.parse(localStorage.getItem(RECENT_ROOMS_KEY) || '[]');
+    return Array.isArray(arr) ? arr : [];
+  } catch { return []; }
+}
+function saveRecentRooms(arr) {
+  localStorage.setItem(RECENT_ROOMS_KEY, JSON.stringify(arr.slice(0, RECENT_ROOMS_MAX)));
+}
+function rememberRoom(code) {
+  if (!code) return;
+  const arr = loadRecentRooms().filter(r => r.code !== code);
+  arr.unshift({ code, ts: Date.now() });
+  saveRecentRooms(arr);
+}
+function forgetRoom(code) {
+  saveRecentRooms(loadRecentRooms().filter(r => r.code !== code));
+  renderRecentRooms();
+}
+function renderRecentRooms() {
+  const wrap = $('recent-rooms-wrap');
+  const list = $('recent-rooms');
+  if (!wrap || !list) return;
+  const rooms = loadRecentRooms();
+  if (rooms.length === 0) {
+    wrap.style.display = 'none';
+    return;
+  }
+  wrap.style.display = 'block';
+  list.innerHTML = '';
+  for (const r of rooms) {
+    const btn = document.createElement('button');
+    btn.className = 'recent-room';
+    btn.innerHTML = `
+      <div>
+        <div class="rcode">${r.code}</div>
+        <div class="rmeta">${formatRelTime(r.ts)}</div>
+      </div>
+      <button class="rdel" title="移除">✕</button>
+    `;
+    btn.addEventListener('click', (e) => {
+      // 點 ✕ 不要觸發回房
+      if (e.target.classList.contains('rdel')) {
+        e.stopPropagation();
+        forgetRoom(r.code);
+        return;
+      }
+      const name = $('name-input').value.trim();
+      if (!name) {
+        toast('請先輸入暱稱');
+        $('name-input').focus();
+        return;
+      }
+      joinRoom(r.code);
+    });
+    list.appendChild(btn);
+  }
+}
+function formatRelTime(ts) {
+  const sec = Math.max(0, Math.floor((Date.now() - ts) / 1000));
+  if (sec < 60) return '剛剛';
+  if (sec < 3600) return `${Math.floor(sec / 60)} 分鐘前`;
+  if (sec < 86400) return `${Math.floor(sec / 3600)} 小時前`;
+  const d = Math.floor(sec / 86400);
+  return `${d} 天前`;
+}
 const langSelect = $('lang-select');
 if (langSelect) {
   langSelect.value = state.myLang;
@@ -122,11 +194,20 @@ function connectSocket() {
   state.socket.on('peer_location', (loc) => {
     updatePeerLocation(loc.peerId, loc);
   });
-  state.socket.on('chat', ({ peerId, name, color, text, ts }) => {
-    if (peerId === state.myPeerId) return;  // 不顯示自己的回音
-    const p = state.peers.get(peerId);
-    if (p) p.lastSpoke = { text, ts: ts || Date.now() };
-    pushSubtitle({ peerId, name, color, text });
+  state.socket.on('chat', (msg) => {
+    const { peerId, name, color, text, ts } = msg;
+    state.chatHistory.push(msg);
+    if (state.chatHistory.length > 100) state.chatHistory.shift();
+    appendChatMessage(msg);
+    // 自己的也顯示（送出確認），自己訊息加 (你) 標記
+    pushSubtitle({
+      peerId, name: peerId === state.myPeerId ? `${name}（你）` : name,
+      color, text, isSelf: peerId === state.myPeerId,
+    });
+    if (peerId !== state.myPeerId) {
+      const p = state.peers.get(peerId);
+      if (p) p.lastSpoke = { text, ts: ts || Date.now() };
+    }
   });
   state.socket.on('peer_ptt', ({ peerId, on }) => {
     const p = state.peers.get(peerId);
@@ -198,6 +279,9 @@ async function enterRoom(resp) {
   state.myPeerId = resp.you.peerId;
   state.myColor  = resp.you.color;
 
+  // 記入「最近房間」
+  rememberRoom(resp.roomCode);
+
   $('room-code-display').textContent = resp.roomCode;
   showScreen('room');
   ensureMap();
@@ -213,6 +297,11 @@ async function enterRoom(resp) {
       addPeer(p);
       if (p.loc) updatePeerLocation(p.peerId, p.loc);
     }
+  }
+  // 訊息歷史（join 時 server 回傳）
+  if (resp.chat && Array.isArray(resp.chat)) {
+    state.chatHistory = resp.chat.slice(-100);
+    renderChatHistory();
   }
   refreshRoomMeta();
 
@@ -814,15 +903,8 @@ function startSTT() {
         if (r.isFinal) {
           const text = (r[0]?.transcript || '').trim();
           if (text && text.length >= 2) {
+            // server 會廣播回給包括自己的所有人 → onsay handler 統一處理
             state.socket?.emit('chat', { text });
-            // 自己的也放本地 subtitle stack（給自己看到）
-            pushSubtitle({
-              peerId: state.myPeerId,
-              name: state.myName + '（你）',
-              color: state.myColor || '#0a7d3e',
-              text,
-              isSelf: true,
-            });
           }
         }
       }
@@ -1057,15 +1139,21 @@ $('btn-recenter').addEventListener('click', () => {
   }
 });
 
-// ─── 打字快送 ────────────────────────────────────
+// ─── 打字快送 + 訊息歷史 ──────────────────────────
 const quicksendEl = $('quicksend');
 const qsInput = $('qs-input');
+const qsHistory = $('qs-history');
 
 function showQuickSend() {
   // 跟距離表互斥
   if (sheetEl?.classList.contains('show')) hideSheet();
+  renderChatHistory();
   quicksendEl.classList.add('show');
-  setTimeout(() => qsInput.focus(), 250);
+  // 自動捲到底
+  setTimeout(() => {
+    qsHistory.scrollTop = qsHistory.scrollHeight;
+    qsInput.focus();
+  }, 280);
 }
 function hideQuickSend() {
   quicksendEl.classList.remove('show');
@@ -1075,14 +1163,54 @@ function sendChatText(text) {
   const t = String(text || '').trim();
   if (!t) return;
   if (!state.socket?.connected) { toast('未連線'); return; }
+  // 不要本地 push（server 會 broadcast 給包含自己的所有人）
   state.socket.emit('chat', { text: t });
-  // 自己也看到
-  pushSubtitle({
-    peerId: state.myPeerId,
-    name: state.myName + '（你）',
-    color: state.myColor || '#0a7d3e',
-    text: t, isSelf: true,
-  });
+}
+
+function renderChatHistory() {
+  if (!qsHistory) return;
+  qsHistory.innerHTML = '';
+  for (const m of state.chatHistory) {
+    qsHistory.appendChild(buildChatNode(m));
+  }
+  qsHistory.scrollTop = qsHistory.scrollHeight;
+}
+
+function appendChatMessage(m) {
+  if (!qsHistory) return;
+  const wasOpen = quicksendEl?.classList.contains('show');
+  const node = buildChatNode(m);
+  qsHistory.appendChild(node);
+  // 限制 DOM 數量
+  while (qsHistory.children.length > 100) qsHistory.firstChild.remove();
+  if (wasOpen) qsHistory.scrollTop = qsHistory.scrollHeight;
+}
+
+function buildChatNode(m) {
+  const div = document.createElement('div');
+  const isSelf = m.peerId === state.myPeerId;
+  div.className = 'chat-msg' + (isSelf ? ' self' : '');
+  const who = document.createElement('div');
+  who.className = 'who';
+  who.style.color = m.color || (isSelf ? '#0a7d3e' : '#666');
+  who.textContent = isSelf ? `${m.name}（你）` : m.name;
+  const txt = document.createElement('div');
+  txt.textContent = m.text;
+  const when = document.createElement('div');
+  when.className = 'when';
+  when.textContent = formatChatTime(m.ts);
+  div.appendChild(who);
+  div.appendChild(txt);
+  div.appendChild(when);
+  return div;
+}
+
+function formatChatTime(ts) {
+  if (!ts) return '';
+  const d = new Date(ts);
+  const hh = String(d.getHours()).padStart(2, '0');
+  const mm = String(d.getMinutes()).padStart(2, '0');
+  return `${hh}:${mm}`;
 }
 
 $('btn-chat').addEventListener('click', () => {
@@ -1255,6 +1383,9 @@ function renderRow(r) {
 
 // ─── 進入時：檢查 URL 是否帶房號 ────────────────────
 (function bootstrap() {
+  // 渲染「最近房間」清單
+  renderRecentRooms();
+
   const m = location.pathname.match(/^\/r\/([A-Z0-9]+)/i);
   if (m) {
     const code = m[1].toUpperCase();
