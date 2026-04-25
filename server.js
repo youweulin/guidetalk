@@ -63,7 +63,8 @@ app.get(/(.*)/, (req, res) => {
 
 const rooms = new Map();
 
-const ROOM_TTL_MS = 12 * 60 * 60 * 1000; // 12 小時自動清掉
+const ROOM_TTL_MS       = 12 * 60 * 60 * 1000; // 12 小時硬上限
+const ROOM_EMPTY_TTL_MS = 5 * 60 * 1000;        // 沒人後 5 分鐘才回收（防創房者瞬間離開）
 const ROOM_CODE_LEN = 6;
 const COLORS = [
   '#e63946', '#1d7fe6', '#0a7d3e', '#f4a261',
@@ -89,11 +90,16 @@ function getRoom(code) {
 }
 
 function ensureRoomCreated(code, hostSocketId) {
-  if (rooms.has(code)) return rooms.get(code);
+  if (rooms.has(code)) {
+    const room = rooms.get(code);
+    room.emptyAt = null;  // 有人重新進來，取消空房計時
+    return room;
+  }
   const room = {
     createdAt: Date.now(),
     hostId: hostSocketId,
     peers: new Map(),
+    emptyAt: null,
   };
   rooms.set(code, room);
   return room;
@@ -104,21 +110,29 @@ function removePeer(roomCode, peerId) {
   if (!room) return;
   room.peers.delete(peerId);
   if (room.peers.size === 0) {
-    rooms.delete(roomCode);
-    console.log(`[room ${roomCode}] empty, cleaned up`);
+    // 不立刻刪：標記空房時間，5 分鐘後沒人才回收
+    room.emptyAt = Date.now();
+    console.log(`[room ${roomCode}] empty, will GC in ${ROOM_EMPTY_TTL_MS/1000}s if nobody joins`);
   }
 }
 
 setInterval(() => {
   const now = Date.now();
   for (const [code, room] of rooms) {
+    // 1) 硬上限 12 小時
     if (now - room.createdAt > ROOM_TTL_MS) {
       rooms.delete(code);
       io.to(code).emit('room_expired');
       console.log(`[room ${code}] TTL expired`);
+      continue;
+    }
+    // 2) 空房 + 過 5 分鐘 → 回收
+    if (room.peers.size === 0 && room.emptyAt && (now - room.emptyAt > ROOM_EMPTY_TTL_MS)) {
+      rooms.delete(code);
+      console.log(`[room ${code}] empty too long, GC`);
     }
   }
-}, 60_000);
+}, 30_000);
 
 // ─── Socket 邏輯 ─────────────────────────────────────────
 
