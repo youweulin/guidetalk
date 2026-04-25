@@ -201,6 +201,10 @@ async function enterRoom(resp) {
   $('room-code-display').textContent = resp.roomCode;
   showScreen('room');
   ensureMap();
+  // URL 改回根路徑，避免重整再觸發 auto-join
+  if (location.pathname.startsWith('/r/')) {
+    history.replaceState(null, '', '/');
+  }
 
   // 已存在的 peers（如果是 join）
   if (resp.peers) {
@@ -1253,7 +1257,21 @@ function renderRow(r) {
 (function bootstrap() {
   const m = location.pathname.match(/^\/r\/([A-Z0-9]+)/i);
   if (m) {
-    $('code-input').value = m[1].toUpperCase();
+    const code = m[1].toUpperCase();
+    $('code-input').value = code;
+    // 已有暱稱 → 自動加入
+    if (state.myName && state.myName.trim()) {
+      setTimeout(() => {
+        toast(`自動加入房號 ${code}…`);
+        joinRoom(code);
+      }, 200);
+    } else {
+      // 沒暱稱 → 提示並 focus 暱稱輸入框
+      setTimeout(() => {
+        toast(`房號 ${code} 已帶入，輸入暱稱後按「加入房間」`);
+        $('name-input').focus();
+      }, 200);
+    }
   }
   // Service Worker（PWA）
   if ('serviceWorker' in navigator && location.protocol === 'https:') {
