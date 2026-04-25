@@ -864,6 +864,140 @@ $('btn-recenter').addEventListener('click', () => {
   }
 });
 
+// ─── 距離表面板 ──────────────────────────────────
+const sheetEl = $('sheet');
+const sheetMask = $('sheet-mask');
+const sheetList = $('sheet-list');
+let sheetTimer = null;
+
+function showSheet() {
+  renderSheet();
+  sheetEl.classList.add('show');
+  sheetMask.classList.add('show');
+  // 開啟期間每秒刷新（時速、回報時間在跑）
+  clearInterval(sheetTimer);
+  sheetTimer = setInterval(renderSheet, 1000);
+}
+function hideSheet() {
+  sheetEl.classList.remove('show');
+  sheetMask.classList.remove('show');
+  clearInterval(sheetTimer);
+  sheetTimer = null;
+}
+$('btn-list').addEventListener('click', () => {
+  if (sheetEl.classList.contains('show')) hideSheet();
+  else showSheet();
+});
+$('btn-close-sheet').addEventListener('click', hideSheet);
+sheetMask.addEventListener('click', hideSheet);
+
+function renderSheet() {
+  if (!sheetEl.classList.contains('show')) return;
+
+  // 收集所有人（含自己）→ 排序：先自己、其他人按 ETA 由近到遠
+  const rows = [];
+
+  // 自己
+  rows.push({
+    self: true,
+    peerId: state.myPeerId,
+    name: (state.myName || '我') + '（你）',
+    color: state.myColor || '#0a7d3e',
+    loc: state.myLastLoc,
+    eta: null,
+  });
+
+  // 其他人
+  const others = [...state.peers.entries()].map(([peerId, p]) => ({
+    self: false, peerId, name: p.name, color: p.color,
+    loc: p.loc, eta: p.eta,
+  }));
+  // ETA 有值的優先排，再來直線距離由近到遠
+  others.sort((a, b) => {
+    const ea = a.eta?.durationSec ?? Infinity;
+    const eb = b.eta?.durationSec ?? Infinity;
+    if (ea !== eb) return ea - eb;
+    const da = a.loc && state.myLastLoc
+      ? haversine(state.myLastLoc.lat, state.myLastLoc.lng, a.loc.lat, a.loc.lng) : Infinity;
+    const db = b.loc && state.myLastLoc
+      ? haversine(state.myLastLoc.lat, state.myLastLoc.lng, b.loc.lat, b.loc.lng) : Infinity;
+    return da - db;
+  });
+  rows.push(...others);
+
+  if (rows.length <= 1) {
+    sheetList.innerHTML = `<div class="sheet-empty">還沒有夥伴加入<br>點 🔗 邀請吧</div>`;
+    return;
+  }
+
+  sheetList.innerHTML = rows.map(r => renderRow(r)).join('');
+  // 點 row → 飛到那個位置
+  sheetList.querySelectorAll('.peer-row').forEach(node => {
+    node.addEventListener('click', () => {
+      const id = node.dataset.peerId;
+      if (id === state.myPeerId) {
+        if (state.myLastLoc) state.map.setView([state.myLastLoc.lat, state.myLastLoc.lng], 16);
+      } else {
+        const p = state.peers.get(id);
+        if (p?.loc) {
+          state.map.setView([p.loc.lat, p.loc.lng], 16);
+          p.marker?.openPopup?.();
+        }
+      }
+      hideSheet();
+    });
+  });
+}
+
+function renderRow(r) {
+  const initial = (r.name || '?').charAt(0).toUpperCase();
+
+  // 距離 / ETA 數字
+  let bigText = '—';
+  let subText = '';
+  if (r.self) {
+    bigText = '你';
+    subText = r.loc ? '已定位' : '定位中';
+  } else if (r.eta) {
+    bigText = formatDuration(r.eta.durationSec);
+    subText = `🚗 ${formatDistance(r.eta.drivingMeters)}`;
+  } else if (r.loc && state.myLastLoc) {
+    const d = haversine(state.myLastLoc.lat, state.myLastLoc.lng, r.loc.lat, r.loc.lng);
+    bigText = formatDistance(d);
+    subText = '↔ 直線';
+  } else {
+    bigText = '—';
+    subText = '無位置';
+  }
+
+  // meta：速度 + 回報時間
+  const meta = [];
+  if (r.loc?.speed != null && r.loc.speed > 0.5) {
+    meta.push(`🏎 ${(r.loc.speed * 3.6).toFixed(0)} km/h`);
+  }
+  if (r.loc?.ts) {
+    meta.push(`📡 ${formatLocAge(r.loc.ts)}`);
+  }
+  if (r.eta && r.loc && state.myLastLoc) {
+    const straight = haversine(state.myLastLoc.lat, state.myLastLoc.lng, r.loc.lat, r.loc.lng);
+    meta.push(`↔ ${formatDistance(straight)}`);
+  }
+
+  return `
+    <div class="peer-row ${r.self ? 'self' : ''}" data-peer-id="${escapeHtml(r.peerId)}">
+      <div class="pdot" style="background:${r.color}">${escapeHtml(initial)}</div>
+      <div>
+        <div class="pname">${escapeHtml(r.name)}</div>
+        <div class="pmeta">${meta.join(' ')}</div>
+      </div>
+      <div class="peta">
+        <div class="big">${escapeHtml(bigText)}</div>
+        <div class="sub">${escapeHtml(subText)}</div>
+      </div>
+    </div>
+  `;
+}
+
 // ─── 進入時：檢查 URL 是否帶房號 ────────────────────
 (function bootstrap() {
   const m = location.pathname.match(/^\/r\/([A-Z0-9]+)/i);

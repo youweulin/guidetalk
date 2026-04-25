@@ -254,6 +254,83 @@
       0%   { transform: rotate(45deg) translate(-12px, -12px) scale(0.6); opacity: .5; }
       100% { transform: rotate(45deg) translate(-12px, -12px) scale(1.4); opacity: 0; }
     }
+
+    /* ─── 距離表面板（從底部滑出）─── */
+    .sheet-mask {
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,.45);
+      opacity: 0; pointer-events: none;
+      transition: opacity .2s ease;
+      z-index: 900;
+    }
+    .sheet-mask.show { opacity: 1; pointer-events: auto; }
+    .sheet {
+      position: fixed; left: 0; right: 0; bottom: 0;
+      max-height: 75vh;
+      background: var(--card);
+      border-top-left-radius: 18px;
+      border-top-right-radius: 18px;
+      box-shadow: 0 -2px 16px rgba(0,0,0,.18);
+      transform: translateY(110%);
+      transition: transform .25s ease;
+      z-index: 901;
+      display: flex; flex-direction: column;
+      padding-bottom: var(--safe-bottom);
+    }
+    .sheet.show { transform: translateY(0); }
+    .sheet-handle {
+      width: 36px; height: 4px; border-radius: 2px;
+      background: var(--border);
+      margin: 8px auto 4px;
+    }
+    .sheet-header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 8px 16px 4px;
+    }
+    .sheet-header h3 { margin: 0; font-size: 16px; }
+    .sheet-list {
+      flex: 1; overflow-y: auto;
+      padding: 8px 8px 12px;
+      -webkit-overflow-scrolling: touch;
+    }
+    .peer-row {
+      display: grid;
+      grid-template-columns: 28px 1fr auto;
+      column-gap: 12px;
+      align-items: center;
+      padding: 12px;
+      border-radius: 12px;
+      background: var(--bg);
+      margin-bottom: 6px;
+      cursor: pointer;
+    }
+    .peer-row:active { transform: scale(0.99); }
+    .peer-row .pdot {
+      width: 28px; height: 28px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      color: #fff; font-weight: 700; font-size: 13px;
+    }
+    .peer-row .pname { font-weight: 600; font-size: 15px; line-height: 1.2; }
+    .peer-row .pmeta {
+      font-size: 12px; color: var(--text-dim); margin-top: 2px;
+      display: flex; gap: 8px; flex-wrap: wrap;
+    }
+    .peer-row .peta {
+      text-align: right;
+    }
+    .peer-row .peta .big {
+      font-size: 18px; font-weight: 700; color: var(--primary);
+      line-height: 1;
+    }
+    .peer-row .peta .sub {
+      font-size: 11px; color: var(--text-dim); margin-top: 3px;
+    }
+    .peer-row.self { border: 1px dashed var(--border); }
+    .peer-row.self .peta .big { color: var(--text-dim); font-size: 14px; }
+    .sheet-empty {
+      text-align: center; color: var(--text-dim);
+      font-size: 14px; padding: 36px 16px;
+    }
   </style>
 </head>
 <body>
@@ -299,6 +376,7 @@
         <div class="room-meta" id="room-meta">— 人</div>
       </div>
       <div style="flex:1"></div>
+      <button class="icon-btn" id="btn-list" title="距離表">📋</button>
       <button class="icon-btn" id="btn-invite" title="邀請">🔗</button>
       <button class="icon-btn" id="btn-recenter" title="回到我的位置">📍</button>
     </div>
@@ -332,6 +410,17 @@
       </div>
       <button class="btn secondary full" id="btn-close-invite" style="margin-top:8px;">關閉</button>
     </div>
+  </div>
+
+  <!-- 距離表面板 -->
+  <div class="sheet-mask" id="sheet-mask"></div>
+  <div class="sheet" id="sheet">
+    <div class="sheet-handle"></div>
+    <div class="sheet-header">
+      <h3>📋 全車距離表</h3>
+      <button class="icon-btn" id="btn-close-sheet">✕</button>
+    </div>
+    <div class="sheet-list" id="sheet-list"></div>
   </div>
 
   <div class="toast" id="toast"></div>
