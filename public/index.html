@@ -220,6 +220,14 @@
     }
 
     /* ─── 打字快速送訊面板 ─── */
+    .quicksend-backdrop {
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,.3);
+      opacity: 0; pointer-events: none;
+      transition: opacity .2s;
+      z-index: 900;
+    }
+    .quicksend-backdrop.show { opacity: 1; pointer-events: auto; }
     .quicksend {
       position: fixed; left: 0; right: 0; bottom: 0;
       max-height: 80vh;
@@ -229,10 +237,16 @@
       transform: translateY(110%);
       transition: transform .25s ease;
       z-index: 901;
-      padding: 14px 14px calc(14px + var(--safe-bottom));
+      padding: 8px 14px calc(14px + var(--safe-bottom));
       display: flex; flex-direction: column; gap: 10px;
     }
     .quicksend.show { transform: translateY(0); }
+    /* 抓把 + 標題列大一點，方便點 ✕ */
+    .quicksend-handle {
+      width: 36px; height: 4px; border-radius: 2px;
+      background: var(--border);
+      margin: 4px auto 4px;
+    }
     .qs-history {
       flex: 1;
       max-height: 52vh;
@@ -308,33 +322,22 @@
       padding: 8px 12px calc(6px + var(--safe-bottom));
       display: flex; flex-direction: column; gap: 6px;
     }
-    /* 模式切換 segmented control + 訊息按鈕 */
-    .mode-tabs {
-      display: grid; grid-template-columns: 1fr 1fr 52px;
-      gap: 4px;
-      background: var(--bg);
-      padding: 4px;
-      border-radius: 12px;
+    /* 通話按鈕 + 訊息按鈕並排 */
+    .ptt-row {
+      display: flex; gap: 8px; align-items: stretch;
     }
-    .mode-tab {
-      padding: 8px;
-      background: transparent;
-      color: var(--text-dim);
-      font-size: 13px; font-weight: 600;
-      border-radius: 8px;
-      transition: background .15s, color .15s;
-    }
-    .mode-tab.active {
+    .chat-btn {
+      flex-shrink: 0;
+      width: 64px;
       background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
       color: var(--text);
-      box-shadow: 0 1px 2px rgba(0,0,0,.06);
+      font-size: 26px;
+      display: flex; align-items: center; justify-content: center;
+      transition: background .1s, transform .05s;
     }
-    /* 💬 訊息觸發按鈕跟 mode-tab 視覺有點區隔 */
-    .mode-tab.chat-trigger {
-      font-size: 18px;
-      color: var(--text);
-    }
-    .mode-tab.chat-trigger:active { background: var(--card); }
+    .chat-btn:active { transform: scale(.97); background: var(--bg); }
     /* 大按鈕 */
     .ptt {
       width: 100%;
@@ -604,14 +607,12 @@
     </div>
 
     <div class="bottombar">
-      <div class="mode-tabs">
-        <button class="mode-tab" id="tab-ptt" data-mode="ptt">🎙️ 對講機</button>
-        <button class="mode-tab active" id="tab-hot" data-mode="hot">🔊 常開麥</button>
-        <button class="mode-tab chat-trigger" id="btn-chat" title="打字傳訊">💬</button>
+      <div class="ptt-row">
+        <button class="ptt disabled" id="btn-ptt">
+          <span id="ptt-label">準備中…</span>
+        </button>
+        <button class="chat-btn" id="btn-chat" title="訊息">💬</button>
       </div>
-      <button class="ptt disabled" id="btn-ptt">
-        <span id="ptt-label">準備中…</span>
-      </button>
       <div class="status-line" id="status-line"></div>
     </div>
   </section>
@@ -632,10 +633,12 @@
   </div>
 
   <!-- 打字快速送訊面板 -->
+  <div class="quicksend-backdrop" id="quicksend-backdrop"></div>
   <div class="quicksend" id="quicksend">
+    <div class="quicksend-handle"></div>
     <div class="quicksend-header">
       <h3>💬 訊息</h3>
-      <button class="icon-btn" id="btn-close-chat">✕</button>
+      <button class="icon-btn" id="btn-close-chat" style="width:36px;height:36px;font-size:18px;">✕</button>
     </div>
     <div class="qs-history" id="qs-history"></div>
     <div class="qs-presets" id="qs-presets">

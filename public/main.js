@@ -976,13 +976,10 @@ function pushSubtitle({ peerId, name, color, text, isSelf = false }) {
   }, SUBTITLE_TTL_MS);
 }
 
-// ─── PTT / 常開麥 ──────────────────────────────────
+// ─── 通話：常開麥 + 點擊靜音切換 ────────────────────
 const pttBtn = $('btn-ptt');
-const tabPtt = $('tab-ptt');
-const tabHot = $('tab-hot');
 const pttLabel = () => $('ptt-label');
 
-// 大按鈕的視覺狀態完全由這個 function 決定
 function refreshPttUI() {
   const cls = pttBtn.classList;
   cls.remove('holding', 'live', 'muted', 'disabled');
@@ -992,87 +989,32 @@ function refreshPttUI() {
     pttLabel().textContent = '🎙️ 點擊允許麥克風';
     return;
   }
-
-  if (state.hotMic) {
-    // 常開麥模式
-    if (state.hotMicMuted) {
-      cls.add('muted');
-      pttLabel().textContent = '🔇 已靜音・點擊開啟';
-    } else {
-      cls.add('live');
-      pttLabel().textContent = '🔴 直播中・點擊靜音';
-    }
+  if (state.hotMicMuted) {
+    cls.add('muted');
+    pttLabel().textContent = '🔇 已靜音・點擊開啟';
   } else {
-    // PTT 對講機模式
-    if (state.pttHolding) {
-      cls.add('holding');
-      pttLabel().textContent = '🔴 通話中…';
-    } else {
-      pttLabel().textContent = '🎙️ 按住講話';
-    }
+    cls.add('live');
+    pttLabel().textContent = '🔴 通話中・點擊靜音';
   }
 }
 
-function refreshTabsUI() {
-  tabPtt.classList.toggle('active', !state.hotMic);
-  tabHot.classList.toggle('active', state.hotMic);
-}
+// 留個空 stub 給 enterRoom / setMode 老 caller 用
+function refreshTabsUI() {}
 
-async function setMode(mode) {
-  await ensureMic().catch(() => {});
-  if (mode === 'hot') {
-    state.hotMic = true;
-    state.hotMicMuted = false;     // 切到常開預設取消靜音 = 直播
-    if (state.micReady) setMicEnabled(true);
-    state.socket?.emit('ptt', { on: true });
-    startSTT();
-  } else {
-    state.hotMic = false;
-    state.hotMicMuted = false;
-    state.pttHolding = false;
-    if (state.micReady) setMicEnabled(false);
-    state.socket?.emit('ptt', { on: false });
-    stopSTT();
-  }
-  refreshTabsUI();
-  refreshPttUI();
-}
-
-tabPtt.addEventListener('click', () => setMode('ptt'));
-tabHot.addEventListener('click', () => setMode('hot'));
-
-// 大按鈕：行為依模式而定
-function pttDown(e) {
-  e.preventDefault();
-  if (!state.micReady) {
-    ensureMic().then(() => refreshPttUI()).catch(() => toast('麥克風權限被拒'));
-    return;
-  }
-  // 常開麥模式 → 按下不做事（在 click 時切靜音）
-  if (state.hotMic) return;
-  // PTT 模式 → 按住開麥
-  state.pttHolding = true;
-  setMicEnabled(true);
-  state.socket?.emit('ptt', { on: true });
-  startSTT();
-  refreshPttUI();
-}
-function pttUp() {
-  if (state.hotMic) return;
-  if (!state.pttHolding) return;
-  state.pttHolding = false;
-  setMicEnabled(false);
-  state.socket?.emit('ptt', { on: false });
-  stopSTT();
-  refreshPttUI();
-}
 function pttClick() {
-  // 常開麥模式才有 click 行為（切靜音）
-  if (!state.hotMic) return;
   if (!state.micReady) {
-    ensureMic().then(() => refreshPttUI()).catch(() => toast('麥克風權限被拒'));
+    ensureMic().then(() => {
+      // 拿到麥克風後預設開啟（常開麥）
+      state.hotMic = true;
+      state.hotMicMuted = false;
+      setMicEnabled(true);
+      state.socket?.emit('ptt', { on: true });
+      startSTT();
+      refreshPttUI();
+    }).catch(() => toast('麥克風權限被拒'));
     return;
   }
+  // 切換靜音
   state.hotMicMuted = !state.hotMicMuted;
   setMicEnabled(!state.hotMicMuted);
   state.socket?.emit('ptt', { on: !state.hotMicMuted });
@@ -1080,10 +1022,6 @@ function pttClick() {
   else startSTT();
   refreshPttUI();
 }
-pttBtn.addEventListener('pointerdown', pttDown);
-pttBtn.addEventListener('pointerup', pttUp);
-pttBtn.addEventListener('pointercancel', pttUp);
-pttBtn.addEventListener('pointerleave', pttUp);
 pttBtn.addEventListener('click', pttClick);
 
 // ─── 邀請對話框 ──────────────────────────────────
@@ -1156,6 +1094,7 @@ function showQuickSend() {
   if (sheetEl?.classList.contains('show')) hideSheet();
   renderChatHistory();
   quicksendEl.classList.add('show');
+  $('quicksend-backdrop')?.classList.add('show');
   // 自動捲到底
   setTimeout(() => {
     qsHistory.scrollTop = qsHistory.scrollHeight;
@@ -1164,6 +1103,7 @@ function showQuickSend() {
 }
 function hideQuickSend() {
   quicksendEl.classList.remove('show');
+  $('quicksend-backdrop')?.classList.remove('show');
   qsInput.blur();
 }
 function sendChatText(text) {
@@ -1225,6 +1165,7 @@ $('btn-chat').addEventListener('click', () => {
   else showQuickSend();
 });
 $('btn-close-chat').addEventListener('click', hideQuickSend);
+$('quicksend-backdrop').addEventListener('click', hideQuickSend);
 $('qs-send').addEventListener('click', () => {
   sendChatText(qsInput.value);
   qsInput.value = '';
