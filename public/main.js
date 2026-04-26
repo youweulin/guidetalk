@@ -64,7 +64,7 @@ const state = {
 
   localStream: null,
   micReady: false,
-  hotMic: false,            // false = PTT, true = 常開麥
+  hotMic: true,             // 預設常開麥（一進房就直接通話，不用按）
   hotMicMuted: false,       // 常開麥模式下是否暫時靜音
   pttHolding: false,
 
@@ -310,6 +310,13 @@ async function enterRoom(resp) {
     console.warn('mic failed', err);
     setStatus('麥克風無法取得，可繼續看位置但無法通話', true);
   });
+
+  // 預設常開麥：拿到麥克風後立刻進入直播狀態（不用按住）
+  if (state.micReady && state.hotMic) {
+    setMicEnabled(!state.hotMicMuted);
+    state.socket?.emit('ptt', { on: !state.hotMicMuted });
+    if (!state.hotMicMuted) startSTT();
+  }
 
   // 我作為「新加入者」→ 對所有既存 peer 發起 offer
   for (const peerId of state.peers.keys()) {

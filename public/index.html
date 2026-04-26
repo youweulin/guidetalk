@@ -235,7 +235,7 @@
     .quicksend.show { transform: translateY(0); }
     .qs-history {
       flex: 1;
-      max-height: 40vh;
+      max-height: 52vh;
       overflow-y: auto;
       -webkit-overflow-scrolling: touch;
       padding: 4px 2px;
@@ -272,21 +272,25 @@
       display: flex; align-items: center; justify-content: space-between;
     }
     .quicksend-header h3 { margin: 0; font-size: 16px; }
+    /* Preset 改成橫向小貼條，不再用 2 欄大格子 */
     .qs-presets {
-      display: grid;
-      grid-template-columns: repeat(2, 1fr);
-      gap: 6px;
+      display: flex; gap: 6px;
+      overflow-x: auto;
+      padding: 0 0 4px;
+      -webkit-overflow-scrolling: touch;
     }
+    .qs-presets::-webkit-scrollbar { display: none; }
     .qs-preset {
-      padding: 12px 10px;
-      border-radius: 10px;
+      flex-shrink: 0;
+      padding: 8px 12px;
+      border-radius: 999px;
       background: var(--bg);
       border: 1px solid var(--border);
       color: var(--text);
-      font-size: 14px; font-weight: 600;
-      text-align: center;
+      font-size: 13px; font-weight: 500;
+      white-space: nowrap;
     }
-    .qs-preset:active { transform: scale(.97); background: var(--primary); color: #fff; }
+    .qs-preset:active { transform: scale(.96); background: var(--primary); color: #fff; border-color: var(--primary); }
     .qs-input-row {
       display: flex; gap: 8px;
     }
@@ -601,8 +605,8 @@
 
     <div class="bottombar">
       <div class="mode-tabs">
-        <button class="mode-tab active" id="tab-ptt" data-mode="ptt">🎙️ 對講機</button>
-        <button class="mode-tab" id="tab-hot" data-mode="hot">🔊 常開麥</button>
+        <button class="mode-tab" id="tab-ptt" data-mode="ptt">🎙️ 對講機</button>
+        <button class="mode-tab active" id="tab-hot" data-mode="hot">🔊 常開麥</button>
         <button class="mode-tab chat-trigger" id="btn-chat" title="打字傳訊">💬</button>
       </div>
       <button class="ptt disabled" id="btn-ptt">
