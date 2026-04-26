@@ -340,15 +340,19 @@
     .chat-btn:active { transform: scale(.97); background: var(--bg); }
     /* 大按鈕 */
     .ptt {
-      width: 100%;
+      flex: 1;
+      min-width: 0;
       min-height: 64px;
       border-radius: 16px;
       background: var(--primary); color: #fff;
-      font-size: 17px; font-weight: 700;
-      display: flex; align-items: center; justify-content: center; gap: 8px;
+      font-size: 14px; font-weight: 700;
+      display: flex; align-items: center; justify-content: center; gap: 6px;
       transition: background .15s, transform .05s;
       user-select: none; -webkit-user-select: none; touch-action: none;
       position: relative;
+      padding: 0 8px;
+      line-height: 1.2;
+      text-align: center;
     }
     .ptt.holding,
     .ptt.live {
@@ -608,8 +612,11 @@
 
     <div class="bottombar">
       <div class="ptt-row">
-        <button class="ptt disabled" id="btn-ptt">
-          <span id="ptt-label">準備中…</span>
+        <button class="ptt disabled" id="btn-ptt" title="麥克風">
+          <span id="ptt-label">🎙️</span>
+        </button>
+        <button class="ptt live" id="btn-speaker" title="喇叭">
+          <span id="spk-label">🔊</span>
         </button>
         <button class="chat-btn" id="btn-chat" title="訊息">💬</button>
       </div>

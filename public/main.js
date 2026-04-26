@@ -65,7 +65,8 @@ const state = {
   localStream: null,
   micReady: false,
   hotMic: true,             // 預設常開麥（一進房就直接通話，不用按）
-  hotMicMuted: false,       // 常開麥模式下是否暫時靜音
+  hotMicMuted: false,       // 麥克風是否靜音（不傳出去）
+  speakerMuted: false,      // 喇叭是否靜音（聽不到別人）
   pttHolding: false,
 
   map: null,
@@ -818,6 +819,7 @@ function createPC(peerId) {
       peer.audio = new Audio();
       peer.audio.autoplay = true;
       peer.audio.playsInline = true;
+      peer.audio.muted = state.speakerMuted;
       // 不加進 DOM，autoplay 即可（iOS 需要先有使用者互動，已由建房/加入按鈕滿足）
     }
     peer.audio.srcObject = e.streams[0] || new MediaStream([e.track]);
@@ -976,35 +978,49 @@ function pushSubtitle({ peerId, name, color, text, isSelf = false }) {
   }, SUBTITLE_TTL_MS);
 }
 
-// ─── 通話：常開麥 + 點擊靜音切換 ────────────────────
+// ─── 麥克風 + 喇叭 兩顆獨立按鈕 ────────────────────
 const pttBtn = $('btn-ptt');
+const spkBtn = $('btn-speaker');
 const pttLabel = () => $('ptt-label');
+const spkLabel = () => $('spk-label');
 
 function refreshPttUI() {
-  const cls = pttBtn.classList;
-  cls.remove('holding', 'live', 'muted', 'disabled');
-
+  // 麥克風按鈕
+  const mc = pttBtn.classList;
+  mc.remove('live', 'muted', 'disabled', 'holding');
   if (!state.micReady) {
-    cls.add('disabled');
-    pttLabel().textContent = '🎙️ 點擊允許麥克風';
-    return;
-  }
-  if (state.hotMicMuted) {
-    cls.add('muted');
-    pttLabel().textContent = '🔇 已靜音・點擊開啟';
+    mc.add('disabled');
+    pttLabel().textContent = '🎙️ 點擊開麥';
+  } else if (state.hotMicMuted) {
+    mc.add('muted');
+    pttLabel().textContent = '🔇 麥克風關';
   } else {
-    cls.add('live');
-    pttLabel().textContent = '🔴 通話中・點擊靜音';
+    mc.add('live');
+    pttLabel().textContent = '🎙️ 通話中';
+  }
+  // 喇叭按鈕
+  const sc = spkBtn.classList;
+  sc.remove('live', 'muted');
+  if (state.speakerMuted) {
+    sc.add('muted');
+    spkLabel().textContent = '🔇 喇叭關';
+  } else {
+    sc.add('live');
+    spkLabel().textContent = '🔊 接收中';
   }
 }
 
-// 留個空 stub 給 enterRoom / setMode 老 caller 用
-function refreshTabsUI() {}
+function refreshTabsUI() {}  // stub for legacy callers
+
+function applySpeakerMute() {
+  for (const [, p] of state.peers) {
+    if (p.audio) p.audio.muted = state.speakerMuted;
+  }
+}
 
 function pttClick() {
   if (!state.micReady) {
     ensureMic().then(() => {
-      // 拿到麥克風後預設開啟（常開麥）
       state.hotMic = true;
       state.hotMicMuted = false;
       setMicEnabled(true);
@@ -1014,7 +1030,6 @@ function pttClick() {
     }).catch(() => toast('麥克風權限被拒'));
     return;
   }
-  // 切換靜音
   state.hotMicMuted = !state.hotMicMuted;
   setMicEnabled(!state.hotMicMuted);
   state.socket?.emit('ptt', { on: !state.hotMicMuted });
@@ -1022,7 +1037,16 @@ function pttClick() {
   else startSTT();
   refreshPttUI();
 }
+
+function speakerClick() {
+  state.speakerMuted = !state.speakerMuted;
+  applySpeakerMute();
+  refreshPttUI();
+  toast(state.speakerMuted ? '已關閉喇叭（聽不到別人）' : '已開啟喇叭');
+}
+
 pttBtn.addEventListener('click', pttClick);
+spkBtn.addEventListener('click', speakerClick);
 
 // ─── 邀請對話框 ──────────────────────────────────
 const inviteModal = $('invite-modal');
