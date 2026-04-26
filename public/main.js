@@ -813,19 +813,25 @@ function handleGeoUpdate(coords) {
 // ─── 麥克風 ───────────────────────────────────────
 async function ensureMic() {
   if (state.micReady) return state.localStream;
-  const stream = await navigator.mediaDevices.getUserMedia({
-    audio: {
-      echoCancellation: true,
-      noiseSuppression: true,
-      autoGainControl: true,
-    },
-    video: false,
-  });
+  // 先試完整 constraint，被拒就退到 audio:true（Chrome 偶爾對 echoCancellation 等回 NotFoundError）
+  let stream;
+  try {
+    stream = await navigator.mediaDevices.getUserMedia({
+      audio: {
+        echoCancellation: true,
+        noiseSuppression: true,
+        autoGainControl: true,
+      },
+      video: false,
+    });
+  } catch (e1) {
+    console.warn('[mic] full-constraint fail:', e1.name, '— retry audio:true');
+    stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+  }
   state.localStream = stream;
   state.micReady = true;
   setMicEnabled(state.hotMic && !state.hotMicMuted);
   refreshPttUI();
-  // 套用 tour 模式聽眾規則（若是聽眾就鎖麥）
   applyTourModeMicRule();
   return stream;
 }
