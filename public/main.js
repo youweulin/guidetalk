@@ -62,6 +62,12 @@ const state = {
   peers: new Map(),
   chatHistory: [],   // 訊息歷史（含自己的）
 
+  // 導覽機模式相關
+  isHost: false,            // 我是不是主講
+  roomMode: 'normal',       // 'normal' | 'tour-text' | 'tour-voice'（建房時固定）
+  hostPeerId: null,         // 主講線上 peerId（離線為 null）
+  ttsEnabled: localStorage.getItem('gt_tts') !== '0',  // 聽眾 TTS 預設開
+
   localStream: null,
   micReady: false,
   hotMic: true,             // 預設常開麥（一進房就直接通話，不用按）
@@ -102,6 +108,15 @@ function rememberRoom(code) {
   const arr = loadRecentRooms().filter(r => r.code !== code);
   arr.unshift({ code, ts: Date.now() });
   saveRecentRooms(arr);
+}
+
+// host token：建房者持有可重連認回
+function loadHostToken(code) {
+  return localStorage.getItem('gt_host_' + code) || null;
+}
+function saveHostToken(code, token) {
+  if (!code || !token) return;
+  localStorage.setItem('gt_host_' + code, token);
 }
 function forgetRoom(code) {
   saveRecentRooms(loadRecentRooms().filter(r => r.code !== code));
@@ -192,6 +207,15 @@ function connectSocket() {
       setTimeout(() => setStatus(''), 2000);
     }
   });
+  state.socket.on('host_changed', ({ peerId }) => {
+    state.hostPeerId = peerId;
+    refreshModeUI();
+  });
+  state.socket.on('host_left', () => {
+    state.hostPeerId = null;
+    refreshModeUI();
+    if (state.roomMode !== 'normal') toast('主講人離線了，等候回來…');
+  });
   state.socket.on('peer_location', (loc) => {
     updatePeerLocation(loc.peerId, loc);
   });
@@ -200,14 +224,21 @@ function connectSocket() {
     state.chatHistory.push(msg);
     if (state.chatHistory.length > 100) state.chatHistory.shift();
     appendChatMessage(msg);
-    // 自己的也顯示（送出確認），自己訊息加 (你) 標記
+    const prefix = msg.isHost ? '🎤 ' : '';
+    const tag = msg.source === 'voice' ? ' 🔊' : '';
     pushSubtitle({
-      peerId, name: peerId === state.myPeerId ? `${name}（你）` : name,
+      peerId,
+      name: prefix + (peerId === state.myPeerId ? `${name}（你）` : name) + tag,
       color, text, isSelf: peerId === state.myPeerId,
     });
     if (peerId !== state.myPeerId) {
       const p = state.peers.get(peerId);
       if (p) p.lastSpoke = { text, ts: ts || Date.now() };
+      // tour-text 模式：聽眾用 TTS 朗讀主講的話
+      if (state.roomMode === 'tour-text' && !state.isHost
+          && msg.isHost && state.ttsEnabled) {
+        speakText(text, state.myLang);
+      }
     }
   });
   state.socket.on('peer_ptt', ({ peerId, on }) => {
@@ -242,12 +273,17 @@ async function createRoom() {
   state.myName = name;
   localStorage.setItem('gt_name', name);
 
+  // 從首頁的 radio 取建房模式
+  const modeInput = document.querySelector('input[name="create-mode"]:checked');
+  const mode = modeInput ? modeInput.value : 'normal';
+
   connectSocket();
   setStatus('建立房間中…');
 
   try {
     if (!state.socket.connected) await new Promise(r => state.socket.once('connect', r));
-    const resp = await emitAck('create_room', { name });
+    const resp = await emitAck('create_room', { name, mode });
+    if (resp.hostToken) saveHostToken(resp.roomCode, resp.hostToken);
     enterRoom(resp);
   } catch (err) {
     toast('建立失敗：' + err.message);
@@ -267,7 +303,8 @@ async function joinRoom(code) {
 
   try {
     if (!state.socket.connected) await new Promise(r => state.socket.once('connect', r));
-    const resp = await emitAck('join_room', { code, name });
+    const hostToken = loadHostToken(code);  // 之前建過此房就帶上認回
+    const resp = await emitAck('join_room', { code, name, hostToken });
     enterRoom(resp);
   } catch (err) {
     toast(err.message === 'room_not_found' ? '找不到此房間' : '加入失敗：' + err.message);
@@ -279,13 +316,16 @@ async function enterRoom(resp) {
   state.roomCode = resp.roomCode;
   state.myPeerId = resp.you.peerId;
   state.myColor  = resp.you.color;
+  state.isHost      = !!resp.isHost;
+  state.roomMode    = resp.mode || 'normal';
+  state.hostPeerId  = resp.hostPeerId || null;
 
-  // 記入「最近房間」
   rememberRoom(resp.roomCode);
 
   $('room-code-display').textContent = resp.roomCode;
   showScreen('room');
   ensureMap();
+  refreshModeUI();
   // URL 改回根路徑，避免重整再觸發 auto-join
   if (location.pathname.startsWith('/r/')) {
     history.replaceState(null, '', '/');
@@ -319,8 +359,9 @@ async function enterRoom(resp) {
     if (!state.hotMicMuted) startSTT();
   }
 
-  // 我作為「新加入者」→ 對所有既存 peer 發起 offer
+  // 我作為「新加入者」→ 對「該連線的」既存 peer 發起 offer
   for (const peerId of state.peers.keys()) {
+    if (!shouldConnectToPeer(peerId)) continue;
     initiateOffer(peerId).catch(err => console.warn('offer failed', peerId, err));
   }
 
@@ -782,9 +823,10 @@ async function ensureMic() {
   });
   state.localStream = stream;
   state.micReady = true;
-  // 預設靜音（PTT 模式 / 常開但靜音）
   setMicEnabled(state.hotMic && !state.hotMicMuted);
   refreshPttUI();
+  // 套用 tour 模式聽眾規則（若是聽眾就鎖麥）
+  applyTourModeMicRule();
   return stream;
 }
 
@@ -794,13 +836,35 @@ function setMicEnabled(enabled) {
 }
 
 // ─── WebRTC mesh ───────────────────────────────────
+// 三模式連線拓樸：
+//   normal      : 全 mesh，每兩人 P2P，雙向音訊
+//   tour-text   : 不建任何 P2P 音訊（純 socket 文字）
+//   tour-voice  : star，主講↔每聽眾，聽眾彼此沒連線
+function shouldConnectToPeer(peerId) {
+  if (state.roomMode === 'tour-text') return false;
+  if (state.roomMode === 'tour-voice') {
+    if (state.isHost) return true;          // 主講連所有人
+    return peerId === state.hostPeerId;     // 聽眾只連主講
+  }
+  return true;  // normal mesh
+}
+
+function shouldUploadAudio() {
+  // tour 任一模式下，非主講不上傳音訊（只有主講聲音被廣播）
+  if (state.roomMode !== 'normal' && !state.isHost) return false;
+  return true;
+}
+
 function createPC(peerId) {
   const pc = new RTCPeerConnection({ iceServers: state.ICE_SERVERS });
 
-  if (state.localStream) {
+  if (shouldUploadAudio() && state.localStream) {
     for (const track of state.localStream.getTracks()) {
       pc.addTrack(track, state.localStream);
     }
+  } else {
+    // 聽眾在 tour-voice：只接收主講音訊
+    try { pc.addTransceiver('audio', { direction: 'recvonly' }); } catch {}
   }
 
   pc.addEventListener('icecandidate', (e) => {
@@ -863,6 +927,11 @@ async function handleSignal({ from, signal }) {
   }
   const peer = state.peers.get(from);
   if (!peer) return;
+  // tour mode 下，不該連的 peer 直接忽略訊令
+  if (signal.type === 'offer' && !shouldConnectToPeer(from)) {
+    console.log('[signal] reject offer from', from, '(topology)');
+    return;
+  }
 
   if (signal.type === 'offer') {
     await ensureMic();
@@ -883,6 +952,25 @@ async function handleSignal({ from, signal }) {
       try { await pc.addIceCandidate(signal.candidate); }
       catch (e) { console.warn('addIceCandidate', e); }
     }
+  }
+}
+
+// ─── TTS 朗讀（給導覽-文字模式的聽眾）────────────
+const ttsSupported = 'speechSynthesis' in window;
+function speakText(text, lang) {
+  if (!ttsSupported || !text) return;
+  try {
+    // 同時最多一句，避免堆積
+    if (window.speechSynthesis.speaking) {
+      // 不取消正在念的，避免半句斷掉；新句子排隊
+    }
+    const u = new SpeechSynthesisUtterance(text);
+    u.lang = lang || 'zh-TW';
+    u.rate = 1.0;
+    u.pitch = 1.0;
+    window.speechSynthesis.speak(u);
+  } catch (err) {
+    console.warn('[tts] speak failed', err);
   }
 }
 
@@ -912,8 +1000,8 @@ function startSTT() {
         if (r.isFinal) {
           const text = (r[0]?.transcript || '').trim();
           if (text && text.length >= 2) {
-            // server 會廣播回給包括自己的所有人 → onsay handler 統一處理
-            state.socket?.emit('chat', { text });
+            console.log('[stt] final:', text);
+            state.socket?.emit('chat', { text, source: 'voice' });
           }
         }
       }
@@ -985,10 +1073,14 @@ const pttLabel = () => $('ptt-label');
 const spkLabel = () => $('spk-label');
 
 function refreshPttUI() {
-  // 麥克風按鈕
   const mc = pttBtn.classList;
   mc.remove('live', 'muted', 'disabled', 'holding');
-  if (!state.micReady) {
+
+  // 導覽機聽眾：麥克風鎖死
+  if (state.roomMode !== 'normal' && !state.isHost) {
+    mc.add('disabled');
+    pttLabel().textContent = '🔇 主講中・你只能打字';
+  } else if (!state.micReady) {
     mc.add('disabled');
     pttLabel().textContent = '🎙️ 點擊開麥';
   } else if (state.hotMicMuted) {
@@ -998,15 +1090,25 @@ function refreshPttUI() {
     mc.add('live');
     pttLabel().textContent = '🎙️ 通話中';
   }
-  // 喇叭按鈕
+  // 喇叭按鈕（tour-text 聽眾兼當 TTS toggle）
   const sc = spkBtn.classList;
   sc.remove('live', 'muted');
-  if (state.speakerMuted) {
-    sc.add('muted');
-    spkLabel().textContent = '🔇 喇叭關';
+  if (state.roomMode === 'tour-text' && !state.isHost) {
+    if (state.ttsEnabled) {
+      sc.add('live');
+      spkLabel().textContent = '🔊 自動朗讀';
+    } else {
+      sc.add('muted');
+      spkLabel().textContent = '🔇 不朗讀';
+    }
   } else {
-    sc.add('live');
-    spkLabel().textContent = '🔊 接收中';
+    if (state.speakerMuted) {
+      sc.add('muted');
+      spkLabel().textContent = '🔇 喇叭關';
+    } else {
+      sc.add('live');
+      spkLabel().textContent = '🔊 接收中';
+    }
   }
 }
 
@@ -1019,6 +1121,12 @@ function applySpeakerMute() {
 }
 
 function pttClick() {
+  // 導覽機聽眾：點麥克風 = 跳到打字面板
+  if (state.roomMode !== 'normal' && !state.isHost) {
+    toast('導覽機模式聽眾請打字傳訊');
+    showQuickSend();
+    return;
+  }
   if (!state.micReady) {
     ensureMic().then(() => {
       state.hotMic = true;
@@ -1039,6 +1147,14 @@ function pttClick() {
 }
 
 function speakerClick() {
+  // tour-text 聽眾：當作 TTS toggle
+  if (state.roomMode === 'tour-text' && !state.isHost) {
+    state.ttsEnabled = !state.ttsEnabled;
+    localStorage.setItem('gt_tts', state.ttsEnabled ? '1' : '0');
+    refreshPttUI();
+    toast(state.ttsEnabled ? '✅ 主講人說話會自動念出' : '🔇 已關閉自動朗讀');
+    return;
+  }
   state.speakerMuted = !state.speakerMuted;
   applySpeakerMute();
   refreshPttUI();
@@ -1047,6 +1163,45 @@ function speakerClick() {
 
 pttBtn.addEventListener('click', pttClick);
 spkBtn.addEventListener('click', speakerClick);
+
+// ─── 模式徽章 + 聽眾 mic 鎖死規則 ─────────────────
+function refreshModeUI() {
+  const badge = $('mode-badge');
+  if (!badge) return;
+  badge.classList.remove('tour-text', 'tour-voice');
+  if (state.roomMode === 'tour-text') {
+    badge.textContent = '🎤 導覽機（文字+朗讀）';
+    badge.classList.add('tour-text');
+  } else if (state.roomMode === 'tour-voice') {
+    badge.textContent = '🎤 導覽機（語音）';
+    badge.classList.add('tour-voice');
+  } else {
+    badge.textContent = '💬 對話模式';
+  }
+  // 房間 meta 角色
+  const meta = $('room-meta');
+  if (meta) {
+    const total = state.peers.size + 1;
+    let role = '';
+    if (state.isHost) role = ' · 你是主講';
+    else if (state.roomMode !== 'normal') {
+      role = state.hostPeerId ? ' · 主講中' : ' · 等候主講';
+    }
+    meta.textContent = `${total} 人在線${role}`;
+  }
+}
+
+// tour 模式聽眾：強制關麥、UI 鎖死、提示打字
+function applyTourModeMicRule() {
+  if (state.roomMode === 'normal') return;
+  if (state.isHost) return;
+  if (!state.micReady) return;
+  state.hotMicMuted = true;
+  setMicEnabled(false);
+  state.socket?.emit('ptt', { on: false });
+  stopSTT();
+  refreshPttUI();
+}
 
 // ─── 邀請對話框 ──────────────────────────────────
 const inviteModal = $('invite-modal');

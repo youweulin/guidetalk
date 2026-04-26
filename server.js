@@ -89,21 +89,31 @@ function getRoom(code) {
   return rooms.get(code) || null;
 }
 
-function ensureRoomCreated(code, hostSocketId) {
+function ensureRoomCreated(code, hostSocketId, mode = 'normal') {
   if (rooms.has(code)) {
     const room = rooms.get(code);
-    room.emptyAt = null;  // 有人重新進來，取消空房計時
+    room.emptyAt = null;
     return room;
   }
   const room = {
     createdAt: Date.now(),
     hostId: hostSocketId,
+    hostPeerId: null,           // 線上主講 socket.id；host 離線時為 null
+    hostToken: genHostToken(),  // host 持有，可重連認回
+    mode,                       // 'normal' | 'tour-text' | 'tour-voice'（建房時固定）
     peers: new Map(),
     emptyAt: null,
-    chat: [],  // 最近 N 則訊息歷史（ring buffer）
+    chat: [],
   };
   rooms.set(code, room);
   return room;
+}
+
+function genHostToken() {
+  const chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+  let s = '';
+  for (let i = 0; i < 24; i++) s += chars[Math.floor(Math.random() * chars.length)];
+  return s;
 }
 
 const CHAT_HISTORY_MAX = 50;
@@ -143,11 +153,14 @@ io.on('connection', (socket) => {
   let myRoom = null;
   let myName = null;
 
-  socket.on('create_room', ({ name } = {}, ack) => {
+  socket.on('create_room', ({ name, mode } = {}, ack) => {
     let code;
     do { code = genRoomCode(); } while (rooms.has(code));
 
-    const room = ensureRoomCreated(code, socket.id);
+    const validMode = (mode === 'tour-text' || mode === 'tour-voice') ? mode : 'normal';
+    const room = ensureRoomCreated(code, socket.id, validMode);
+    room.hostPeerId = socket.id;
+
     const color = pickColor(room);
     const peer = {
       socketId: socket.id,
@@ -155,6 +168,7 @@ io.on('connection', (socket) => {
       color,
       joinedAt: Date.now(),
       loc: null,
+      isHost: true,
     };
     room.peers.set(socket.id, peer);
 
@@ -163,18 +177,29 @@ io.on('connection', (socket) => {
     myName = peer.name;
 
     if (typeof ack === 'function') {
-      ack({ ok: true, roomCode: code, you: { peerId: socket.id, color, name: peer.name } });
+      ack({
+        ok: true, roomCode: code,
+        you: { peerId: socket.id, color, name: peer.name },
+        peers: [], chat: [],
+        isHost: true,
+        hostToken: room.hostToken,
+        hostPeerId: socket.id,
+        mode: room.mode,
+      });
     }
-    console.log(`[room ${code}] created by ${peer.name} (${socket.id})`);
+    console.log(`[room ${code}] created by ${peer.name} (${socket.id}) mode=${room.mode}`);
   });
 
-  socket.on('join_room', ({ code, name } = {}, ack) => {
+  socket.on('join_room', ({ code, name, hostToken } = {}, ack) => {
     const roomCode = String(code || '').toUpperCase().trim();
     const room = getRoom(roomCode);
     if (!room) {
       if (typeof ack === 'function') ack({ ok: false, error: 'room_not_found' });
       return;
     }
+
+    const isHost = !!(hostToken && room.hostToken && hostToken === room.hostToken);
+    if (isHost) room.hostPeerId = socket.id;
 
     const color = pickColor(room);
     const peer = {
@@ -183,6 +208,7 @@ io.on('connection', (socket) => {
       color,
       joinedAt: Date.now(),
       loc: null,
+      isHost,
     };
     room.peers.set(socket.id, peer);
 
@@ -191,24 +217,29 @@ io.on('connection', (socket) => {
     myName = peer.name;
 
     const peerList = [...room.peers.values()].map(p => ({
-      peerId: p.socketId, name: p.name, color: p.color, loc: p.loc,
+      peerId: p.socketId, name: p.name, color: p.color, loc: p.loc, isHost: p.isHost,
     }));
 
     if (typeof ack === 'function') {
       ack({
-        ok: true,
-        roomCode,
+        ok: true, roomCode,
         you: { peerId: socket.id, color, name: peer.name },
         peers: peerList,
         chat: room.chat.slice(-CHAT_HISTORY_MAX),
+        isHost,
+        mode: room.mode,
+        hostPeerId: room.hostPeerId,
       });
     }
 
     socket.to(roomCode).emit('peer_joined', {
-      peerId: socket.id, name: peer.name, color,
+      peerId: socket.id, name: peer.name, color, isHost,
     });
+    if (isHost) {
+      socket.to(roomCode).emit('host_changed', { peerId: socket.id });
+    }
 
-    console.log(`[room ${roomCode}] +${peer.name} (${socket.id}) total=${room.peers.size}`);
+    console.log(`[room ${roomCode}] +${peer.name} (${socket.id}) host=${isHost} total=${room.peers.size}`);
   });
 
   // WebRTC 訊令轉發
@@ -249,7 +280,7 @@ io.on('connection', (socket) => {
     });
   });
 
-  socket.on('chat', ({ text } = {}) => {
+  socket.on('chat', ({ text, source } = {}) => {
     if (!myRoom || !text) return;
     const room = getRoom(myRoom);
     if (!room) return;
@@ -259,8 +290,9 @@ io.on('connection', (socket) => {
     const msg = {
       peerId: socket.id, name: peer.name, color: peer.color,
       text: clean, ts: Date.now(),
+      isHost: !!peer.isHost,
+      source: source === 'voice' ? 'voice' : 'text',
     };
-    // 寫入歷史 ring buffer
     room.chat.push(msg);
     if (room.chat.length > CHAT_HISTORY_MAX) {
       room.chat.splice(0, room.chat.length - CHAT_HISTORY_MAX);
@@ -285,6 +317,11 @@ io.on('connection', (socket) => {
     if (!myRoom) return;
     const code = myRoom;
     const name = myName;
+    const room = getRoom(code);
+    if (room && room.hostPeerId === socket.id) {
+      room.hostPeerId = null;
+      io.to(code).emit('host_left');
+    }
     socket.to(code).emit('peer_left', { peerId: socket.id, reason });
     removePeer(code, socket.id);
     socket.leave(code);
