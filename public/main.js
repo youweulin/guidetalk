@@ -235,10 +235,11 @@ function connectSocket() {
       const p = state.peers.get(peerId);
       if (p) p.lastSpoke = { text, ts: ts || Date.now() };
       // tour-text 模式：聽眾用 TTS 朗讀主講的話
-      if (state.roomMode === 'tour-text' && !state.isHost
-          && msg.isHost && state.ttsEnabled) {
-        speakText(text, state.myLang);
-      }
+      const shouldTTS = state.roomMode === 'tour-text' && !state.isHost
+                       && msg.isHost && state.ttsEnabled;
+      console.log('[chat] msg from', name, 'isHost=', msg.isHost, 'shouldTTS=', shouldTTS,
+                  '(roomMode=', state.roomMode, 'isHost=', state.isHost, 'ttsEnabled=', state.ttsEnabled, ')');
+      if (shouldTTS) speakText(text, state.myLang);
     }
   });
   state.socket.on('peer_ptt', ({ peerId, on }) => {
@@ -963,18 +964,39 @@ async function handleSignal({ from, signal }) {
 
 // ─── TTS 朗讀（給導覽-文字模式的聽眾）────────────
 const ttsSupported = 'speechSynthesis' in window;
+console.log('[tts] supported:', ttsSupported);
+
+// 預先觸發 voices 載入（Chrome 是異步的，第一次呼叫前會空陣列）
+if (ttsSupported) {
+  try { window.speechSynthesis.getVoices(); } catch {}
+  if ('onvoiceschanged' in window.speechSynthesis) {
+    window.speechSynthesis.onvoiceschanged = () => {
+      const voices = window.speechSynthesis.getVoices();
+      console.log('[tts] voices loaded:', voices.length);
+    };
+  }
+}
+
 function speakText(text, lang) {
-  if (!ttsSupported || !text) return;
+  if (!ttsSupported) {
+    console.warn('[tts] not supported in this browser');
+    return;
+  }
+  if (!text) return;
   try {
-    // 同時最多一句，避免堆積
-    if (window.speechSynthesis.speaking) {
-      // 不取消正在念的，避免半句斷掉；新句子排隊
-    }
+    // Chrome bug：如果上一句在 paused 狀態會卡死，先 resume
+    if (window.speechSynthesis.paused) window.speechSynthesis.resume();
     const u = new SpeechSynthesisUtterance(text);
     u.lang = lang || 'zh-TW';
     u.rate = 1.0;
     u.pitch = 1.0;
+    u.volume = 1.0;
+    u.onstart = () => console.log('[tts] ▶️', text);
+    u.onerror = (e) => console.warn('[tts] ❌', e.error, text);
+    u.onend = () => console.log('[tts] ✅ done');
     window.speechSynthesis.speak(u);
+    console.log('[tts] queued:', text, '| pending=', window.speechSynthesis.pending,
+                '| speaking=', window.speechSynthesis.speaking);
   } catch (err) {
     console.warn('[tts] speak failed', err);
   }

@@ -2,7 +2,7 @@
 // 策略：
 //   - index.html / main.js / sw.js 走 network-first（避免新版本被舊快取卡住）
 //   - 其他靜態資源（icon、manifest）才用 cache-first
-const CACHE = 'guidetalk-v3';   // ← 升版本即可清掉所有舊快取
+const CACHE = 'guidetalk-v5';   // ← 升版本即可清掉所有舊快取
 const NETWORK_FIRST = ['/', '/index.html', '/main.js', '/sw.js'];
 
 self.addEventListener('install', (e) => {
