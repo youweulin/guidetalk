@@ -325,6 +325,16 @@ async function createRoom() {
   const modeInput = document.querySelector('input[name="create-mode"]:checked');
   const mode = modeInput ? modeInput.value : 'normal';
 
+  // 主講人/對話房需要送出音訊；在點擊建立的使用者手勢內先取得麥克風。
+  try {
+    await ensureMic();
+  } catch (err) {
+    console.warn('mic failed before create', err);
+    toast(micErrorMessage(err), 5000);
+    setStatus(micErrorMessage(err), true);
+    return;
+  }
+
   connectSocket();
   setStatus('建立房間中…');
 
@@ -418,11 +428,14 @@ async function enterRoom(resp) {
   }
   refreshRoomMeta();
 
-  // 取得麥克風（之後用於 PTT / 常開），同時建 mesh 連線
-  await ensureMic().catch(err => {
-    console.warn('mic failed', err);
-    setStatus('麥克風無法取得，可繼續看位置但無法通話', true);
-  });
+  // 取得麥克風（之後用於 PTT / 常開），同時建 mesh 連線。
+  // 建房者通常已在 createRoom() 取得；加入者或重連才會走到這裡。
+  if (shouldUploadAudio()) {
+    await ensureMic().catch(err => {
+      console.warn('mic failed', err);
+      setStatus(micErrorMessage(err), true);
+    });
+  }
 
   // 預設常開麥：拿到麥克風後立刻進入直播狀態（不用按住）
   if (state.micReady && state.hotMic) {
@@ -890,6 +903,9 @@ function handleGeoUpdate(coords) {
 // ─── 麥克風 ───────────────────────────────────────
 async function ensureMic() {
   if (state.micReady) return state.localStream;
+  if (!navigator.mediaDevices?.getUserMedia) {
+    throw new DOMException('getUserMedia unavailable', 'NotSupportedError');
+  }
   // 先試完整 constraint，被拒就退到 audio:true（Chrome 偶爾對 echoCancellation 等回 NotFoundError）
   let stream;
   try {
@@ -902,6 +918,7 @@ async function ensureMic() {
       video: false,
     });
   } catch (e1) {
+    if (isMicPermissionError(e1)) throw e1;
     console.warn('[mic] full-constraint fail:', e1.name, '— retry audio:true');
     stream = await navigator.mediaDevices.getUserMedia({ audio: true });
   }
@@ -911,6 +928,31 @@ async function ensureMic() {
   refreshPttUI();
   applyTourModeMicRule();
   return stream;
+}
+
+function isMicPermissionError(err) {
+  return ['NotAllowedError', 'PermissionDeniedError', 'SecurityError'].includes(err?.name);
+}
+
+function micErrorMessage(err) {
+  if (!window.isSecureContext && location.hostname !== 'localhost' && location.hostname !== '127.0.0.1') {
+    return '麥克風需要 HTTPS，請用 https://guidetalk.zeabur.app 開啟';
+  }
+  if (isMicPermissionError(err)) {
+    return isIOSApp
+      ? '麥克風權限被拒絕，請到 iPhone 設定開啟 GuideTalk 的麥克風'
+      : '麥克風權限被拒絕，請在瀏覽器網址列允許麥克風';
+  }
+  if (err?.name === 'NotFoundError' || err?.name === 'DevicesNotFoundError') {
+    return '找不到麥克風裝置';
+  }
+  if (err?.name === 'NotReadableError' || err?.name === 'TrackStartError') {
+    return '麥克風被其他 App 佔用，請關閉其他通話/錄音 App 後再試';
+  }
+  if (err?.name === 'NotSupportedError') {
+    return '此瀏覽器不支援麥克風，請改用 Safari/Chrome 或 GuideTalk App';
+  }
+  return '麥克風無法取得，請檢查權限後再試';
 }
 
 function setMicEnabled(enabled) {
@@ -1110,7 +1152,7 @@ function ensurePC(peerId) {
 }
 
 async function initiateOffer(peerId) {
-  await ensureMic();  // 拿到麥克風才有 track 可加
+  if (shouldUploadAudio()) await ensureMic();  // 拿到麥克風才有 track 可加
   const pc = ensurePC(peerId);
   if (!pc) return;
   const offer = await pc.createOffer({ offerToReceiveAudio: true });
@@ -1135,7 +1177,7 @@ async function handleSignal({ from, signal }) {
   }
 
   if (signal.type === 'offer') {
-    await ensureMic();
+    if (shouldUploadAudio()) await ensureMic();
     const pc = ensurePC(from);
     await pc.setRemoteDescription({ type: 'offer', sdp: signal.sdp });
     const answer = await pc.createAnswer();
@@ -1373,7 +1415,7 @@ function pttClick() {
       state.socket?.emit('ptt', { on: true });
       startSTT();
       refreshPttUI();
-    }).catch(() => toast('麥克風權限被拒'));
+    }).catch(err => toast(micErrorMessage(err), 5000));
     return;
   }
   state.hotMicMuted = !state.hotMicMuted;
