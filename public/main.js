@@ -339,6 +339,7 @@ async function enterRoom(resp) {
     $('btn-recenter').style.display = 'none';
     $('btn-ptt').style.display = 'none';
     $('btn-chat').style.display = 'none';
+    $('btn-invite').style.display = 'none';
   } else {
     $('listener-view').classList.remove('active');
     $('map').style.display = 'block';
@@ -347,6 +348,7 @@ async function enterRoom(resp) {
     $('btn-recenter').style.display = 'flex';
     $('btn-ptt').style.display = 'flex';
     $('btn-chat').style.display = 'flex';
+    $('btn-invite').style.display = 'flex';
     ensureMap();
   }
 
@@ -1245,6 +1247,17 @@ function refreshModeUI() {
       role = state.hostPeerId ? ' · 主講中' : ' · 等候主講';
     }
     meta.textContent = `${total} 人在線${role}`;
+  }
+
+  // 聽眾端大標題更新
+  const hostNameEl = $('listener-host-name');
+  if (hostNameEl) {
+    if (state.hostPeerId) {
+      const hostPeer = state.peers.get(state.hostPeerId);
+      hostNameEl.textContent = `主講人：${hostPeer ? escapeHtml(hostPeer.name) : '導遊'}`;
+    } else {
+      hostNameEl.textContent = '等待主講人連線...';
+    }
   }
 }
 
