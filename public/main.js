@@ -241,6 +241,16 @@ function connectSocket() {
     if (!p) return;
     p.pttOn = on;
     if (p.chip) p.chip.classList.toggle('ptt-on', !!on);
+    
+    // 如果是導遊(host)切換麥克風狀態，要在畫面上提示
+    if (peerId === state.hostPeerId) {
+      pushSubtitle({
+        peerId: 'system',
+        name: '系統提示',
+        color: 'var(--text-dim)',
+        text: on ? '🎙️ 導遊已開啟麥克風' : '🔇 導遊已暫停麥克風'
+      });
+    }
   });
   state.socket.on('room_expired', () => {
     toast('房間已過期');
