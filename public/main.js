@@ -977,6 +977,9 @@ function createPC(peerId) {
       // 簡單重試一次
       setTimeout(() => initiateOffer(peerId).catch(()=>{}), 1500);
     }
+    if (pc.connectionState === 'connected') {
+      reportTurnStats(peerId, pc).catch(() => {});
+    }
   });
 
   startTurnMonitor(peerId, pc);
@@ -1000,6 +1003,8 @@ function startTurnMonitor(peerId, pc) {
 async function reportTurnStats(peerId, pc) {
   if (!state.roomCode || !state.socket?.connected) return;
   if (!pc || pc.connectionState === 'closed') return;
+  if (!['connected', 'completed'].includes(pc.iceConnectionState) &&
+      !['connected'].includes(pc.connectionState)) return;
 
   const info = await getSelectedIceInfo(pc);
   if (!info) return;
@@ -1044,13 +1049,14 @@ async function getSelectedIceInfo(pc) {
   const local = stats.get(pair.localCandidateId);
   const remote = stats.get(pair.remoteCandidateId);
   const localType = local?.candidateType || '';
+  const remoteType = remote?.candidateType || '';
 
   return {
-    usingTurn: localType === 'relay',
+    usingTurn: localType === 'relay' || remoteType === 'relay',
     bytesSent: pair.bytesSent || 0,
     bytesReceived: pair.bytesReceived || 0,
     localCandidateType: localType,
-    remoteCandidateType: remote?.candidateType || '',
+    remoteCandidateType: remoteType,
   };
 }
 
