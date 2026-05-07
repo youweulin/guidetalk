@@ -100,8 +100,8 @@ function ensureRoomCreated(code, hostSocketId, mode = 'normal') {
     hostId: hostSocketId,
     hostPeerId: null,           // 線上主講 socket.id；host 離線時為 null
     hostToken: genHostToken(),  // host 持有，可重連認回
-    mode,                       // 'normal' | 'tour-text' | 'tour-voice'（建房時固定）
-    peers: new Map(),
+    mode,                       // 'normal' | 'tour'（建房時固定）
+    peers: new Map(),           // peerId => { name, color, lastSeen, isHost };
     emptyAt: null,
     chat: [],
   };
@@ -157,7 +157,7 @@ io.on('connection', (socket) => {
     let code;
     do { code = genRoomCode(); } while (rooms.has(code));
 
-    const validMode = (mode === 'tour-text' || mode === 'tour-voice') ? mode : 'normal';
+    const validMode = (mode === 'tour') ? mode : 'normal';
     const room = ensureRoomCreated(code, socket.id, validMode);
     room.hostPeerId = socket.id;
 

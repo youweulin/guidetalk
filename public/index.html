@@ -612,36 +612,31 @@
         </select>
       </div>
 
-      <div class="field">
-        <label>建房模式</label>
-        <div style="display:flex;flex-direction:column;gap:6px;">
-          <label class="mode-radio">
-            <input type="radio" name="create-mode" value="normal" checked />
-            <div>
-              <div class="mt">💬 對話模式</div>
-              <div class="mh">大家都能講話、聽到彼此（建議 ≤8 人）</div>
-            </div>
-          </label>
-          <label class="mode-radio">
-            <input type="radio" name="create-mode" value="tour-text" />
-            <div>
-              <div class="mt">🎤 導覽機 - 文字 + 自動朗讀</div>
-              <div class="mh">主講聲音轉文字 + TTS 朗讀，最省手機（大團首選）</div>
-            </div>
-          </label>
-          <label class="mode-radio">
-            <input type="radio" name="create-mode" value="tour-voice" />
-            <div>
-              <div class="mt">🎤 導覽機 - 真聲廣播</div>
-              <div class="mh">聽眾聽得到主講真聲（≤20 人，主講 4G 上傳會吃緊）</div>
-            </div>
-          </label>
+      <div id="create-room-section">
+        <div class="field">
+          <label>建房模式</label>
+          <div style="display:flex;flex-direction:column;gap:6px;">
+            <label class="mode-radio">
+              <input type="radio" name="create-mode" value="normal" checked />
+              <div>
+                <div class="mt">💬 對話模式</div>
+                <div class="mh">大家都能講話、聽到彼此（小群對講）</div>
+              </div>
+            </label>
+            <label class="mode-radio">
+              <input type="radio" name="create-mode" value="tour" />
+              <div>
+                <div class="mt">🎤 導覽機模式</div>
+                <div class="mh">聽眾收看即時字幕，並收聽導遊原聲廣播</div>
+              </div>
+            </label>
+          </div>
         </div>
+
+        <button class="btn full" id="btn-create">建立新房間</button>
+
+        <div class="divider">或</div>
       </div>
-
-      <button class="btn full" id="btn-create">建立新房間</button>
-
-      <div class="divider">或</div>
 
       <div class="field">
         <label>輸入 6 碼房號</label>

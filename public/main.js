@@ -234,12 +234,6 @@ function connectSocket() {
     if (peerId !== state.myPeerId) {
       const p = state.peers.get(peerId);
       if (p) p.lastSpoke = { text, ts: ts || Date.now() };
-      // tour-text 模式：聽眾用 TTS 朗讀主講的話
-      const shouldTTS = state.roomMode === 'tour-text' && !state.isHost
-                       && msg.isHost && state.ttsEnabled;
-      console.log('[chat] msg from', name, 'isHost=', msg.isHost, 'shouldTTS=', shouldTTS,
-                  '(roomMode=', state.roomMode, 'isHost=', state.isHost, 'ttsEnabled=', state.ttsEnabled, ')');
-      if (shouldTTS) speakText(text, state.myLang);
     }
   });
   state.socket.on('peer_ptt', ({ peerId, on }) => {
@@ -867,11 +861,9 @@ function setMicEnabled(enabled) {
 // ─── WebRTC mesh ───────────────────────────────────
 // 三模式連線拓樸：
 //   normal      : 全 mesh，每兩人 P2P，雙向音訊
-//   tour-text   : 不建任何 P2P 音訊（純 socket 文字）
-//   tour-voice  : star，主講↔每聽眾，聽眾彼此沒連線
+//   tour        : star，主講↔每聽眾，聽眾彼此沒連線
 function shouldConnectToPeer(peerId) {
-  if (state.roomMode === 'tour-text') return false;
-  if (state.roomMode === 'tour-voice') {
+  if (state.roomMode === 'tour') {
     if (state.isHost) return true;          // 主講連所有人
     return peerId === state.hostPeerId;     // 聽眾只連主講
   }
@@ -892,7 +884,7 @@ function createPC(peerId) {
       pc.addTrack(track, state.localStream);
     }
   } else {
-    // 聽眾在 tour-voice：只接收主講音訊
+    // 聽眾在 tour 模式：只接收主講音訊
     try { pc.addTransceiver('audio', { direction: 'recvonly' }); } catch {}
   }
 
@@ -1164,25 +1156,15 @@ function refreshPttUI() {
     mc.add('live');
     pttLabel().textContent = '🎙️ 通話中';
   }
-  // 喇叭按鈕（tour-text 聽眾兼當 TTS toggle）
+  // 喇叭按鈕
   const sc = spkBtn.classList;
   sc.remove('live', 'muted');
-  if (state.roomMode === 'tour-text' && !state.isHost) {
-    if (state.ttsEnabled) {
-      sc.add('live');
-      spkLabel().textContent = '🔊 自動朗讀';
-    } else {
-      sc.add('muted');
-      spkLabel().textContent = '🔇 不朗讀';
-    }
+  if (state.speakerMuted) {
+    sc.add('muted');
+    spkLabel().textContent = '🔇 喇叭關';
   } else {
-    if (state.speakerMuted) {
-      sc.add('muted');
-      spkLabel().textContent = '🔇 喇叭關';
-    } else {
-      sc.add('live');
-      spkLabel().textContent = '🔊 接收中';
-    }
+    sc.add('live');
+    spkLabel().textContent = '🔊 接收中';
   }
 }
 
@@ -1221,14 +1203,6 @@ function pttClick() {
 }
 
 function speakerClick() {
-  // tour-text 聽眾：當作 TTS toggle
-  if (state.roomMode === 'tour-text' && !state.isHost) {
-    state.ttsEnabled = !state.ttsEnabled;
-    localStorage.setItem('gt_tts', state.ttsEnabled ? '1' : '0');
-    refreshPttUI();
-    toast(state.ttsEnabled ? '✅ 主講人說話會自動念出' : '🔇 已關閉自動朗讀');
-    return;
-  }
   state.speakerMuted = !state.speakerMuted;
   applySpeakerMute();
   refreshPttUI();
@@ -1242,13 +1216,10 @@ spkBtn.addEventListener('click', speakerClick);
 function refreshModeUI() {
   const badge = $('mode-badge');
   if (!badge) return;
-  badge.classList.remove('tour-text', 'tour-voice');
-  if (state.roomMode === 'tour-text') {
-    badge.textContent = '🎤 導覽機（文字+朗讀）';
-    badge.classList.add('tour-text');
-  } else if (state.roomMode === 'tour-voice') {
-    badge.textContent = '🎤 導覽機（語音）';
-    badge.classList.add('tour-voice');
+  badge.classList.remove('tour');
+  if (state.roomMode === 'tour') {
+    badge.textContent = '🎤 導覽機模式';
+    badge.classList.add('tour');
   } else {
     badge.textContent = '💬 對話模式';
   }
@@ -1611,6 +1582,13 @@ function renderRow(r) {
   if (m) {
     const code = m[1].toUpperCase();
     $('code-input').value = code;
+    
+    // 透過連結加入者，隱藏不必要的「建立房間」介面
+    const createSec = $('create-room-section');
+    if (createSec) createSec.style.display = 'none';
+    const recentWrap = $('recent-rooms-wrap');
+    if (recentWrap) recentWrap.style.display = 'none';
+
     // 已有暱稱 → 自動加入
     if (state.myName && state.myName.trim()) {
       setTimeout(() => {
@@ -1620,7 +1598,7 @@ function renderRow(r) {
     } else {
       // 沒暱稱 → 提示並 focus 暱稱輸入框
       setTimeout(() => {
-        toast(`房號 ${code} 已帶入，輸入暱稱後按「加入房間」`);
+        toast(`房號 ${code} 已帶入，請輸入暱稱`);
         $('name-input').focus();
       }, 200);
     }
