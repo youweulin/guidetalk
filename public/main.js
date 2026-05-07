@@ -1116,20 +1116,21 @@ function pushSubtitle({ peerId, name, color, text, isSelf = false }) {
     
     const bigBubble = document.createElement('div');
     bigBubble.className = 'big-subtitle';
-    bigBubble.innerHTML = escapeHtml(text);
+    bigBubble.style.borderLeft = `4px solid ${color || 'var(--primary)'}`;
+    bigBubble.innerHTML = `
+      <div style="font-size:13px; font-weight:700; color:${color || 'var(--text-dim)'}; margin-bottom:6px; opacity:0.8;">
+        ${escapeHtml(name)}
+      </div>
+      ${escapeHtml(text)}
+    `;
     bigStack.appendChild(bigBubble);
     
-    while (bigStack.children.length > 8) {
+    // 改為持續存在，並保留最近 50 句對話
+    while (bigStack.children.length > 50) {
       bigStack.firstChild.remove();
     }
     const view = $('listener-view');
     if (view) view.scrollTop = view.scrollHeight;
-    
-    // 大字幕存活久一點
-    setTimeout(() => {
-      bigBubble.classList.add('fade');
-      setTimeout(() => bigBubble.remove(), 2000);
-    }, 15000);
   }
 }
 
