@@ -23,6 +23,45 @@ const SHARE_BASE = (location.origin && !location.origin.startsWith('capacitor:')
   ? location.origin
   : 'https://guidetalk.zeabur.app';
 
+const STUN_SERVERS = [
+  { urls: 'stun:stun.l.google.com:19302' },
+  { urls: 'stun:stun1.l.google.com:19302' },
+];
+const TURN_SERVERS = [
+  {
+    urls: 'turn:openrelay.metered.ca:80',
+    username: 'openrelayproject',
+    credential: 'openrelayproject',
+  },
+  {
+    urls: 'turn:openrelay.metered.ca:443',
+    username: 'openrelayproject',
+    credential: 'openrelayproject',
+  },
+  {
+    urls: 'turn:openrelay.metered.ca:443?transport=tcp',
+    username: 'openrelayproject',
+    credential: 'openrelayproject',
+  },
+];
+function shouldUseTurnServers() {
+  const turnParam = new URLSearchParams(location.search).get('turn');
+  if (turnParam === '1') {
+    localStorage.setItem('gt_turn', '1');
+    return true;
+  }
+  if (turnParam === '0') {
+    localStorage.setItem('gt_turn', '0');
+    return false;
+  }
+  return localStorage.getItem('gt_turn') === '1';
+}
+function buildIceServers() {
+  return shouldUseTurnServers()
+    ? [...STUN_SERVERS, ...TURN_SERVERS]
+    : [...STUN_SERVERS];
+}
+
 // ─── DOM helpers ───────────────────────────────────
 const $ = (id) => document.getElementById(id);
 
@@ -87,25 +126,7 @@ const state = {
   geoWatchHandle: null,     // { type: 'web'|'cap', id }
   myLastLoc: null,
 
-  ICE_SERVERS: [
-    { urls: 'stun:stun.l.google.com:19302' },
-    { urls: 'stun:stun1.l.google.com:19302' },
-    {
-      urls: 'turn:openrelay.metered.ca:80',
-      username: 'openrelayproject',
-      credential: 'openrelayproject'
-    },
-    {
-      urls: 'turn:openrelay.metered.ca:443',
-      username: 'openrelayproject',
-      credential: 'openrelayproject'
-    },
-    {
-      urls: 'turn:openrelay.metered.ca:443?transport=tcp',
-      username: 'openrelayproject',
-      credential: 'openrelayproject'
-    }
-  ],
+  ICE_SERVERS: buildIceServers(),
 };
 
 $('name-input').value = state.myName;
