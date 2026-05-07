@@ -320,7 +320,7 @@ async function enterRoom(resp) {
   $('room-code-display').textContent = resp.roomCode;
   showScreen('room');
   
-  const isListenerView = !isNative && !state.isHost;
+  const isListenerView = !isNative && !state.isHost && state.roomMode === 'tour';
   if (isListenerView) {
     $('listener-view').classList.add('active');
     $('map').style.display = 'none';
@@ -381,7 +381,7 @@ async function enterRoom(resp) {
   }
 
   // 開始追蹤位置（如果是極簡網頁聽眾，則不抓定位以省電）
-  if (!(!isNative && !state.isHost)) {
+  if (!isListenerView) {
     startGeoWatch();
   }
 
@@ -390,7 +390,7 @@ async function enterRoom(resp) {
   refreshPttUI();
   // 進房自動展開距離表 — 立刻看到誰在哪（聽眾模式不用展開）
   setTimeout(() => {
-    if (state.roomCode && !(!isNative && !state.isHost)) showSheet();
+    if (state.roomCode && !isListenerView) showSheet();
   }, 500);
 }
 
@@ -1109,7 +1109,8 @@ function pushSubtitle({ peerId, name, color, text, isSelf = false }) {
 
   // 推送到大字幕區 (Listener View)
   const bigStack = $('big-subtitle-stack');
-  if (bigStack && !isNative && !state.isHost) {
+  const isListenerView = !isNative && !state.isHost && state.roomMode === 'tour';
+  if (bigStack && isListenerView) {
     const emptyMsg = $('listener-empty');
     if (emptyMsg) emptyMsg.style.display = 'none';
     
