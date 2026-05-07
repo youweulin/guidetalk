@@ -305,6 +305,36 @@ io.on('connection', (socket) => {
     socket.to(myRoom).emit('peer_ptt', { peerId: socket.id, on: !!on });
   });
 
+  socket.on('turn_usage', ({
+    targetPeerId,
+    usingTurn,
+    bytesSent,
+    bytesReceived,
+    localCandidateType,
+    remoteCandidateType,
+  } = {}) => {
+    if (!myRoom) return;
+    const room = getRoom(myRoom);
+    if (!room || !room.hostPeerId) return;
+    const peer = room.peers.get(socket.id);
+    if (!peer) return;
+    const target = room.peers.get(String(targetPeerId || ''));
+
+    const clean = {
+      peerId: socket.id,
+      name: peer.name,
+      targetPeerId: target?.socketId || String(targetPeerId || ''),
+      targetName: target?.name || '',
+      usingTurn: !!usingTurn,
+      bytesSent: Math.max(0, Math.floor(Number(bytesSent) || 0)),
+      bytesReceived: Math.max(0, Math.floor(Number(bytesReceived) || 0)),
+      localCandidateType: String(localCandidateType || ''),
+      remoteCandidateType: String(remoteCandidateType || ''),
+      ts: Date.now(),
+    };
+    io.to(room.hostPeerId).emit('turn_usage', clean);
+  });
+
   socket.on('leave_room', () => {
     cleanup('left');
   });

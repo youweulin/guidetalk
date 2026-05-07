@@ -105,6 +105,7 @@ const state = {
   // peers: Map<peerId, { name, color, loc?, pc?, audio?, marker?, chip?, pttOn? }>
   peers: new Map(),
   chatHistory: [],   // 訊息歷史（含自己的）
+  turnRelays: new Map(),
 
   // 導覽機模式相關
   isHost: false,            // 我是不是主講
@@ -293,6 +294,7 @@ function connectSocket() {
       });
     }
   });
+  state.socket.on('turn_usage', handleTurnUsageNotice);
   state.socket.on('room_expired', () => {
     toast('房間已過期');
     leaveRoom();
@@ -463,6 +465,7 @@ function leaveRoom() {
   }
   // 停 GPS
   stopGeoWatch();
+  state.turnRelays.clear();
   // 清地圖
   if (state.map) {
     state.map.remove();
@@ -504,6 +507,7 @@ function removePeer(peerId) {
 }
 
 function closePeer(p) {
+  if (p.turnMonitor) clearInterval(p.turnMonitor);
   try { p.pc?.close?.(); } catch {}
   if (p.audio) {
     try { p.audio.pause(); } catch {}
@@ -514,6 +518,7 @@ function closePeer(p) {
   p.pc = null;
   p.audio = null;
   p.marker = null;
+  p.turnMonitor = null;
 }
 
 function buildPeerChip(peerId, peer) {
@@ -974,7 +979,121 @@ function createPC(peerId) {
     }
   });
 
+  startTurnMonitor(peerId, pc);
+
   return pc;
+}
+
+const TURN_STATS_INTERVAL_MS = 15_000;
+const TURN_REPORT_INTERVAL_MS = 60_000;
+
+function startTurnMonitor(peerId, pc) {
+  const peer = state.peers.get(peerId);
+  if (!peer) return;
+  if (peer.turnMonitor) clearInterval(peer.turnMonitor);
+
+  const tick = () => reportTurnStats(peerId, pc).catch(() => {});
+  peer.turnMonitor = setInterval(tick, TURN_STATS_INTERVAL_MS);
+  setTimeout(tick, 3000);
+}
+
+async function reportTurnStats(peerId, pc) {
+  if (!state.roomCode || !state.socket?.connected) return;
+  if (!pc || pc.connectionState === 'closed') return;
+
+  const info = await getSelectedIceInfo(pc);
+  if (!info) return;
+
+  const peer = state.peers.get(peerId);
+  if (!peer) return;
+
+  const now = Date.now();
+  const last = peer.lastTurnReport;
+  const changed = !last || last.usingTurn !== info.usingTurn;
+  const periodic = info.usingTurn && (!last || now - last.reportedAt > TURN_REPORT_INTERVAL_MS);
+  if (!changed && !periodic) return;
+
+  peer.lastTurnReport = { usingTurn: info.usingTurn, reportedAt: now };
+  state.socket.emit('turn_usage', {
+    targetPeerId: peerId,
+    usingTurn: info.usingTurn,
+    bytesSent: info.bytesSent,
+    bytesReceived: info.bytesReceived,
+    localCandidateType: info.localCandidateType,
+    remoteCandidateType: info.remoteCandidateType,
+  });
+}
+
+async function getSelectedIceInfo(pc) {
+  const stats = await pc.getStats();
+  let pair = null;
+
+  stats.forEach((report) => {
+    if (!pair && report.type === 'transport' && report.selectedCandidatePairId) {
+      pair = stats.get(report.selectedCandidatePairId);
+    }
+  });
+  stats.forEach((report) => {
+    if (!pair && report.type === 'candidate-pair' &&
+        (report.selected || (report.nominated && report.state === 'succeeded'))) {
+      pair = report;
+    }
+  });
+  if (!pair) return null;
+
+  const local = stats.get(pair.localCandidateId);
+  const remote = stats.get(pair.remoteCandidateId);
+  const localType = local?.candidateType || '';
+
+  return {
+    usingTurn: localType === 'relay',
+    bytesSent: pair.bytesSent || 0,
+    bytesReceived: pair.bytesReceived || 0,
+    localCandidateType: localType,
+    remoteCandidateType: remote?.candidateType || '',
+  };
+}
+
+function handleTurnUsageNotice(info = {}) {
+  if (!state.isHost) return;
+  const peerName = info.name || '夥伴';
+  const targetName = info.targetName || '主講';
+  const key = [info.peerId, info.targetPeerId].sort().join(':');
+  const totalBytes = (Number(info.bytesSent) || 0) + (Number(info.bytesReceived) || 0);
+  const mb = totalBytes > 0 ? `，約 ${formatBytes(totalBytes)}` : '';
+
+  if (info.usingTurn) {
+    const alreadyUsing = state.turnRelays.has(key);
+    state.turnRelays.set(key, { peerName, targetName, bytes: totalBytes });
+    if (!alreadyUsing) {
+      toast(`TURN relay：${peerName} ↔ ${targetName}${mb}`, 5000);
+      pushSubtitle({
+        peerId: 'system',
+        name: 'TURN 監控',
+        color: 'var(--warning)',
+        text: `正在使用 TURN relay：${peerName} ↔ ${targetName}${mb}`,
+      });
+    }
+  } else if (state.turnRelays.has(key)) {
+    state.turnRelays.delete(key);
+    toast(`TURN 已停止：${peerName} ↔ ${targetName}`, 3000);
+  }
+  refreshTurnRelayStatus();
+}
+
+function refreshTurnRelayStatus() {
+  if (!state.isHost) return;
+  if (state.turnRelays.size === 0) {
+    setStatus('');
+    return;
+  }
+  setStatus(`TURN relay 使用中：${state.turnRelays.size} 條`, true);
+}
+
+function formatBytes(bytes) {
+  const n = Math.max(0, Number(bytes) || 0);
+  if (n < 1024 * 1024) return `${Math.round(n / 1024)} KB`;
+  return `${(n / 1024 / 1024).toFixed(1)} MB`;
 }
 
 function ensurePC(peerId) {
