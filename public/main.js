@@ -340,6 +340,7 @@ async function enterRoom(resp) {
     $('btn-ptt').style.display = 'none';
     $('btn-chat').style.display = 'none';
     $('btn-invite').style.display = 'none';
+    $('room-topbar').style.display = 'none'; // 隱藏原本的頂部列
   } else {
     $('listener-view').classList.remove('active');
     $('map').style.display = 'block';
@@ -349,6 +350,7 @@ async function enterRoom(resp) {
     $('btn-ptt').style.display = 'flex';
     $('btn-chat').style.display = 'flex';
     $('btn-invite').style.display = 'flex';
+    $('room-topbar').style.display = 'flex';
     ensureMap();
   }
 
@@ -1254,9 +1256,10 @@ function refreshModeUI() {
   if (hostNameEl) {
     if (state.hostPeerId) {
       const hostPeer = state.peers.get(state.hostPeerId);
-      hostNameEl.textContent = `主講人：${hostPeer ? escapeHtml(hostPeer.name) : '導遊'}`;
+      const hName = hostPeer ? hostPeer.name : '導遊';
+      hostNameEl.textContent = `主講人：${escapeHtml(hName)}導覽電台 (${state.roomCode})`;
     } else {
-      hostNameEl.textContent = '等待主講人連線...';
+      hostNameEl.textContent = `等待主講人連線... (${state.roomCode})`;
     }
   }
 }
