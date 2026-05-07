@@ -233,6 +233,36 @@
     }
     .subtitle-bubble.fade { transition: opacity .8s, transform .8s; opacity: 0; transform: translateY(-4px); }
 
+    /* ─── 純聽眾大字幕區 ─── */
+    .listener-view {
+      position: absolute; inset: 0;
+      background: var(--bg);
+      z-index: 450;
+      display: none;
+      flex-direction: column;
+      padding: 24px;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+    }
+    .listener-view.active { display: flex; }
+    .listener-empty {
+      flex: 1; display: flex; align-items: center; justify-content: center;
+      color: var(--text-dim); font-size: 15px; opacity: 0.7;
+    }
+    .big-subtitle-stack {
+      display: flex; flex-direction: column; gap: 16px;
+      justify-content: flex-end; min-height: 100%;
+    }
+    .big-subtitle {
+      background: var(--card); border: 1px solid var(--border);
+      padding: 16px 20px; border-radius: 20px;
+      font-size: 20px; line-height: 1.45; font-weight: 500;
+      box-shadow: 0 4px 16px rgba(0,0,0,.06);
+      animation: subtitleIn .3s ease-out;
+      color: var(--text);
+    }
+    .big-subtitle.fade { transition: opacity 1.5s; opacity: 0.3; }
+
     /* ─── 表格內最近一句話 ─── */
     .peer-row .pchat {
       grid-column: 2 / 4;
@@ -652,6 +682,16 @@
       <div id="map"></div>
       <div class="peer-strip" id="peer-strip"></div>
       <div class="subtitle-stack" id="subtitle-stack"></div>
+      
+      <!-- 聽眾極簡模式（大字幕） -->
+      <div class="listener-view" id="listener-view">
+        <div style="display:flex; justify-content:flex-end; margin-bottom: 12px; flex-shrink:0;">
+          <button class="btn secondary" id="btn-listener-sos" style="padding: 8px 14px; font-size: 13px; border-radius: 999px; min-height:36px; box-shadow: 0 2px 8px rgba(0,0,0,0.05);">📍 我迷路了 (發送定位)</button>
+        </div>
+        <div class="listener-empty" id="listener-empty">導遊尚未發言...</div>
+        <div class="big-subtitle-stack" id="big-subtitle-stack"></div>
+      </div>
+
       <!-- 距離表（透明、從上方下拉、可摺疊）-->
       <div class="sheet" id="sheet">
         <div class="sheet-handle"></div>

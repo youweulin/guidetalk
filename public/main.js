@@ -325,7 +325,27 @@ async function enterRoom(resp) {
 
   $('room-code-display').textContent = resp.roomCode;
   showScreen('room');
-  ensureMap();
+  
+  const isListenerView = !isNative && !state.isHost;
+  if (isListenerView) {
+    $('listener-view').classList.add('active');
+    $('map').style.display = 'none';
+    $('peer-strip').style.display = 'none';
+    $('btn-list').style.display = 'none';
+    $('btn-recenter').style.display = 'none';
+    $('btn-ptt').style.display = 'none';
+    $('btn-chat').style.display = 'none';
+  } else {
+    $('listener-view').classList.remove('active');
+    $('map').style.display = 'block';
+    $('peer-strip').style.display = 'flex';
+    $('btn-list').style.display = 'flex';
+    $('btn-recenter').style.display = 'flex';
+    $('btn-ptt').style.display = 'flex';
+    $('btn-chat').style.display = 'flex';
+    ensureMap();
+  }
+
   refreshModeUI();
   // URL 改回根路徑，避免重整再觸發 auto-join
   if (location.pathname.startsWith('/r/')) {
@@ -366,15 +386,17 @@ async function enterRoom(resp) {
     initiateOffer(peerId).catch(err => console.warn('offer failed', peerId, err));
   }
 
-  // 開始追蹤位置
-  startGeoWatch();
+  // 開始追蹤位置（如果是極簡網頁聽眾，則不抓定位以省電）
+  if (!(!isNative && !state.isHost)) {
+    startGeoWatch();
+  }
 
   // UI 初始化
   refreshTabsUI();
   refreshPttUI();
-  // 進房自動展開距離表 — 立刻看到誰在哪
+  // 進房自動展開距離表 — 立刻看到誰在哪（聽眾模式不用展開）
   setTimeout(() => {
-    if (state.roomCode) showSheet();
+    if (state.roomCode && !(!isNative && !state.isHost)) showSheet();
   }, 500);
 }
 
@@ -1092,6 +1114,30 @@ function pushSubtitle({ peerId, name, color, text, isSelf = false }) {
     bubble.classList.add('fade');
     setTimeout(() => bubble.remove(), 800);
   }, SUBTITLE_TTL_MS);
+
+  // 推送到大字幕區 (Listener View)
+  const bigStack = $('big-subtitle-stack');
+  if (bigStack && !isNative && !state.isHost) {
+    const emptyMsg = $('listener-empty');
+    if (emptyMsg) emptyMsg.style.display = 'none';
+    
+    const bigBubble = document.createElement('div');
+    bigBubble.className = 'big-subtitle';
+    bigBubble.innerHTML = escapeHtml(text);
+    bigStack.appendChild(bigBubble);
+    
+    while (bigStack.children.length > 8) {
+      bigStack.firstChild.remove();
+    }
+    const view = $('listener-view');
+    if (view) view.scrollTop = view.scrollHeight;
+    
+    // 大字幕存活久一點
+    setTimeout(() => {
+      bigBubble.classList.add('fade');
+      setTimeout(() => bigBubble.remove(), 2000);
+    }, 15000);
+  }
 }
 
 // ─── 麥克風 + 喇叭 兩顆獨立按鈕 ────────────────────
@@ -1290,6 +1336,26 @@ $('btn-recenter').addEventListener('click', () => {
     fitMapBounds();
   }
 });
+
+// 聽眾端：我迷路了（開啟 GPS）
+const sosBtn = $('btn-listener-sos');
+if (sosBtn) {
+  sosBtn.addEventListener('click', () => {
+    if (state.geoWatchHandle) {
+      stopGeoWatch();
+      sosBtn.textContent = '📍 我迷路了 (發送定位)';
+      sosBtn.classList.remove('danger');
+      sosBtn.classList.add('secondary');
+      toast('已停止發送定位');
+    } else {
+      startGeoWatch();
+      sosBtn.textContent = '🛑 停止發送定位';
+      sosBtn.classList.remove('secondary');
+      sosBtn.classList.add('danger');
+      toast('定位發送中，導遊將看到你的位置');
+    }
+  });
+}
 
 // ─── 打字快送 + 訊息歷史 ──────────────────────────
 const quicksendEl = $('quicksend');
