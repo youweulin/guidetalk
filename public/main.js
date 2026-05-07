@@ -34,6 +34,11 @@ function showScreen(name) {
   for (const k of Object.keys(screens)) screens[k].classList.toggle('active', k === name);
 }
 
+function setDisplay(id, display) {
+  const el = $(id);
+  if (el) el.style.display = display;
+}
+
 const toastEl = $('toast');
 let toastTimer = null;
 function toast(msg, ms = 2000) {
@@ -348,24 +353,24 @@ async function enterRoom(resp) {
   const isListenerView = !isNative && !state.isHost && state.roomMode === 'tour';
   if (isListenerView) {
     $('listener-view').classList.add('active');
-    $('map').style.display = 'none';
-    $('peer-strip').style.display = 'none';
-    $('btn-list').style.display = 'none';
-    $('btn-recenter').style.display = 'none';
-    $('btn-ptt').style.display = 'none';
-    $('btn-chat').style.display = 'none';
-    $('btn-invite').style.display = 'none';
-    $('room-topbar').style.display = 'none'; // 隱藏原本的頂部列
+    setDisplay('map', 'none');
+    setDisplay('peer-strip', 'none');
+    setDisplay('btn-list', 'none');
+    setDisplay('btn-recenter', 'none');
+    setDisplay('btn-ptt', 'none');
+    setDisplay('btn-chat', 'none');
+    setDisplay('btn-invite', 'none');
+    setDisplay('room-topbar', 'none'); // 隱藏原本的頂部列
   } else {
     $('listener-view').classList.remove('active');
-    $('map').style.display = 'block';
-    $('peer-strip').style.display = 'flex';
-    $('btn-list').style.display = 'flex';
-    $('btn-recenter').style.display = 'flex';
-    $('btn-ptt').style.display = 'flex';
-    $('btn-chat').style.display = 'flex';
-    $('btn-invite').style.display = 'flex';
-    $('room-topbar').style.display = 'flex';
+    setDisplay('map', 'block');
+    setDisplay('peer-strip', 'flex');
+    setDisplay('btn-list', 'flex');
+    setDisplay('btn-recenter', 'flex');
+    setDisplay('btn-ptt', 'flex');
+    setDisplay('btn-chat', 'flex');
+    setDisplay('btn-invite', 'flex');
+    setDisplay('room-topbar', 'flex');
     ensureMap();
   }
 
